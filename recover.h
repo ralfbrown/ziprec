@@ -4,10 +4,10 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  File: recover.h - find and recover archive members			*/
-/*  Version:  1.00gamma				       			*/
-/*  LastEdit: 28apr2013							*/
+/*  Version:  1.10beta				       			*/
+/*  LastEdit: 2019-07-16						*/
 /*									*/
-/*  (c) Copyright 2011,2012,2013 Ralf Brown/CMU				*/
+/*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -28,7 +28,7 @@
 
 #include "lenmodel.h"
 #include "ziprec.h"
-#include "langident/trie.h"
+#include "whatlang2/trie.h"
 
 /************************************************************************/
 /************************************************************************/

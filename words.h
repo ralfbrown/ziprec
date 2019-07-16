@@ -4,10 +4,10 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  File: words.h - word-segmentation functions				*/
-/*  Version:  1.00gamma				       			*/
-/*  LastEdit: 07may2013							*/
+/*  Version:  1.10beta				       			*/
+/*  LastEdit: 2019-07-16						*/
 /*									*/
-/*  (c) Copyright 2011,2013 Ralf Brown/CMU				*/
+/*  (c) Copyright 2011,2013,2019 Carnegie Mellon University		*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -30,8 +30,8 @@
 #include <ctype.h>
 #include <stdint.h>
 #include "chartype.h"
-#include "langident/trie.h"
-#include "langident/wildcard.h"
+#include "wildcard.h"
+#include "whatlang2/trie.h"
 
 /************************************************************************/
 /************************************************************************/

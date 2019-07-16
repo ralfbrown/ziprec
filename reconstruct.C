@@ -5,7 +5,7 @@
 /*									*/
 /*  File: reconstruct.C - Lempel-Ziv stream reconstruction		*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 27jun2019							*/
+/*  LastEdit: 2019-07-16						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -24,15 +24,18 @@
 /************************************************************************/
 
 #include <cfloat>
+#include <cmath>
 #include "index.h"
 #include "models.h"
 #include "reconstruct.h"
-#include "langident/wildcard.h"
+#include "wildcard.h"
 #include "global.h"
+#include "framepac/bitvector.h"
 #include "framepac/config.h"
 #include "framepac/memory.h"
 #include "framepac/message.h"
 #include "framepac/texttransforms.h"
+#include "framepac/timer.h"
 
 using namespace Fr ;
 
@@ -725,8 +728,7 @@ static void augment_file_models(DecodeBuffer &decode_buffer,
       delete ngrams_left ;
       NybbleTrie *ngrams_right = new NybbleTrie ;
       uint8_t keybuf[max_ngram_len+1] ;
-      ngrams_forward->enumerate(keybuf,max_ngram_len,reverse_ngram,
-				ngrams_right) ;
+      ngrams_forward->enumerate(keybuf,max_ngram_len,reverse_ngram,ngrams_right) ;
       ngrams_right->addTokenCount(total_tokens) ;
       ngrams_reverse = new LangIDPackedTrie(ngrams_right,1,false) ;
       delete ngrams_right ;

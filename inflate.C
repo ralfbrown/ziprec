@@ -5,7 +5,7 @@
 /*									*/
 /*  File: inflate.C - DEFLATE decompression				*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 27jun2019							*/
+/*  LastEdit: 2019-07-16						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -35,9 +35,10 @@
 #include "utility.h"
 #include "words.h"
 #include "global.h"
-#include "langident/langid.h"
+#include "whatlang2/langid.h"
 #include "framepac/config.h"
-//#include "framepac/timer.h"
+#include "framepac/texttransforms.h"
+#include "framepac/timer.h"
 
 #if defined(__WATCOMC__) || defined(__MSDOS__) || defined(_MSC_VER)
 #  include <io.h> 	// for unlink()

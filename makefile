@@ -5,7 +5,7 @@ INCDIR=./framepac
 OBJS = build/bits.o build/byteio.o build/chartype.o build/dbyte.o \
 	build/dbuffer.o build/huffman.o build/index.o \
 	build/inflate.o build/lenmodel.o build/loclist.o \
-	build/models.o build/packet.o build/partial.o \
+	build/models.o build/packet.o build/partial.o build/pstrie.o \
 	build/recover.o build/reconstruct.o build/sort.o \
 	build/symtab.o build/utility.o build/wordhash.o \
 	build/words.o build/global.o build/scan_ziprec.o \
@@ -87,7 +87,7 @@ clean:
 .PHONY: allclean
 allclean: clean
 	-( cd framepac ; $(MAKE) clean )
-	-( cd langident ; $(MAKE) clean )
+	-( cd whatlang2 ; $(MAKE) clean )
 
 .PHONY: tags
 tags:
@@ -114,7 +114,7 @@ bin/mklang: build/mklang.o $(LIBRARY) $(LIBS)
 	$(CC) -o $@ $(CFLAGS) $(CLINK) $^ $(LIBRARY)
 
 whatlang2/bin/mklangid:
-	( cd langident ; $(MAKE) all )
+	( cd whatlang2 ; $(MAKE) all )
 
 #########################################################################
 ## libraries
@@ -123,7 +123,7 @@ framepac/framepacng.a: nonexistentfile
 	( cd framepac ; $(MAKE) DEBUG=$(DEBUG) lib )
 
 whatlang2/langident.a:  nonexistentfile
-	( cd langident ; $(MAKE) lib )
+	( cd whatlang2 ; $(MAKE) lib )
 
 .PHONY: nonexistentfile
 nonexistentfile:
@@ -172,6 +172,8 @@ build/packet.o: 	packet.C byteio.h inflate.h
 
 build/partial.o: 	partial.C partial.h bits.h inflate.h symtab.h global.h
 
+build/pstrie.o:		pstrie.C pstrie.h wildcard.h
+
 build/reconstruct.o: 	reconstruct.C reconstruct.h dbuffer.h index.h global.h \
 			models.h wildcard.h
 
@@ -193,24 +195,27 @@ build/words.o: 		words.C words.h chartype.h dbyte.h
 
 build/ziprec.o: 	ziprec.C inflate.h models.h recover.h reconstruct.h global.h
 
-build/mklang.o: 	mklang.C global.h sort.h wordhash.h words.h ziprec.h whatlang2/langid.h
+build/mklang.o: 	mklang.C global.h pstrie.h sort.h wordhash.h words.h ziprec.h whatlang2/langid.h
 
-dbuffer.h: dbyte.h
+dbuffer.h: 	dbyte.h
 	touch $@
 
-global.h: dbyte.h
+global.h: 	dbyte.h
 	touch $@
 
-index.h: dbyte.h
+index.h: 	dbyte.h
 	touch $@
 
-inflate.h: huffman.h
+inflate.h: 	huffman.h
 	touch $@
 
-models.h: dbyte.h dbuffer.h whatlang2/langid.h
+models.h: 	dbyte.h dbuffer.h pstrie.h whatlang2/langid.h
 	touch $@
 
-recover.h: lenmodel.h ziprec.h
+pstrie.h:	wildcard.h whatlang2/ptrie.h whatlang2/trie.h framepac/framepac/byteorder.h framepac/framepac/file.h
+	touch $@
+
+recover.h: 	lenmodel.h ziprec.h
 	touch $@
 
 words.h:	wildcard.h

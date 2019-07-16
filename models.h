@@ -4,10 +4,10 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  File: models.h - language-model manipulation			*/
-/*  Version:  1.00rc1				       			*/
-/*  LastEdit: 15jul2013							*/
+/*  Version:  1.10beta				       			*/
+/*  LastEdit: 2019-07-16						*/
 /*									*/
-/*  (c) Copyright 2011,2012,2013 Ralf Brown/CMU				*/
+/*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -25,8 +25,9 @@
 
 #include "dbyte.h"
 #include "dbuffer.h"  // for ContextFlags
-#include "langident/langid.h"
-#include "langident/pstrie.h"
+#include "pstrie.h"
+#include "wildcard.h"
+#include "whatlang2/langid.h"
 
 /************************************************************************/
 /************************************************************************/

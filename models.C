@@ -5,7 +5,7 @@
 /*									*/
 /*  File: models.C - language-model manipulation			*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 27jun2019							*/
+/*  LastEdit: 2019-07-16						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -24,9 +24,10 @@
 /************************************************************************/
 
 #include <cfloat>
+#include <cmath>
 #include "dbuffer.h"
 #include "models.h"
-#include "langident/wildcard.h"
+#include "wildcard.h"
 #include "global.h"
 #include "framepac/config.h"
 #include "framepac/memory.h"
@@ -151,7 +152,29 @@ static uint64_t read_N(FILE *fp,unsigned bytes)
 
 //----------------------------------------------------------------------
 
+static uint64_t read_N(CFile& fp,unsigned bytes)
+{
+   uint64_t value = 0 ;
+   for (unsigned i = 0 ; i < bytes && !fp.eof() ; i++)
+      {
+      int b = fp.getc() ;
+      if (b == EOF)
+	 break ;
+      value = (value << 8) | b ;
+      }
+   return value ;
+}
+
+//----------------------------------------------------------------------
+
 uint64_t read_64bits(FILE *fp)
+{
+   return read_N(fp,8) ;
+}
+
+//----------------------------------------------------------------------
+
+uint64_t read_64bits(CFile& fp)
 {
    return read_N(fp,8) ;
 }
@@ -165,7 +188,21 @@ uint32_t read_32bits(FILE *fp)
 
 //----------------------------------------------------------------------
 
+uint32_t read_32bits(CFile& fp)
+{
+   return (uint32_t)read_N(fp,4) ;
+}
+
+//----------------------------------------------------------------------
+
 uint16_t read_16bits(FILE *fp)
+{
+   return (uint16_t)read_N(fp,2) ;
+}
+
+//----------------------------------------------------------------------
+
+uint16_t read_16bits(CFile& fp)
 {
    return (uint16_t)read_N(fp,2) ;
 }
@@ -576,7 +613,7 @@ bool BidirModel::computeCenterScores(const DecodedByte *bytes,
 /************************************************************************/
 /************************************************************************/
 
-static size_t *load_ngram_counts(FILE *fp, size_t &max_length)
+static size_t *load_ngram_counts(CFile& fp, size_t &max_length)
 {
    max_length = read_32bits(fp) ;
    size_t *counts = new size_t[max_length+1] ;
@@ -666,20 +703,20 @@ static unsigned most_frequent_language(DecodeBuffer &decode_buffer,
 
 //----------------------------------------------------------------------
 
-static bool load_reconstruction_data(FILE *fp, const char *filename)
+static bool load_reconstruction_data(CFile& fp, const char *filename)
 {
    PROGRESS("loading language model\n") ;
    // check for the proper file signature
    char sigbuffer[sizeof(LANGMODEL_SIGNATURE)] ;
-   if (fread(sigbuffer,sizeof(char),sizeof(sigbuffer),fp) < sizeof(sigbuffer))
+   if (fp.read(sigbuffer,sizeof(sigbuffer),sizeof(char)) < sizeof(sigbuffer))
       return false ;
    if (memcmp(LANGMODEL_SIGNATURE,sigbuffer,sizeof(sigbuffer)) != 0)
       return false ;
    // check for the proper format version
-   if (fgetc(fp) != (char)LANGMODEL_FORMAT_VERSION)
+   if (fp.getc() != (char)LANGMODEL_FORMAT_VERSION)
       return false ;
    // skip the alignment padding
-   if (fgetc(fp) == EOF || fgetc(fp) == EOF || fgetc(fp) == EOF)
+   if (fp.getc() == EOF || fp.getc() == EOF || fp.getc() == EOF)
       return false ;
    // read the offsets of the embedded models
    uint64_t offset_forward = read_64bits(fp) ;
@@ -690,21 +727,21 @@ static bool load_reconstruction_data(FILE *fp, const char *filename)
    bool success = true ;
    if (offset_forward != 0)
       {
-      fseek(fp,offset_forward,SEEK_SET) ;
+      fp.seek(offset_forward) ;
       global_ngrams_forward = LangIDPackedTrie::load(fp,filename) ;
       if (!global_ngrams_forward)
 	 success = false ;
       }
    if (offset_reverse != 0)
       {
-      fseek(fp,offset_reverse,SEEK_SET) ;
+      fp.seek(offset_reverse) ;
       global_ngrams_reverse = LangIDPackedTrie::load(fp,filename) ;
       if (!global_ngrams_reverse)
 	 success = false ;
       }
    if (offset_counts != 0)
       {
-      fseek(fp,offset_counts,SEEK_SET) ;
+      fp.seek(offset_counts) ;
       global_ngram_counts = load_ngram_counts(fp,global_ngram_length) ;
       if (global_ngram_counts)
 	 compute_ngram_frequencies(global_ngram_length,global_ngram_counts,
@@ -714,7 +751,7 @@ static bool load_reconstruction_data(FILE *fp, const char *filename)
       }
    if (offset_words != 0)
       {
-      fseek(fp,offset_words,SEEK_SET) ;
+      fp.seek(offset_words) ;
       delete global_word_frequencies ;
       NybbleTrie *frequencies = new NybbleTrie ;
       global_word_frequencies = frequencies ;
@@ -723,7 +760,7 @@ static bool load_reconstruction_data(FILE *fp, const char *filename)
 	 // read the number of words to expect
 	 uint32_t count = read_32bits(fp) ;
 	 uint32_t total_tokens = 0 ;
-	 for (size_t i = 0 ; i < count && !feof(fp) ; i++)
+	 for (size_t i = 0 ; i < count && !fp.eof() ; i++)
 	    {
 	    // read a word record: 64-bit frequency, 16-bit length, and then the word
 	    size_t freq = read_64bits(fp) ;
@@ -737,7 +774,7 @@ static bool load_reconstruction_data(FILE *fp, const char *filename)
 	       break ;
 	       }
 	    uint8_t wordbuffer[MAX_WORD] ;
-	    if (fread(wordbuffer,sizeof(char),wordlen,fp) < wordlen)
+	    if (fp.read(wordbuffer,wordlen,sizeof(char)) < wordlen)
 	       {
 	       success = false ;
 	       break ;
@@ -764,12 +801,11 @@ bool load_reconstruction_data(const char *data_file)
 	 // no need to re-load the model, we already have it
 	 return true ;
 	 }
-      FILE *fp = fopen(data_file,"rb") ;
+      CInputFile fp(data_file,CFile::binary) ;
       if (fp)
 	 {
 	 clear_reconstruction_data() ;
 	 success = load_reconstruction_data(fp,data_file) ;
-	 fclose(fp) ;
 	 if (success)
 	    {
 	    current_language_model = dup_string(data_file) ;

@@ -5,7 +5,7 @@
 /*									*/
 /*  File: mklang.C - generate language data for reconstruction		*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 28jun2019							*/
+/*  LastEdit: 2019-07-16						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -27,13 +27,12 @@
 #include <cstdlib>
 #include <cstring>
 #include "global.h"
+#include "pstrie.h"
 #include "sort.h"
 #include "wordhash.h"
 #include "words.h"
 #include "ziprec.h"
-#include "framepac/file.h"
-#include "langident/langid.h"
-#include "langident/pstrie.h"
+#include "whatlang2/langid.h"
 
 using namespace Fr ;
 
@@ -314,10 +313,11 @@ static bool process_file(const char *filename, NybbleTrie *forward,
 
 //----------------------------------------------------------------------
 
-static bool count_ngrams(const NybbleTrieNode *node, const uint8_t * /*key*/,
+static bool count_ngrams(const NybbleTrie* trie, NybbleTrie::NodeIndex nodeindex, const uint8_t * /*key*/,
 			 unsigned keylen, void *user_data)
 {
    unsigned min_freq = *((unsigned*)user_data) ;
+   auto node = trie->node(nodeindex) ;
    if (ngram_counts && node->frequency() >= min_freq)
       ngram_counts[keylen]++ ;
    return true ;
@@ -352,11 +352,11 @@ static bool reverse_ngram(const uint8_t *key, unsigned keylen,
 
 //----------------------------------------------------------------------
 
-static bool write_32bit(uint32_t value, FILE *fp)
+static bool write_32bit(uint32_t value, CFile& fp)
 {
    for (int i = 24 ; i >= 0 ; i -= 8)
       {
-      if (fputc((value >> i) & 0xFF, fp) == EOF)
+      if (!fp.putc((value >> i) & 0xFF))
 	 return false ;
       }
    return true ;
@@ -364,11 +364,11 @@ static bool write_32bit(uint32_t value, FILE *fp)
 
 //----------------------------------------------------------------------
 
-static bool write_64bit(uint64_t value, FILE *fp)
+static bool write_64bit(uint64_t value, CFile& fp)
 {
    for (int i = 56 ; i >= 0 ; i -= 8)
       {
-      if (fputc((value >> i) & 0xFF, fp) == EOF)
+      if (!fp.putc((value >> i) & 0xFF))
 	 return false ;
       }
    return true ;
@@ -376,7 +376,7 @@ static bool write_64bit(uint64_t value, FILE *fp)
 
 //----------------------------------------------------------------------
 
-static bool write_ngram_counts(FILE *fp, const LangIDPackedTrie *ngrams,
+static bool write_ngram_counts(CFile& fp, const LangIDPackedTrie *ngrams,
 			       const size_t *counts_by_len,
 			       uint64_t total_bytes)
 {
@@ -400,8 +400,7 @@ static bool write_ngram_counts(FILE *fp, const LangIDPackedTrie *ngrams,
 
 //----------------------------------------------------------------------
 
-static bool write_words(FILE *fp, const WordList *frequencies,
-			bool display_words)
+static bool write_words(CFile& fp, const WordList *frequencies, bool display_words)
 {
    if (!fp || !frequencies)
       return false ;
@@ -422,14 +421,13 @@ static bool write_words(FILE *fp, const WordList *frequencies,
 	 return false ;
       unsigned len = word->length() ;
       // write string length as 16-bit big-endian number
-      if (fputc((len >> 8) & 0xFF, fp) == EOF ||
-	  fputc(len & 0xFF, fp) == EOF)
+      if (!fp.putc((len >> 8) & 0xFF) || !fp.putc(len & 0xFF))
 	 return false ;
       // write the string itself
       for (size_t i = 0 ; i < len ; i++)
 	 {
 	 const WordCharacter &c = word->character(i) ;
-	 if (fputc(c.byteValue(), fp) == EOF)
+	 if (!fp.putc(c.byteValue()))
 	    return false ;
 	 }
       }
@@ -438,7 +436,7 @@ static bool write_words(FILE *fp, const WordList *frequencies,
 
 //----------------------------------------------------------------------
 
-static bool write_frequencies(FILE *fp,
+static bool write_frequencies(CFile& fp,
 			      const LangIDPackedTrie *forward_ngrams,
 			      const LangIDPackedTrie *reverse_ngrams,
 			      const size_t *counts_by_len,
@@ -446,18 +444,17 @@ static bool write_frequencies(FILE *fp,
 			      uint64_t total_bytes,
 			      bool display_words)
 {
-   if (fwrite(LANGMODEL_SIGNATURE,sizeof(char),sizeof(LANGMODEL_SIGNATURE),fp)
-       < sizeof(LANGMODEL_SIGNATURE))
+   if (fp.write(LANGMODEL_SIGNATURE,sizeof(LANGMODEL_SIGNATURE),sizeof(char)) < sizeof(LANGMODEL_SIGNATURE))
       return false ;
    // write format version number
-   if (fputc((char)LANGMODEL_FORMAT_VERSION,fp) == EOF)
+   if (!fp.putc((char)LANGMODEL_FORMAT_VERSION))
       return false ;
    // some padding bytes for alignment and possible future use
-   if (fputc('\0',fp) == EOF || fputc('\0',fp) == EOF || fputc('\0',fp) == EOF)
+   if (!fp.putNulls(3))
       return false ;
    // write dummy offsets
-   fflush(fp) ;
-   off_t offsets_offset = ftell(fp) ;
+   fp.flush() ;
+   off_t offsets_offset = fp.tell() ;
    if (!write_64bit(0,fp) ||	// offset of forward ngram model
        !write_64bit(0,fp) ||	// offset of reverse ngram model
        !write_64bit(0,fp) ||	// offset of forward ngram counts
@@ -466,31 +463,31 @@ static bool write_frequencies(FILE *fp,
        !write_64bit(0,fp))
       return false ;
    // write the forward ngram model, if present
-   off_t forward_offset = ftell(fp) ;
+   off_t forward_offset = fp.tell() ;
    if (!forward_ngrams || !forward_ngrams->write(fp))
       forward_offset = 0 ;
    // write the reverse ngram model, if present
-   off_t reverse_offset = ftell(fp) ;
+   off_t reverse_offset = fp.tell() ;
    if (!reverse_ngrams || !reverse_ngrams->write(fp))
       reverse_offset = 0 ;
    // write the forward ngram counts, if forward model is present
-   off_t counts_offset = ftell(fp) ;
+   off_t counts_offset = fp.tell() ;
    if (!write_ngram_counts(fp,forward_ngrams,counts_by_len,
 			   total_bytes))
       counts_offset = 0 ;
    // write the word unigram model, if present
-   off_t word_offset = ftell(fp) ;
+   off_t word_offset = fp.tell() ;
    if (!write_words(fp,word_model,display_words))
       word_offset = 0 ;
    // finally, go back and update the offsets of the embedded models
-   fflush(fp) ;
-   fseek(fp,offsets_offset,SEEK_SET) ;
+   fp.flush() ;
+   fp.seek(offsets_offset) ;
    if (!write_64bit(forward_offset,fp) ||
        !write_64bit(reverse_offset,fp) ||
        !write_64bit(counts_offset,fp) ||
        !write_64bit(word_offset,fp))
       return false ;
-   fflush(fp) ;
+   fp.flush() ;
    return true ;
 }
 
@@ -504,18 +501,13 @@ static bool write_frequencies(const char *outfile,
 			      uint64_t total_bytes,
 			      bool display_words)
 {
-   if (outfile && *outfile &&
-       (forward_ngrams || reverse_ngrams))
+   if (forward_ngrams || reverse_ngrams)
       {
-      FILE *fp = fopen(outfile,"wb") ;
+      COutputFile fp(outfile,CFile::binary) ;
       if (fp)
 	 {
-	 bool success = write_frequencies(fp,forward_ngrams,
-					  reverse_ngrams,counts_by_len,
-					  word_model,total_bytes,
-					  display_words) ;
-	 fclose(fp) ;
-	 return success ;
+	 return write_frequencies(fp,forward_ngrams,reverse_ngrams,counts_by_len,
+	                          word_model,total_bytes,display_words) ;
 	 }
       }
    return false ;
