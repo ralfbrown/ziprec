@@ -1,0 +1,160 @@
+v1.10beta 2019-06-27:
+   Edit source to eliminate compiler warnings with GCC 8.3.
+   Replace now-obsolete FramepaC 1.x with FramepaC-ng
+
+v1.00gamma 2013-05-07:
+   Hotspot optimization reduced reconstruction time by about 25%.
+   Avoiding recomputation of n-gram scores during incremental updates
+     when the original computation did not contribute to a wildcard's
+     overall score increased the speed-up to 35% relative to
+     v1.00beta.
+   Changed scoring function to eliminate an exp() in the innermost
+     loop, increasing the speed-up to 50+% relative to v1.00beta with
+     virtually identical reconstruction accuracy.
+   Made "aggressive inference" (periodically assigning replacements
+     for all wildcards with highly-skewed score distributions) the
+     default, as it proved to improve both reconstruction accuracy and
+     run time.  Reversed the sense of the -r^ flag to allow the user
+     to disable it.
+   Initial implementation of a word-length model for automatically
+     detecting DEFLATE stream corruption; added -r:l flag to enable its
+     use.  This approach proved unsuccessful in detecting corruption.
+   Restored word-unigram model code from v0.9 and adapted it for use
+     in detecting corruption; added -r:w to control its use.
+   Fixed segfault while verifying a candidate RAR header when the
+     header-size field produces a header size which extends beyond the
+     end of the input file.
+   Fixed test-mode reference matching to correctly handle a
+     within-packet corruption when re-alignment across corruption is
+     disabled.
+   Ensure proper display of multiple newlines in HTML mode.
+
+v1.00beta 2013-02-13:
+   Initial implementation of first phase of packet-end recovery.
+     Search proved to be intractible in the general case, but usable
+     when the Huffman trees are known (e.g. corruption in the middle
+     of a packet).
+   Implemented recovery of packets with corruption in the middle,
+     including a search to re-align the decompressed data such that
+     back-references across the corrupt region refer to the correct
+     bytes.
+   Added handling of zlib-style sync/flush markers as additional
+     headers for finding DEFLATEd data.
+   Refactored recovery code to use a list of DEFLATE packets,
+     permitting multiple packets to contain corruption and enabling a
+     user-specified corruption range in each packet.  Updated -t flag
+     to permit an arbitrary range of up to 4096 bytes in the first
+     packet to be designated as "corrupt" for testing purposes.
+   Tweaked HTML-mode output formatting and added a key to the start of
+     the file to remind users of the color coding.
+   Switched storage of DecodedByte in files from three bytes to four
+     bytes in preparation for extension of reconstruction code to
+     other LZ77-based compression algorithms.   
+   Extended search for reconstruction language models to look in the
+     current directory, a "models" subdirectory, the directory
+     containing the language identification database, and a
+     system-wide directory, e.g. /usr/share/ziprec/.
+   Updated valgrind header files to valgrind-3.7.0.
+   Fixes for GCC 4.6.3 warnings.
+   Added scripts for running evaluations on Europarl corpus.
+
+v1.00alpha 2012-04-03:
+   Complete re-write of reconstruction code, now using longer n-grams
+     and eliminating the word-based reconstruction.  This removes the
+     need to have a word-splitter that works on any given character
+     encoding and improves reconstruction of whitespace and
+     punctuation.  The new reconstruction method is also three to five
+     times faster with the same or better accuracy.
+   Removed ziprec -r- option.
+
+v0.9m 2012-03-16:
+   Integrated language identification from LA-Strings to automatically
+     select the appropriate language model.  Models should be named
+     {lang}.{encoding}.lang or {lang}.lang and be located in the same
+     directory as the language identification database.  ZipRec will
+     first try to use {lang}.{encoding}.lang and then fall back to
+     {lang}.lang.  If no matching language model is found, the final
+     fallback is 'null.lang', the empty model (reconstruction will
+     then be performed solely using self-adaptation information).
+   Use the character encoding detected during language identification
+     to restrict possible values of unknown bytes to prevent invalid
+     byte sequences in the detected encoding (e.g. ASCII-16 means
+     every other byte is 0x00).
+   Output reconstructed back-references to show reconstructed text
+     prior to the start of the recovered data.
+
+v0.9l 2011-12-13:
+   Added scanning for RAR marker block and RAR file header records; if
+     file headers are found, extract each compressed stream into a new
+     RAR archive containing just the single file.
+
+v0.9k 2011-08-20:
+   Added scanning for FlateHeader wrapper around zlib streams embedded
+     in PDFs, and for PNG iTXt and zTXt compressed comment chunks.
+   Added -O flag to limit the portion of the input scanned for
+     signatures and -zr to specify that the active range of the input
+     is a raw, unwrapped Deflate stream.
+   Conditionally compile some tracing statements in the innermost
+     search and decompression loops to speed up a production compile.
+     Use "make NDEBUG=1" to omit that tracing code.
+   Cut signature-scanning time in half (most useful for disk images,
+     where the scanning time can easily dominate).
+
+v0.9j 2011-06-21:
+   rearranged processing of spans to account for the fact that some
+     key off the type of the marker at the start of the span and some
+     from the marker at the end
+   filled out ALZip header options based on another read of the
+     reverse-engineered specs at 
+     http://code.google.com/p/theunarchiver/wiki/AlZipSpecs
+   added counts of zlib, gzip, and ALZip file headers to statistics report
+   sped up signature scan by ~10%
+   fixed bug in recovery when the very first packet in the DEFLATE
+     stream is an uncompressed packet
+
+v0.9i 2011-06-20:
+   tweaked processing of gzip and Zlib headers during recovery so that
+     they work better (and much faster) when processing a disk image
+   changed -zz flag to ignore candidate zlib streams if the first
+     compressed packet seems to use fixed Huffman compression, as that
+     accounts for most of the false positives; added -zZ flag to
+     permit those streams anyway.  Also made dynamic-Huffman
+     false-positive check stricter by attempting to decode the literal
+     and distance trees in addition to the bit-lengths tree.
+   BUGFIX: don't write Bzip2 or WavPack packets to files when merely
+     listing recoverable contents (-fListing)
+
+v0.9h 2011-06-17:
+   fleshed out ALZip support (but untested due to lack of actual
+     archives, and known not to support all header options)
+   added support for files containing Zlib-format compressed streams
+     and corresponding -z flag
+
+v0.9g 2011-05-16:
+   stubbed in support for ALZip archives (proprietary Korean archiver)
+
+v0.9f 2001-04-24:
+   filter out local file header as spurious if another ZIP signature
+     string is located within the candidate header
+   added initial stub to support use as a Bulk Extractor plug-in
+ 
+v0.9e 2011-04-21:
+   increment directory for '%' expansion in -d argument with each
+     chunk read from standard input to avoid name collisions
+
+v0.9d 2011-04-20:
+   added ability to read from standard input and support for
+     non-seekable streams when reading stdin (to permit piping)
+   added -b flag to allow processing standard input larger than
+     physical memory, at the cost of discontinuities at chunk
+     boundaries
+   
+v0.9c 2011-04-19:
+   fixed two bugs in handling uncompressed packets in DEFLATE stream
+   split statistics for EOD markers on fixed-Huffman and
+     dynamic-Huffman packets
+   added additional trace statements for -v4 and bumped previous -v4
+     and higher tracing up by a level
+   
+v0.9b 2011-04-12:
+   added some more statistics-gathering

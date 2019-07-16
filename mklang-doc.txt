@@ -1,0 +1,43 @@
+MkLang - Make language data for ZipRecover reconstruction
+
+The commandline syntax of MkLang is
+	mklang [options] langfile trainingfile [trainingfile ...]
+
+At least one training file must be specified.  These files should be
+representative of the kind of text to be reconstructed by ZipRecover,
+and should not be preprocessed in any way (text normalization will
+skew the statistics needed by ZipRecover).  The resulting output file
+'langfile' may be given to ZipRecover as an argument.
+
+The supported options are
+
+  -d
+	Display the word frequency list to standard output.
+
+  -f
+	Generate a forward n-gram model only (by default, both a
+	forward and a backward model are built).  This cuts the file
+	size in half but degrades reconstruction.
+
+  -F
+	(deprecated) Set filter factor.  This flag is for backward
+	compatibility, and merely multiplies the value set by -m.
+
+  -m
+	Set minimum frequency of occurrence for an n-gram to be
+	included in the model (default = 1).
+
+  -n
+	Set maximum length of n-gram to be included in model (default
+	6).  Languages with "small" alphabets in encodings where each
+	character requires multiple bytes (e.g. Arabic or Hebrew in
+	UTF-8 or Latin-alphabet languages in UTF-16) will benefit from
+	increasing the maximum length to 8 or 10.
+
+  -u
+	Store unfiltered total n-gram counts in model.  By default,
+	total counts exclude n-grams which were filtered out due to
+	low frequency, which slightly alters the probabilities used in
+	reconstruction.
+
+=============

@@ -1,0 +1,26 @@
+Due to its size and ready availability, the Europarl corpus has not
+been included here.  Please retrieve it from
+http://www.statmt.org/europarl/ .  You want the "source release (text
+files)".
+
+Tests were performed using Release v7 (15 May 2012), downloaded from
+http://www.statmt.org/europarl/v7/europarl.tgz 
+
+
+The following scripts are included:
+
+   collect.sh	generates training and test files from the corpus
+   mkmodels.sh	train language models from all training files
+   eval.sh	run a single test-language/model-language evaluation
+   eval-same.sh run eval for all languages using same test & model language
+   eval-all.sh	run the complete cross-product of test and model languages
+   score.sh	extract the performance statistics into tab-separated columns
+
+
+The general work-flow for running performance evaluations is:
+   uncompress and extract the corpus archive
+   run collect.sh over the extracted corpus files
+   run mkmodels.sh to train the language models for reconstruction
+   run eval.sh/eval-all.sh to generate log files with performancs stats
+   run score.sh to collect the performance stats into one file
+   load the result of score.sh into a spreadsheet and generate pivot tables

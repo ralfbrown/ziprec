@@ -1,0 +1,247 @@
+ZipRecover - Extract text from corrupted ZIP or gzip archives
+
+The commandline syntax of ZipRecover is
+    ziprec [options] zipfile [zipfile ...]
+
+At least one zip or gzip archive file must be named; arbitrarily many
+may be specified, but all files in all of the archives will be
+extracted to the same directory unless the -d option is used.  The
+special filename "-" may be used to have ZipRec read the archive from
+standard input.
+
+The supported options are
+
+  -bSIZ
+	When using standard input, read in chunks of at most SIZ
+	megabytes (default 512).  This should be set as high as
+	possible, but less than the physical RAM on the machine, as
+	recovery will not be performed across chunk boundaries.
+
+  -dDIR
+	Extract the files to directory DIR instead of the current
+	directory.  If the specified DIR contains a percent sign (%),
+	it is replaced with the base name of the input file.  This
+	permits multiple archives to be processed with one command
+	without having the extracted files interfere with each other.
+	If the file named on the commandline contains (parts of)
+	multiple archives, the percent-sign substitution adds an
+	additional number to generate a separate directory for each
+	contained archive.
+
+  -fFMT
+        Extract the files in the format named FMT.  Only the first
+	character of the format name is required (PlainText/Text,
+	+Plaintext/+Text, HTML, DecodedByte, or Listing).  See below
+	for more details on the output formats.
+
+  -g
+	Input files are in gzip format, rather than ZIP archives.  If
+	-g, -G, and -z/-zr/-zz/-zZ are combined, only the last option given
+	will take effect.
+
+  -G
+	Assume an input file is in gzip format if its name ends in
+	"gz" or "GZ".  If -g, -G, and -z/-zr/-zz/-zZ are combined, only the
+	last option given will take effect.
+
+  -j
+        Junk (ignore) directory paths in ZIP archives.  All files will
+        be written directly in the output directory, even if a
+        subdirectory is known from the archive.  Note that multiple
+        files with the same base name (ignoring subdirectories) will
+        overwrite each other.
+
+  -o
+	Overwrite existing files without prompting.
+
+  -OS,E
+	Scan only offsets S through E of the input.  Note that this
+	range will be applied to *all* files, so it is generally only
+	useful for dealing with a single file.  In addition, this
+	option is ignored when using standard input instead of a file
+	due to the chunk-wise processing (see -b option above).
+
+	If S is omitted, it defaults to 0; if E is omitted, it
+	defaults to the size of the file.
+
+  -r
+  -rDBFILE
+	Attempt reconstruction of unrecovered bytes using an
+  	automatically-selected language model; if DBFILE is specified,
+  	it names the language identification database to be used
+  	instead of the default database.  The database may be created
+  	using the MkLangID tool, described in detail in separate
+  	documentation.
+
+  -r=FILE
+	Attempt reconstruction of unrecovered bytes using the language
+	data in FILE.  FILE may be created using the MkLang tool,
+	described in detail in separate documentation.
+
+  -r@
+	Extract a language model from the uncorrupted portion of the
+	file being reconstructed to augment the pre-trained language
+	model.  This may hurt accuracy when a well-matching language
+	model is used by skewing n-gram statistics toward less-common
+	sequences (which are more likely to exist as literal bytes in
+	the compressed stream precisely because they occur
+	infrequently).
+
+  -r+
+	Perform a more thorough search for matching n-grams in
+	highly-ambiguous contexts.  This can yield a modest
+	improvement in reconstruction accuracy at the cost of more
+	than doubling run time.
+
+  -r++
+	Attempt recovery of partial first packet (not working).
+
+  -r+N
+	Run N (1-9) iterations of reconstruction instead of the
+	default single iteration.  This often allows additional
+	characters to be reconstructed; however, they are less
+	accurate because errors in one iteration affect all subsequent
+	iterations.
+
+  -r^
+	Disable aggressive inference (periodically assigning
+	replacements for all items with highly-skewed score
+	distributions).  Intended primarily for debugging.
+
+  -r#
+	Perform an initial pass to remove candidate replacements which
+	are not supported by the language model's n-grams.  Yields a
+	minor improvement in reconstruction accuracy at the cost of
+	10-20% longer run time.
+
+  -r:w
+	Disable the *experimental* automatic detection of corruption
+	using word model.  This may be needed if the file being
+	recovered contains sections of text in other languages.
+
+  -s
+	Print search statistics at the end of the run (only if enabled
+  	at compile-time).
+
+  -t
+  -tSIZE
+  -tSIZE@OFFSET
+	Run in test mode.  Without "@OFFSET", every archive member
+	will be treated as if its first SIZE (default 1) bytes were
+	missing, which is useful for gathering statistics on the
+	efficacy of recovery or reconstruction (particulary in
+	conjunction with -fLIST).  With a specified offset, each
+	archive member will be treated as though its first DEFLATE
+	packet had SIZE corrupted bytes at offset OFFSET
+	(e.g. "-t5@20" would act as though bytes 20 through 24 were
+	corrupted).
+
+  -v
+  -vN
+	Specify how verbose ZipRecover should be.  The former version
+	increments the verbosity level each time it is specified, the
+	latter version directly sets the level to N.  See below for
+	more details on ZipRecover messages at different verbosity levels.
+
+  -xp
+	Exclude searches for /FlateCode streams within PDF files.
+
+  -z
+  -zz
+  -zZ
+	Assume file is in zlib format (single stream for -z, multiple
+  	streams for -zz and -zZ).  Because there is no specific signature
+  	string for zlib format, allowing multiple streams is prone to
+  	false positives in detecting the start of a stream, which will
+  	result in errors when attempting to decompress the data.  -zz
+  	skips candidate headers which appear to use fixed-Huffman for
+  	the first compressed packet to reduce false positives by
+  	around 75%; -zZ will include them.  If -g, -G, and -z/-zr/-zz/-zZ
+	are combined, only the last option given will take effect.
+	Note that while PDFs contain zlib streams, they are wrapped in
+	a manner which provides both start and end signatures, which are
+	searched for in the default mode and are more reliable than
+	using -zz or -zZ on a PDF.
+
+   -zr
+	Assume the file (or the range specified with -O) is a raw
+	Deflate stream.  If -g, -G, and -z/-zr/-zz/-zZ are combined,
+	only the last option given will take effect.
+
+Five output formats are available: Plaintext/Text, +Text, HTML,
+DecodedByte, and Listing.  Plain text output stores exactly the
+extracted text, with any bytes which are unknown as the result of
+back-references to a missing part of the data stream replaced by
+question marks.  +Text is the same as Text, but flags (in test mode
+[-t] only) erroneously reconstructed bytes by enclosing them in {};
+note that this will not work properly for multi-byte characters when
+only some of their bytes are incorrectly reconstructed.  HTML format
+adds an HTML header and footer, escapes certain reserved characters so
+that they display properly, and uses CSS to color unknown bytes in red
+and reconstructed bytes in orange or light green depending on
+confidence.  The DecodeByte format is a binary format intended for use
+in further reconstruction (both automatic and manual), and uses either
+three or four bytes for each byte in the extracted file to store both
+literal characters and back-references.  The Listing "format" does not
+actually store the extracted files, but instead displays a listing of
+the recoverable files, the original file's size (if discoverable), the
+total number of bytes recoverable, and the number of recoverable bytes
+which are known (or reconstructable if using the -r option).
+
+ZipRecover processes all DEFLATEd files in the input archive, and
+writes the recovered component files to the current directory.  If the
+archive member is complete, STOREd files are also extracted.  Where a
+local file header is present at the beginning of the compressed
+bitstream, or the appropriate central directory entry can be inferred,
+the correct filename is used; if the -j option is given, the stored
+path is stripped and only the base name is used.  When the output
+format is set to HTML, an additional extension of ".htm" is added to
+the extracted filename.  If the filename is unavailable, the name
+"recovered-NNNNNNNN.dat" or "recovered-NNNNNNNN.htm" (HTML output
+format only) is used, where "NNNNNNNN" is the hexadecimal offset from
+the beginning of the archive.
+
+If it detects BZIP2 or WavPack-compressed blocks, ZipRecover will
+write each contiguous group of such blocks to files
+"recovered-NNNNNNNN.bz2" or "recovered-NNNNNNNN.wpk" for further
+recovery by programs such as bzip2recover.
+
+If it detects files compressed with RAR, ZipRecover will write each
+such file as a new RAR archive containing that file as its sole
+member.
+
+By default, ZipRecover only prints messages on errors and warnings.
+At verbosity level 1, it displays the segments of the archive it is
+attempting to extract and the filename (if known), as well as the
+major phases of reconstruction.  At verbosity level 2, it displays the
+results of scanning the archive, which includes all header records
+found, and the minor phases of reconstruction.  At verbosity level 3,
+the locations and types of data blocks within DEFLATE streams are
+shown, as well as statistics during reconstruction.  At verbosity
+levels of 4 and above, various internal processing is displayed for
+debugging purposes.
+
+==========
+EXIT CODES
+==========
+
+ZipRecover returns 0 on successful completion, 1 if any of the specified
+files were unrecoverable, and 2 is there was an error in the command
+line.
+
+
+=================
+KNOWN LIMITATIONS
+=================
+
+The current version only handles fixed-Huffman compressed blocks in a
+limited manner, as they proved to generate large numbers of false
+positives and would require a more sophisticated search process that
+includes backtracking.  Fixed-Huffman blocks are likely to be seen
+only in very small files for which the 30-50 byte overhead of
+transmitting Huffman trees would out-weigh the compression advantages
+of using tailored trees.  Such small files will almost certainly
+consist of only a single block and will thus not be recoverable if the
+beginning is missing.
+
+===============
