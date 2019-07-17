@@ -38,6 +38,8 @@
 
 #define PTRIE_BITS_PER_LEVEL 8
 #define PTRIE_CHILDREN_PER_NODE (1<<PTRIE_BITS_PER_LEVEL)
+#define PTRIE_ROOT_INDEX 0
+#define PTRIE_TERMINAL_MASK 0x80000000
 
 /************************************************************************/
 /************************************************************************/
@@ -217,11 +219,9 @@ class LangIDPackedTrie
       bool writeHeader(Fr::CFile& f) const ;
       uint32_t allocateChildNodes(unsigned numchildren) ;
       uint32_t allocateTerminalNodes(unsigned numchildren) ;
-      bool insertChildren(Node *parent, const NybbleTrie *trie,
-			  const NybbleTrieNode *node, uint32_t node_index,
+      bool insertChildren(Node *parent, const NybbleTrie *trie, uint32_t node_index,
 			  unsigned keylen, uint32_t min_freq = 1) ;
-      bool insertTerminals(Node *parent, const NybbleTrie *trie,
-			   const NybbleTrieNode *node, uint32_t node_index,
+      bool insertTerminals(Node *parent, const NybbleTrie *trie, uint32_t node_index,
 			   unsigned keylen, uint32_t min_freq = 1) ;
    private:
       Node    *m_nodes ; // array of nodes

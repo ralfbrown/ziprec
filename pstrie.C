@@ -568,17 +568,16 @@ LangIDPackedTrie::LangIDPackedTrie(const NybbleTrie *trie, uint32_t min_freq,
    init() ;
    if (trie)
       {
-      m_size = trie->numFullNodes(min_freq) ;
+      m_size = trie->numFullByteNodes(min_freq) ;
       m_numterminals = trie->numTerminalNodes(min_freq) ;
       m_nodes = Fr::New<PackedSimpleTrieNode>(m_size) ;
       m_terminals = Fr::New<PackedTrieTerminalNode>(m_numterminals) ;
       if (m_nodes && m_terminals)
 	 {
-	 const NybbleTrieNode *mroot = trie->rootNode() ;
 	 PackedSimpleTrieNode *proot = &m_nodes[PTRIE_ROOT_INDEX] ;
 	 new (proot) PackedSimpleTrieNode ;
 	 m_used = 1 ;
-	 if (!insertChildren(proot,trie,mroot,PTRIE_ROOT_INDEX,0,min_freq))
+	 if (!insertChildren(proot,trie,PTRIE_ROOT_INDEX,0,min_freq))
 	    {
 	    m_size = 0 ;
 	    m_numterminals = 0 ;
@@ -721,14 +720,12 @@ cerr<<"out of terminal nodes"<<endl;
 //----------------------------------------------------------------------
 
 bool LangIDPackedTrie::insertTerminals(PackedSimpleTrieNode *parent,
-				 const NybbleTrie *trie,
-				 const NybbleTrieNode *mnode,
-				 uint32_t mnode_index,
+				 const NybbleTrie *trie, uint32_t mnode_index,
 				 unsigned keylen, uint32_t min_freq)
 {
-   if (!parent || !mnode)
+   if (!parent || !trie)
       return false ;
-   unsigned numchildren = mnode->numExtensions(trie,min_freq) ;
+   unsigned numchildren = trie->numExtensions(mnode_index,min_freq) ;
    if (numchildren == 0)
       return true ;
    keylen++ ;
@@ -766,22 +763,19 @@ bool LangIDPackedTrie::insertTerminals(PackedSimpleTrieNode *parent,
 //----------------------------------------------------------------------
 
 bool LangIDPackedTrie::insertChildren(PackedSimpleTrieNode *parent,
-				const NybbleTrie *trie,
-				const NybbleTrieNode *nod,
-				uint32_t node_index,
-				unsigned keylen,
-				uint32_t min_freq)
+				const NybbleTrie *trie, uint32_t node_index,
+				unsigned keylen, uint32_t min_freq)
 {
-   if (!parent || !nod)
+   if (!parent || !trie)
       return false ;
    // first pass: fill in all the children
-   unsigned numchildren = nod->numExtensions(trie,min_freq) ;
+   unsigned numchildren = trie->numExtensions(node_index,min_freq) ;
    if (numchildren == 0)
       return true ;
    keylen++ ;
    if (keylen > longestKey())
       m_maxkeylen = keylen ;
-   bool terminal = nod->allChildrenAreTerminals(trie,min_freq) ;
+   bool terminal = trie->allChildrenAreTerminals(node_index,min_freq) ;
    uint32_t firstchild = (terminal
 			  ? allocateTerminalNodes(numchildren)
 			  : allocateChildNodes(numchildren)) ;
@@ -809,12 +803,10 @@ bool LangIDPackedTrie::insertChildren(PackedSimpleTrieNode *parent,
 	    pchild->setFrequency(mfreq) ;
 	    if (terminal)
 	       {
-	       if (!insertTerminals(pchild,trie,mchild,nodeindex,keylen,
-				    min_freq))
+	       if (!insertTerminals(pchild,trie,nodeindex,keylen,min_freq))
 		  return false ;
 	       }
-	    else if (!insertChildren(pchild,trie,mchild,nodeindex,keylen,
-				     min_freq))
+	    else if (!insertChildren(pchild,trie,nodeindex,keylen,min_freq))
 	       return false ;
 	    }
 	 }
@@ -1047,7 +1039,7 @@ static bool dump_ngram(const uint8_t *key, unsigned keylen,
 		       uint32_t frequency, void *user_data)
 {
    Fr::CFile& f = *((Fr::CFile*)user_data) ;
-   if (f && frequency != INVALID_FREQ)
+   if (f && frequency != PackedSimpleTrieNode::INVALID_FREQ)
       {
       f.printf("   ") ;
       write_escaped_key(f,key,keylen) ;
@@ -1068,6 +1060,7 @@ bool LangIDPackedTrie::dump(Fr::CFile& f) const
 /*	Additional methods for class NybbleTrie				*/
 /************************************************************************/
 
+#if 0
 static bool add_ngram(const uint8_t *key, unsigned keylen,
 		      uint32_t frequency, void *user_data)
 {
@@ -1075,9 +1068,11 @@ static bool add_ngram(const uint8_t *key, unsigned keylen,
    trie->insert(key,keylen,frequency,false) ;
    return true ;
 }
+#endif
 
 //----------------------------------------------------------------------
 
+#if 0
 NybbleTrie::NybbleTrie(const class LangIDPackedTrie *ptrie)
 {
    if (ptrie)
@@ -1093,5 +1088,6 @@ NybbleTrie::NybbleTrie(const class LangIDPackedTrie *ptrie)
       init(1) ;
    return ;
 }
+#endif
 
 // end of file ptrie.C //
