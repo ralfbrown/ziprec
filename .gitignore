@@ -37,3 +37,5 @@ whatlang2
 
 # generated files
 null.lang
+build
+bin
