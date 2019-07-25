@@ -207,44 +207,44 @@ bool DeflatePacketDesc::split(const BitPointer &next_packet_start,
 
 //----------------------------------------------------------------------
 
-bool DeflatePacketDesc::read(FILE *infp)
+bool DeflatePacketDesc::read(CFile& infp)
 {
    if (infp)
       {
       uint32_t value32 ;
       uint64_t value64 ;
       int value8 ;
-      bool success = read64(infp,value64) ;
+      bool success = infp.read64LE(value64) ;
       if (success)
 	 {
 	 m_uncomp_offset = value64 ;
-	 success = read32(infp,value32) ;
+	 success = infp.read32LE(value32) ;
 	 }
       if (success)
 	 {
 	 m_uncomp_size = value32 ;
-	 success = read32(infp,value32) ;
+	 success = infp.read32LE(value32) ;
 	 }
       if (success)
 	 {
 	 m_stream_len = value32 ;
-	 success = read32(infp,value32) ;
+	 success = infp.read32LE(value32) ;
 	 }
       if (success)
 	 {
 	 m_corruption_start = value32 ;
-	 success = read32(infp,value32) ;
+	 success = infp.read32LE(value32) ;
 	 }
       if (success)
 	 {
 	 m_corruption_end = value32 ;
-	 value8 = fgetc(infp) ;
+	 value8 = infp.getc() ;
 	 success = (value8 != EOF) ;
 	 }
       if (success)
 	 {
 	 m_last = value8 ? true : false ;
-	 value8 = fgetc(infp) ;
+	 value8 = infp.getc() ;
 	 success = (value8 != EOF) ;
 	 }
       if (success)
@@ -259,18 +259,18 @@ bool DeflatePacketDesc::read(FILE *infp)
 
 //----------------------------------------------------------------------
 
-bool DeflatePacketDesc::write(FILE *outfp) const
+bool DeflatePacketDesc::write(CFile& outfp) const
 {
    if (outfp)
       {
       bool success 
-	 = (write64(m_uncomp_offset,outfp) &&
-	    write32(m_uncomp_size,outfp) &&
-	    write32(m_stream_len,outfp) &&
-	    write32(m_corruption_start,outfp) &&
-	    write32(m_corruption_end,outfp) &&
-	    fputc(m_last ? '\1' : '\0',outfp) &&
-	    fputc(m_deflate64 ? '\1' : '\0',outfp)) ;
+	 = (outfp.write64LE(m_uncomp_offset) &&
+	    outfp.write32LE(m_uncomp_size) &&
+	    outfp.write32LE(m_stream_len) &&
+	    outfp.write32LE(m_corruption_start) &&
+	    outfp.write32LE(m_corruption_end) &&
+	    outfp.putc(m_last ? '\1' : '\0') &&
+	    outfp.putc(m_deflate64 ? '\1' : '\0')) ;
 //FIXME: add BitPointer fields and a copy of the stream data
       
       return success ;

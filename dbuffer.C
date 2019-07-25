@@ -29,7 +29,6 @@
 #include "inflate.h"
 #include "global.h"
 #include "framepac/config.h"
-#include "framepac/file.h"
 #include "framepac/texttransforms.h"
 #include "framepac/timer.h"
 
@@ -132,10 +131,8 @@ bool WildcardCounts::expandTo(unsigned new_size)
 /*	Methods for class DecodeBuffer					*/
 /************************************************************************/
 
-DecodeBuffer::DecodeBuffer(FILE *fp, WriteFormat format,
-			   unsigned char unknown_char,
-			   const char *friendly_filename,
-			   bool deflate64, bool test_mode)
+DecodeBuffer::DecodeBuffer(Fr::CFile& fp, WriteFormat format, unsigned char unknown_char,
+			   const char *friendly_filename, bool deflate64, bool test_mode)
 {
    m_refwindow = deflate64 ? REFERENCE_WINDOW_DEFLATE64 : REFERENCE_WINDOW_DEFLATE ;
    m_deflate64 = deflate64 ;
@@ -147,7 +144,6 @@ DecodeBuffer::DecodeBuffer(FILE *fp, WriteFormat format,
    //   replacements, but we won't know how many until later!
    clearReferenceWindow(true) ;
    setReplacements(0,0) ;
-   m_infp = 0 ;
    m_outfp = 0 ;
    m_numbytes = 0 ;
    m_loadedbytes = 0 ;
@@ -385,19 +381,17 @@ bool DecodeBuffer::alignDiscontinuities()
 
 bool DecodeBuffer::finalizeDB()
 {
-   FILE *outfp = outputFile() ;
+   auto& outfp = outputFile() ;
    bool success = true ;
    // append the replacements
-   off_t repl_offset = ftell(outfp) ;
+   off_t repl_offset = outfp.tell() ;
    if (numReplacements() > 0)
       {
-      success = DecodedByte::writeBuffer(m_replacements,numReplacements(),
-					 outfp,WFMT_DecodedByte,
-					 unknownChar()) ;
+      success = DecodedByte::writeBuffer(m_replacements,numReplacements(),outfp,WFMT_DecodedByte,unknownChar()) ;
       }
 
    // optionally append the DEFLATE packet descriptors
-   off_t packet_offset = ftell(outfp) ;
+   off_t packet_offset = outfp.tell() ;
    DeflatePacketDesc *packet_list = 0 ; //FIXME
    uint32_t num_packets = packet_list->length() ;
    if (success && num_packets > 0)
@@ -411,13 +405,13 @@ bool DecodeBuffer::finalizeDB()
 	 num_packets = 0 ;
       }
    // go back and store the number of decoded bytes actually written
-   fseek(outfp,sizeof(DECODEDBYTE_SIGNATURE)+8,SEEK_SET) ;
-   success = write64(m_numbytes,outfp) ;
+   outfp.seek(sizeof(DECODEDBYTE_SIGNATURE)+8) ;
+   success = outfp.write64LE(m_numbytes) ;
    if (success)
       {
       // update the number of discontinuities
-      fseek(outfp,6,SEEK_CUR) ;
-      success = write16(m_discontinuities,outfp) ;
+      outfp.seek(6) ;
+      success = outfp.write16LE(m_discontinuities) ;
       }
    if (success)
       {
@@ -425,14 +419,13 @@ bool DecodeBuffer::finalizeDB()
       unsigned highest = highestReplacement() ;
       if (highest == 0)
 	 highest = ((m_discontinuities+1)*referenceWindow()) - 1 ;
-      success = (write64(repl_offset,outfp) &&
-		 write32(numReplacements(),outfp) &&
-		 write32(highest,outfp)) ;
+      success = (outfp.write64LE(repl_offset) && outfp.write32LE(numReplacements()) &&
+	         outfp.write32LE(highest)) ;
       }
    if (success)
       {
       // update the count and offset of the packet descriptors
-      success = (write64(packet_offset,outfp) && write32(num_packets,outfp)) ;
+      success = (outfp.write64LE(packet_offset) && outfp.write32LE(num_packets)) ;
       }
    return success ;
 }
@@ -455,8 +448,8 @@ bool DecodeBuffer::finalize()
 		    friendlyFilename()) ;
 	    }
 	 }
-      fflush(outputFile()) ;
-      m_outfp = 0 ;
+      outputFile().flush() ;
+      m_outfp.close()  ;
       }
    return success ;
 }
@@ -652,7 +645,7 @@ unsigned DecodeBuffer::discontinuities() const
 
 //----------------------------------------------------------------------
 
-bool DecodeBuffer::openInputFile(FILE *fp, const char *filename)
+bool DecodeBuffer::openInputFile(CFile& fp, const char *filename)
 {
    if (!fp)
       {
@@ -662,19 +655,13 @@ bool DecodeBuffer::openInputFile(FILE *fp, const char *filename)
       }
    m_backingfile = dup_string(filename) ;
    bool success = true ;
-   m_infp = fp ;
    // check for the proper signature at the start of the file
-   fseek(inputFile(),0L,SEEK_SET) ;
-   char sigbuffer[sizeof(DECODEDBYTE_SIGNATURE)] ;
-   if (fread(sigbuffer,sizeof(char),sizeof(sigbuffer),fp) != sizeof(sigbuffer))
-      success = false ;
-   else if (memcmp(sigbuffer,DECODEDBYTE_SIGNATURE,sizeof(sigbuffer)) != 0)
+   fp.seek(0L) ;
+   if (fp.verifySignature(DECODEDBYTE_SIGNATURE) < 1)
       success = false ;
    uint64_t value64, db_offset = 0 ;
    // read the file offset and number of decoded bytes
-   if (success &&
-       read64(inputFile(),db_offset) &&
-       read64(inputFile(),value64))
+   if (success && fp.read64LE(db_offset) && fp.read64LE(value64))
       {
       m_numbytes = value64 ;
       }
@@ -689,8 +676,7 @@ bool DecodeBuffer::openInputFile(FILE *fp, const char *filename)
    // get the size of the reference window, the number of bytes per
    //   DecodedByte (currently unused), and the number of discontinuities1
    m_refwindow = REFERENCE_WINDOW_DEFLATE64 ;
-   if (success && read32(inputFile(),value) &&
-       read16(inputFile(),per_db) && read16(inputFile(),discont))
+   if (success && fp.read32LE(value) && fp.read16LE(per_db) && fp.read16LE(discont))
       {
       m_refwindow = value ;
       m_deflate64 = (value == REFERENCE_WINDOW_DEFLATE64) ;
@@ -700,9 +686,7 @@ bool DecodeBuffer::openInputFile(FILE *fp, const char *filename)
    uint64_t repl_offset = ~0 ;
    uint32_t repl_highest = 0 ;
    // read the replacement information, if present
-   if (success &&
-       read64(inputFile(),repl_offset) &&
-       read32(inputFile(),value) && read32(inputFile(),repl_highest))
+   if (success && fp.read64LE(repl_offset) && fp.read32LE(value) && fp.read32LE(repl_highest))
       {
       m_numreplacements = value ;
       m_highest_replaced = repl_highest ;
@@ -716,10 +700,9 @@ bool DecodeBuffer::openInputFile(FILE *fp, const char *filename)
       success = false ;
       }
    uint64_t packet_offset = ~0 ;
-   uint32_t packet_count ;
    // get the offset and count of the packet descriptors
-   (void)read64(inputFile(),packet_offset) ;
-   (void)read32(inputFile(),packet_count) ;
+   (void)fp.read64LE(packet_offset) ;
+   uint32_t packet_count = fp.read32LE() ;
    // read the optional replacement information
    if (repl_highest > 0)
       {
@@ -736,7 +719,7 @@ bool DecodeBuffer::openInputFile(FILE *fp, const char *filename)
       }
    if (repl_highest > 0)
       {
-      fseek(inputFile(),repl_offset,SEEK_SET) ;
+      fp.seek(repl_offset) ;
       for (size_t i = 0 ; i < numReplacements() && success ; i++)
 	 {
 	 if (!m_replacements[i].read(inputFile()))
@@ -751,9 +734,9 @@ bool DecodeBuffer::openInputFile(FILE *fp, const char *filename)
    // read the optional packet descriptors
    if (packet_count > 0)
       {
-      fseek(inputFile(),packet_offset,SEEK_SET) ;
+      fp.seek(packet_offset) ;
       DeflatePacketDesc *packets = 0 ;
-      for (size_t i = 0 ; i < packet_count && !feof(inputFile()) ; i++)
+      for (size_t i = 0 ; i < packet_count && !inputFile().eof() ; i++)
 	 {
 	 DeflatePacketDesc *p = new DeflatePacketDesc(inputFile()) ;
 	 if (p)
@@ -765,21 +748,23 @@ bool DecodeBuffer::openInputFile(FILE *fp, const char *filename)
       }
    // return to the start of the decoded bytes, and remember that location
    //   as we'll need to return here to run applyReplacements()
-   fseek(inputFile(),db_offset,SEEK_SET) ;
+   fp.seek(db_offset) ;
    m_datastart = db_offset ;
+   if (success)
+      m_infp = fp ;
    return success ;
 }
 
 //----------------------------------------------------------------------
 
-bool DecodeBuffer::setOutputFile(FILE *fp, WriteFormat fmt, unsigned char unk,
+bool DecodeBuffer::setOutputFile(CFile& fp, WriteFormat fmt, unsigned char unk,
 				 const char *friendly_filename,
 				 const char *encoding, bool test_mode)
 {
-   bool had_file = (outputFile() != 0) ;
+   bool had_file = (bool)outputFile() ;
    if (fp && had_file)
       {
-      fclose(outputFile()) ;
+      outputFile().close() ;
       }
    m_outfp = fp ;
    m_format = fmt ;
@@ -798,14 +783,13 @@ bool DecodeBuffer::setOutputFile(FILE *fp, WriteFormat fmt, unsigned char unk,
 
 void DecodeBuffer::rewindInput()
 {
-   fseek(inputFile(),m_datastart,SEEK_SET) ;
+   inputFile().seek(m_datastart) ;
    return ;
 }
 
 //----------------------------------------------------------------------
 
-DecodedByte *DecodeBuffer::loadBytes(bool add_sentinel,
-				     bool include_wildcards)
+DecodedByte *DecodeBuffer::loadBytes(bool add_sentinel, bool include_wildcards)
 {
    if (totalBytes() == 0)
       return 0 ;
@@ -823,7 +807,6 @@ DecodedByte *DecodeBuffer::loadBytes(bool add_sentinel,
    delete m_wildcardcounts ;
    m_wildcardcounts = new WildcardCounts(referenceWindow()) ;
    bool success = (m_wildcardcounts != 0) ;
-   FILE *infp = inputFile() ;
    rewindInput() ;
    size_t ofs = 0 ;
    if (add_sentinel)
@@ -844,7 +827,7 @@ DecodedByte *DecodeBuffer::loadBytes(bool add_sentinel,
       for (size_t i = 0 ; i < totalBytes() ; i++)
 	 {
 	 uint32_t value ;
-	 if (!read32(infp,value))
+	 if (!inputFile().read32LE(value))
 	    {
 	    success = false ;
 	    break ;
@@ -1084,13 +1067,12 @@ bool DecodeBuffer::writeUpdatedByte(size_t which)
 {
    if (!m_filebuffer || which >= totalBytes() || !m_backingfile)
       return false ;
-   FILE *fp = fopen(m_backingfile,"rb+") ;
+   COutputFile fp(m_backingfile,CFile::no_truncate|CFile::binary) ;
    if (fp)
       {
-      fseek(fp,m_datastart + BYTES_PER_DBYTE * which,SEEK_SET) ;
+      fp.seek(m_datastart + BYTES_PER_DBYTE * which) ;
       m_filebuffer[which+firstRealByte()].write(fp,WFMT_DecodedByte,
 						unknownChar(),this) ;
-      fclose(fp) ;
       return true ;
       }
    return false ;
@@ -1276,7 +1258,7 @@ bool DecodeBuffer::applyReplacements(const char *reference_filename,
 		    && (writeFormat() == WFMT_PlainText)) ;
    unsigned num_discont = 0 ;
    size_t bytecount = 0 ;
-   while (!feof(inputFile()) && bytecount++ < totalBytes())
+   while (!inputFile().eof() && bytecount++ < totalBytes())
       {
       DecodedByte dbyte ;
       // get the next byte of the recovered data
@@ -1427,7 +1409,7 @@ bool DecodeBuffer::convert(size_t offset, size_t length, unsigned char unk,
 			   char *result, bool *literals)
 {
    // set the file pointer to the start of the data to be converted
-   fseek(inputFile(),m_datastart + BYTES_PER_DBYTE * offset,SEEK_SET) ;
+   inputFile().seek(m_datastart + BYTES_PER_DBYTE * offset) ;
    for (size_t i = 0 ; i < length ; i++)
       {
       // get a byte

@@ -550,9 +550,10 @@ static bool extract_stream(const LocationList *start_sig,
    size_t count = end_offset - start_offset ;
    if (params.write_format == WFMT_Listing)
       {
-      DecodedByte::writeHeader(params.write_format,stdout,0,0,params.test_mode) ;
+      CFile out(stdout) ;
+      DecodedByte::writeHeader(params.write_format,out,0,0,params.test_mode) ;
       DecodedByte::addCounts(0,count,count) ;
-      DecodedByte::writeFooter(params.write_format,stdout,filename,params.test_mode) ;
+      DecodedByte::writeFooter(params.write_format,out,filename,params.test_mode) ;
       DecodedByte::clearCounts() ;
       if (count > 0)
 	 success = true ;

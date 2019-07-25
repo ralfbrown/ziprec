@@ -1267,7 +1267,7 @@ static char *decompress_reference(const char *stream_start,
    auto outfile = aprintf("%s.ref",outfile_hint) ;
    if (!outfile)
       return nullptr ;
-   FILE *outfp = fopen(outfile,"wb") ;
+   COutputFile outfp(outfile,CFile::binary) ;
    bool success = false ;
    if (outfp)
       {
@@ -1276,11 +1276,8 @@ static char *decompress_reference(const char *stream_start,
       CpuTimer timer ;
       ZipRecParameters sub_params(params) ;
       sub_params.write_format = WFMT_PlainText ;
-      DecodeBuffer *decode_buffer
-	 = new DecodeBuffer(outfp,sub_params.write_format,DEFAULT_UNKNOWN,
-			    outfile,deflate64) ;
-      success = decompress(str_start,str_start,str_end,decode_buffer,
-			   "reference",outfile,false,true) ;
+      DecodeBuffer *decode_buffer = new DecodeBuffer(outfp,sub_params.write_format,DEFAULT_UNKNOWN,outfile,deflate64) ;
+      success = decompress(str_start,str_start,str_end,decode_buffer,"reference",outfile,false,true) ;
       ADD_TIME(timer,time_reference) ;
       }
    if (!success)
@@ -1292,10 +1289,8 @@ static char *decompress_reference(const char *stream_start,
 
 //----------------------------------------------------------------------
 
-static bool extract_uncompressed(FILE *outfp, const char *outfile,
-				 WriteFormat fmt,
-				 const char *stream_start,
-				 const char *stream_end)
+static bool extract_uncompressed(CFile& outfp, const char *outfile, WriteFormat fmt,
+				 const char *stream_start, const char *stream_end)
 {
    if (!outfp || !stream_start || !stream_end || stream_end <= stream_start)
       return false ;
@@ -1411,7 +1406,8 @@ static bool locate_corrupt_segments(DeflatePacketDesc *packet_list,
    START_TIME(timer) ;
    bool corruption_found = false ;
    DeflatePacketDesc *prev = 0 ;
-   DecodeBuffer decode_buf(0,WFMT_PlainText,'\x7F') ;
+   CFile dummyfile ;
+   DecodeBuffer decode_buf(dummyfile,WFMT_PlainText,'\x7F') ;
    for ( ; packet_list ; packet_list = packet_list->next())
       {
       if (contains_corruption(packet_list,prev,decode_buf,fileinfo,
@@ -1699,15 +1695,10 @@ static bool decompress_packets(const ZipRecParameters &params,
 
 //----------------------------------------------------------------------
 
-static bool recover_stream(const ZipRecParameters &params,
-			   const FileInformation *fileinfo,
-			   FILE *outfp, const char *outfile,
-			   const char *stream_start,
-			   const char *stream_end,
-			   size_t base_offset,
-			   bool known_start,
-			   bool deflate64,
-			   bool known_end)
+static bool recover_stream(const ZipRecParameters &params, const FileInformation *fileinfo,
+			   CFile& outfp, const char *outfile,
+			   const char *stream_start, const char *stream_end,
+			   size_t base_offset, bool known_start, bool deflate64, bool known_end)
 {
    BitPointer::initBitReversal() ;
    if (!outfp || !stream_start || !stream_end || stream_end <= stream_start)
@@ -1799,29 +1790,21 @@ static bool reconstruct_stream(const char *reconst_filename,
 			       bool deflate64,
 			       bool known_end)
 {
-   bool using_stdin = fileinfo->usingStdin() ;
-   FILE *recfp = safely_open_for_write(reconst_filename,using_stdin,
-				       params.force_overwrite) ;
+//FIXME!   bool using_stdin = fileinfo->usingStdin() ;
+   COutputFile recfp(reconst_filename,CFile::safe_rewrite) ;
+//   FILE *recfp = safely_open_for_write(reconst_filename,using_stdin,
+//				       params.force_overwrite) ;
    if (!recfp)
       {
       fprintf(stderr,"Unable to open temporary file '%s'\n",reconst_filename);
       return false ;
       }
-   FILE *outfp ;
-   if (params.write_format == WFMT_Listing)
+   const char* outname = (params.write_format != WFMT_Listing) ? output_filename : NULL_DEVICE ;
+   COutputFile outfp(outname,params.force_overwrite?CFile::default_options:CFile::fail_if_exists) ;
+   if (!outfp)
       {
-      outfp = fopen(NULL_DEVICE,"rb") ;
-      }
-   else
-      {
-      outfp = safely_open_for_write(output_filename,using_stdin,
-				    params.force_overwrite) ;
-      if (!outfp)
-	 {
-	 fclose(recfp) ;
-	 fprintf(stderr,"Unable to open '%s' for writing\n",output_filename) ;
-	 return false ;
-	 }
+      fprintf(stderr,"Unable to open '%s' for writing\n",output_filename) ;
+      return false ;
       }
    bool success = false ;
    // first, recover the stream to a DecodedByte file
@@ -1832,11 +1815,12 @@ static bool reconstruct_stream(const char *reconst_filename,
 			    buffer_start + start_offset,
 			    buffer_start + end_offset, start_offset,
 			    known_start, deflate64, known_end) ;
-   fflush(recfp) ;
-   fclose(recfp) ;
-   recfp = fopen(reconst_filename,"rb") ;
-   DecodeBuffer decode_buffer ;
-   decode_buffer.openInputFile(recfp,reconst_filename) ;
+   recfp.flush() ;
+   recfp.close() ;
+   CInputFile recfile(reconst_filename,CFile::binary) ;
+   CFile dummy ;
+   DecodeBuffer decode_buffer(dummy) ;
+   decode_buffer.openInputFile(recfile,reconst_filename) ;
    // apply language identification to the recovered text if applicable,
    //   and load the appropriate language model
    bool reconstruct = true ;
@@ -1904,7 +1888,6 @@ static bool reconstruct_stream(const char *reconst_filename,
 	 }
       }
    decode_buffer.applyReplacements(reference_filename,have_replacements) ;
-   fclose(recfp) ;
    //fclose(outfp) ; // closed by decode_buffer dtor
    ADD_TIME(timer,time_reconstructing) ;
    return success ;
@@ -2035,13 +2018,8 @@ bool recover_stream(const LocationList *start_sig,
 	 if (params.write_format == WFMT_Listing)
 	    {
 	    // ensure that we get a line for this file in the scan listing
-	    FILE *outfp = fopen(NULL_DEVICE,"rb") ;
-	    DecodeBuffer *decode_buffer
-	       = new DecodeBuffer(outfp,params.write_format,
-				  DEFAULT_UNKNOWN,filename,deflate64) ;
-	    delete decode_buffer ;
-	    if (outfp)
-	       fclose(outfp) ;
+	    COutputFile outfp(NULL_DEVICE,CFile::binary) ;
+	    DecodeBuffer decode_buffer(outfp,params.write_format,DEFAULT_UNKNOWN,filename,deflate64) ;
 	    }
 	 }
       else
@@ -2051,13 +2029,9 @@ bool recover_stream(const LocationList *start_sig,
 	    fflush(stdout) ;
 	    fprintf(stderr," -> extracting intact uncompressed data\n") ;
 	    }
-	 FILE *outfp = open_output_file(filename,*default_filename,
-					filename_hint,using_stdin,params) ;
+	 CFile outfp { open_output_file(filename,*default_filename, filename_hint,using_stdin,params) } ;
 	 success = extract_uncompressed(outfp,filename,params.write_format,
-					buffer_start + start_offset,
-					buffer_start + end_offset) ;
-	 if (outfp)
-	    fclose(outfp) ;
+					buffer_start + start_offset, buffer_start + end_offset) ;
 	 }
       }
    else if (reconst_filename)
@@ -2089,8 +2063,7 @@ bool recover_stream(const LocationList *start_sig,
 						   buffer_start + end_offset,
 						   params,filename,deflate64) ;
 	 }
-      FILE *outfp = open_output_file(filename,*default_filename,
-				     filename_hint,using_stdin,params) ;
+      CFile outfp { open_output_file(filename,*default_filename, filename_hint,using_stdin,params) } ;
       if (outfp)
 	 {
 	 success = recover_stream(params,fileinfo,outfp,filename,
@@ -2098,8 +2071,6 @@ bool recover_stream(const LocationList *start_sig,
 				  buffer_start + end_offset,
 				  start_offset, known_start,
 				  deflate64, known_end) ;
-	 if (outfp)
-	    fclose(outfp) ;
 	 }
       else
 	 fprintf(stderr,"unable to open '%s' for writing\n",filename) ;

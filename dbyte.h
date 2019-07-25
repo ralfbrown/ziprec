@@ -4,10 +4,10 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  File: dbyte.h - representation of a byte or back-reference		*/
-/*  Version:  1.00rc1				       			*/
-/*  LastEdit: 19aug2013							*/
+/*  Version:  1.10beta				       			*/
+/*  LastEdit: 2019-07-25						*/
 /*									*/
-/*  (c) Copyright 2011,2012,2013 Ralf Brown/CMU				*/
+/*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -28,8 +28,9 @@
 
 #include <cstdio>
 #include <stdint.h>
-
 #include <unistd.h>	// for off_t
+
+#include "framepac/file.h"
 
 using namespace std ;
 
@@ -189,21 +190,19 @@ class DecodedByte
 	       m_byte_or_pointer = DBYTE_DISCONTINUITY | (size & ~DBYTE_DISCONTINUITY_MASK) ; }
 
       // I/O
-      bool read(FILE *infp) ;
-      bool write(FILE *outfp, WriteFormat, unsigned char unknown_char,
-		 DecodeBuffer *dbuf = 0) const ;
-      static bool writeHTMLHeader(FILE *, const char *encoding,
-				  bool test_mode) ;
-      static bool writeDBHeader(FILE *,	size_t ref_window) ;
-      static bool writeHeader(WriteFormat, FILE *, const char *encoding = 0,
+      bool read(Fr::CFile& infp) ;
+      bool write(Fr::CFile& outfp, WriteFormat, unsigned char unknown_char, DecodeBuffer *dbuf = 0) const ;
+      static bool writeHTMLHeader(Fr::CFile&, const char *encoding, bool test_mode) ;
+      static bool writeDBHeader(Fr::CFile&, size_t ref_window) ;
+      static bool writeHeader(WriteFormat, Fr::CFile&, const char *encoding = 0,
 			      size_t reference_window = REFERENCE_WINDOW_DEFLATE,
 			      bool test_mode = false, DecodeBuffer *dbuf = 0) ;
       static bool writeBuffer(const DecodedByte *buf, size_t n_elem,
-			      FILE *outfp, WriteFormat fmt = WFMT_PlainText,
+	 		      Fr::CFile& outfp, WriteFormat fmt = WFMT_PlainText,
 			      unsigned char unknown_char = DEFAULT_UNKNOWN) ;
-      static bool writeMessage(WriteFormat, FILE *, const char *msg) ;
-      static bool writeFooter(WriteFormat, FILE *, const char *filename,
-			      bool test_mode = false, DecodeBuffer *dbuf = 0) ;
+      static bool writeMessage(WriteFormat, Fr::CFile&, const char* msg) ;
+      static bool writeFooter(WriteFormat, Fr::CFile&, const char* filename,
+			      bool test_mode = false, DecodeBuffer* dbuf = 0) ;
    } ;
 
 #endif /* !__DBYTE_H_INCLUDED */

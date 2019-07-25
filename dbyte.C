@@ -5,7 +5,7 @@
 /*									*/
 /*  File: dbyte.C - representation of a byte or back-reference		*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 27jun2019							*/
+/*  LastEdit: 2019-07-25						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -27,6 +27,8 @@
 #include "byteio.h"
 #include "dbyte.h"
 #include "global.h"
+
+using namespace Fr ;
 
 /************************************************************************/
 /*	Manifest Constants for this module				*/
@@ -124,63 +126,61 @@ const ByteType DecodedByte::s_confidence_to_type[] =
 /*	Methods for class DecodedByte					*/
 /************************************************************************/
 
-static bool open_tag(FILE *outfp, ByteType bt)
+static bool open_tag(CFile& outfp, ByteType bt)
 {
-   bool success = false ;
    switch (bt)
       {
       case BT_Unknown:
-	 success = fputs("<B>", outfp) ;
+	 outfp.puts("<B>") ;
 	 break ;
       case BT_WildGuess:
-	 success = fputs("<DFN>", outfp) ;
+	 outfp.puts("<DFN>") ;
 	 break ;
       case BT_Guessed:
-	 success = fputs("<U>", outfp) ;
+	 outfp.puts("<U>") ;
 	 break ;
       case BT_Reconstructed:
-	 success = fputs("<I>", outfp) ;
+	 outfp.puts("<I>") ;
 	 break ;
       case BT_UserSupplied:
-	 success = fputs("<EM>", outfp) ;
+	 outfp.puts("<EM>") ;
 	 break ;
       case BT_InferredLit:
-	 success = fputs("<S>", outfp) ;
+	 outfp.puts("<S>") ;
 	 break ;
       case BT_Literal:
 	 // not opening a tag, so nothing to do
-	 success = true ;
 	 break ;
       default:
 	 // Uh oh, missed a case!
-	 break ;
+	 return false ;
       }
-   return success ;
+   return true ;
 }
 
 //----------------------------------------------------------------------
 
-static void close_tag(FILE *outfp, ByteType bt)
+static void close_tag(CFile& outfp, ByteType bt)
 {
    switch (bt)
       {
       case BT_Unknown:
-	 fputs("</B>", outfp) ;
+	 outfp.puts("</B>") ;
 	 break ;
       case BT_WildGuess:
-	 fputs("</DFN>", outfp) ;
+	 outfp.puts("</DFN>") ;
 	 break ;
       case BT_Guessed:
-	 fputs("</U>", outfp) ;
+	 outfp.puts("</U>") ;
 	 break ;
       case BT_Reconstructed:
-	 fputs("</I>", outfp) ;
+	 outfp.puts("</I>") ;
 	 break ;
       case BT_UserSupplied:
-	 fputs("</EM>", outfp) ;
+	 outfp.puts("</EM>") ;
 	 break ;
       case BT_InferredLit:
-	 fputs("</S>", outfp) ;
+	 outfp.puts("</S>") ;
 	 break ;
       case BT_Literal:
 	 // no open tag, so nothing to do
@@ -194,62 +194,61 @@ static void close_tag(FILE *outfp, ByteType bt)
 
 //----------------------------------------------------------------------
 
-static bool write_HTML_char(unsigned char c, bool show_newlines, FILE *outfp,
-			    ByteType bt)
+static bool write_HTML_char(unsigned char c, bool show_newlines, CFile& outfp, ByteType bt)
 {
    static unsigned char prev_char = '\0' ;
    bool success = false ;
    switch (c)
       {
       case '<':
-	 success = (fputs("&lt;", outfp) != EOF) ;
+	 outfp.puts("&lt;") ;
 	 break ;
       case '&':
-	 success = (fputs("&amp;", outfp) != EOF) ;
+	 outfp.puts("&amp;") ;
 	 break ;
 #ifndef USE_PRE_TAG
       case '\t':
-	 success = (fputs(" &nbsp; ", outfp) != EOF) ;
+	 outfp.puts(" &nbsp; ") ;
 	 break ;
       case '\n':
 	 if (show_newlines)
-	    fputs("&#x21A9;", outfp) ;
+	    outfp.puts("&#x21A9;") ;
 	 close_tag(outfp,bt) ;
 	 if (prev_char == '\n' && !show_newlines)
-	    success = (fputs("<p/>\n", outfp) != EOF) ;
+	    outfp.puts("<p/>\n") ;
 	 else
-	    success = (fputs("<br/>\n", outfp) != EOF) ;
+	    outfp.puts("<br/>\n") ;
 	 if (success)
 	    success = open_tag(outfp,bt) ;
 	 break ;
       case ' ':
 	 if (prev_char == ' ')
-	    success = (fputs("&nbsp;", outfp) != EOF) ;
+	    outfp.puts("&nbsp;") ;
 	 else
-	    success = (fputc('\n', outfp) != EOF) ;
+	    outfp.putc('\n') ;
 	 break ;
 #else
       case '\n':
 	 success = true ;
 	 if (show_newlines)
-	    success = (fputs("&#x21A9;", outfp) != EOF) ;
+	    outfp.puts("&#x21A9;") ;
 	 close_tag(outfp,bt) ;
 	 if (prev_char == '\n' && !show_newlines)
-	    success = (fputs("</PRE>&nbsp;\n<PRE>", outfp) != EOF) ;
+	    outfp.puts("</PRE>&nbsp;\n<PRE>") ;
 	 else
-	    success = (fputs("</PRE>\n<PRE>", outfp) != EOF) ;
+	    outfp.puts("</PRE>\n<PRE>") ;
 	 if (success)
 	    success = open_tag(outfp,bt) ;
 	 break ;
 #endif /* !USE_PRE_TAG */
       case '\r':
 	 if (show_newlines)
-	    success = (fputs("&#x21B3;", outfp) != EOF) ;
+	    outfp.puts("&#x21B3;") ;
 	 else
-	    success = (fputc(c, outfp) != EOF) ;
+	    outfp.putc(c) ;
 	 break ;
       default:
-	 success = (fputc(c, outfp) != EOF) ;
+	 outfp.putc(c) ;
 	 break ;
       }
    prev_char = c ;
@@ -258,13 +257,13 @@ static bool write_HTML_char(unsigned char c, bool show_newlines, FILE *outfp,
 
 //----------------------------------------------------------------------
 
-bool DecodedByte::read(FILE *infp)
+bool DecodedByte::read(CFile& infp)
 {
    bool success = false ;
    if (infp)
       {
       uint32_t value ;
-      if (read32(infp,value))
+      if (infp.read32LE(value))
 	 {
 	 m_byte_or_pointer = value ;
 	 success = true ;
@@ -275,20 +274,16 @@ bool DecodedByte::read(FILE *infp)
 
 //----------------------------------------------------------------------
 
-bool DecodedByte::write(FILE *outfp, WriteFormat fmt,
-			unsigned char unknown_char,
-			DecodeBuffer *dbuf) const
+bool DecodedByte::write(CFile& outfp, WriteFormat fmt, unsigned char unknown_char, DecodeBuffer *dbuf) const
 {
    bool success = true ;
    switch (fmt)
       {
       case WFMT_PlainText:
-	 success = (fputc(isLiteral()? byteValue() : unknown_char,
-			  outfp) != EOF) ;
+	 outfp.putc(isLiteral()? byteValue() : unknown_char) ;
 	 break ;
       case WFMT_DecodedByte:
-	 if (!write32(m_byte_or_pointer,outfp))
-	    success = false ;
+	 success &= outfp.write32LE(m_byte_or_pointer) ;
 	 break ;
       case WFMT_HTML:
          {
@@ -303,8 +298,7 @@ bool DecodedByte::write(FILE *outfp, WriteFormat fmt,
 #ifdef DEBUG_OUTPUT
 	    {
 	    if (isLiteral())
-	       success = write_HTML_char(byteValue(),bt < BT_InferredLit,
-					 outfp, bt) ;
+	       success = write_HTML_char(byteValue(),bt < BT_InferredLit, outfp, bt) ;
 	    else
 	       {
 	       // show the co-index for the unknown instead of a question mark
@@ -351,8 +345,7 @@ bool DecodedByte::write(FILE *outfp, WriteFormat fmt,
 
 //----------------------------------------------------------------------
 
-bool DecodedByte::writeBuffer(const DecodedByte *buf, size_t n_elem,
-			      FILE *outfp, WriteFormat fmt,
+bool DecodedByte::writeBuffer(const DecodedByte *buf, size_t n_elem, CFile& outfp, WriteFormat fmt,
 			      unsigned char unknown_char)
 {
    if (!outfp || !buf)
@@ -371,10 +364,9 @@ bool DecodedByte::writeBuffer(const DecodedByte *buf, size_t n_elem,
 
 //----------------------------------------------------------------------
 
-bool DecodedByte::writeHTMLHeader(FILE *outfp, const char *encoding,
-				  bool test_mode)
+bool DecodedByte::writeHTMLHeader(CFile& outfp, const char *encoding, bool test_mode)
 {
-   if (fputs("<HTML><HEAD>\n"
+   outfp.puts("<HTML><HEAD>\n"
 		 "<STYLE>\n"
 		 "/* compressed file recovered/reconstructed by ZipRec */\n"
 		 "BODY {\n"
@@ -398,17 +390,13 @@ bool DecodedByte::writeHTMLHeader(FILE *outfp, const char *encoding,
 		 "I { text-decoration: none !important ; font-style: normal !important ; color : #00D000 ; background: #FFFFA0 ; } /* high confidence */\n"
 		 "EM { text-decoration: none !important ; font-style: normal !important ; color : #0040F0 ; background: #FFFFD0 ; } /* user-supplied */\n"
 		 "S { text-decoration: none !important ; font-style: normal ; font-weight: normal !important ; color : black ; background: #FFFFF0 ; } /* literal copied across a discontinuity */\n"
-		 "</STYLE>\n",
-	     outfp) == EOF)
-      return false ;
+	         "</STYLE>\n") ;
    if (!(!encoding || !*encoding ||
-	 fprintf(outfp,"<META http-equiv=\"content-type\" "
-		 "content=\"text/html; charset=%s\"\n",encoding) > 0))
+	 outfp.printf("<META http-equiv=\"content-type\" content=\"text/html; charset=%s\"\n",encoding) > 0))
       return false ;
-   if (fputs("</HEAD><BODY>" PRE_TAG_OPEN "\n", outfp) == EOF)
-      return false ;
-   if (verbosity &&
-       fputs("<HR>\n<PRE>Key:\n"
+   outfp.puts("</HEAD><BODY>" PRE_TAG_OPEN "\n") ;
+   if (verbosity)
+       outfp.puts("<HR>\n<PRE>Key:\n"
 	     "   Recovered from file\n"
 	     "  <S> Matched across corrupt region </S>\n"
 	     "  <EM> User-supplied </EM>\n"
@@ -416,62 +404,59 @@ bool DecodedByte::writeHTMLHeader(FILE *outfp, const char *encoding,
 	     "  <U> medium-confidence reconstruction </U>\n"
 	     "  <DFN> low-confidence reconstruction </DFN>\n"
 	     "  <B> Unknown </B>\n"
-	     "</PRE><HR>\n",outfp) == EOF)
-      return false ;
-   return (!test_mode ||
-	   fputs("********* TEST MODE ************** TEST MODE **********\n",
-		 outfp) != EOF) ;
+	     "</PRE><HR>\n") ;
+   if (test_mode)
+      outfp.puts("********* TEST MODE ************** TEST MODE **********\n") ;
+   return true ;
 }
 
 //----------------------------------------------------------------------
 
-bool DecodedByte::writeDBHeader(FILE *outfp, size_t reference_window) 
+bool DecodedByte::writeDBHeader(CFile& outfp, size_t reference_window) 
 {
-   bool success = (fwrite(DECODEDBYTE_SIGNATURE,sizeof(char),
-			  sizeof(DECODEDBYTE_SIGNATURE),outfp)
+   bool success = (outfp.write(DECODEDBYTE_SIGNATURE,sizeof(char),sizeof(DECODEDBYTE_SIGNATURE))
 		   == sizeof(DECODEDBYTE_SIGNATURE) ) ;
    if (success)
       {
       // write a dummy count and offset for the data bytes
-      success = (write64(0,outfp) && write64(0,outfp)) ;
+      success = (outfp.write64LE(0) && outfp.write64LE(0)) ;
       if (success)
 	 {
 	 // store the size of the reference window, the bytes per
 	 //   DecodedByte, and a dummy number of discontinuities
-	 success = (write32(reference_window,outfp) &&
-		    write16(BYTES_PER_DBYTE,outfp) && write16(0,outfp)) ;
+	 success = (outfp.write32LE(reference_window) &&
+		    outfp.write16LE(BYTES_PER_DBYTE) && outfp.write16LE(0)) ;
 	 }
       if (success)
 	 {
 	 // write a dummy offset and count for the replacement values,
 	 //   as well as a dummy for the highest replaced value
-	 success = (write64(140,outfp) && write32(0,outfp) &&
-		    write32(0,outfp)) ;
+	 success = (outfp.write64LE(140) && outfp.write32LE(0) && outfp.write32LE(0)) ;
 	 }
       if (success)
 	 {
 	 // write a dummy offset and count for the DEFLATE packet
 	 //   descriptors
-	 success = (write64(0,outfp) && write32(0,outfp)) ;
+	 success = (outfp.write64LE(0) && outfp.write32LE(0)) ;
 	 }
       if (success)
 	 {
 	 // some padding for possible future additions
-	 success = (write32(0,outfp) && write64(0,outfp) &&
-		    write64(0,outfp) && write64(0,outfp) &&
-		    write64(0,outfp) && write64(0,outfp) &&
-		    write64(0,outfp) && write64(0,outfp) &&
-		    write64(0,outfp)) ;
+	 success = (outfp.write32LE(0) && outfp.write64LE(0) &&
+	    outfp.write64LE(0) && outfp.write64LE(0) &&
+	    outfp.write64LE(0) && outfp.write64LE(0) &&
+	    outfp.write64LE(0) && outfp.write64LE(0) &&
+	    outfp.write64LE(0)) ;
 	 }
       // get and store the offset of the DecodedBytes which are about
       //   to be appended
       if (success)
 	 {
-	 off_t db_offset = ftell(outfp) ;
-	 fseek(outfp,sizeof(DECODEDBYTE_SIGNATURE),SEEK_SET) ;
-	 success = write64(db_offset,outfp) ;
+	 off_t db_offset = outfp.tell() ;
+	 outfp.seek(sizeof(DECODEDBYTE_SIGNATURE)) ;
+	 success = outfp.write64LE(db_offset) ;
 	 // return to end of file
-	 fseek(outfp,db_offset,SEEK_SET) ;
+	 outfp.seek(db_offset) ;
 	 }
       }
    return success ;
@@ -479,10 +464,8 @@ bool DecodedByte::writeDBHeader(FILE *outfp, size_t reference_window)
 
 //----------------------------------------------------------------------
 
-bool DecodedByte::writeHeader(WriteFormat fmt, FILE *outfp,
-			      const char *encoding,
-			      size_t reference_window, bool test_mode,
-			      DecodeBuffer *dbuf)
+bool DecodedByte::writeHeader(WriteFormat fmt, CFile& outfp, const char *encoding,
+			      size_t reference_window, bool test_mode, DecodeBuffer *dbuf)
 {
    prevByteType(BT_Literal) ;
    switch (fmt)
@@ -510,8 +493,7 @@ bool DecodedByte::writeHeader(WriteFormat fmt, FILE *outfp,
 
 //----------------------------------------------------------------------
 
-bool DecodedByte::writeMessage(WriteFormat fmt, FILE *outfp,
-			       const char *msg)
+bool DecodedByte::writeMessage(WriteFormat fmt, CFile& outfp, const char *msg)
 {
    if (!msg)
       return false ;
@@ -526,15 +508,15 @@ bool DecodedByte::writeMessage(WriteFormat fmt, FILE *outfp,
 
 //----------------------------------------------------------------------
 
-bool DecodedByte::writeFooter(WriteFormat fmt, FILE *outfp,
-			      const char *filename, bool test_mode,
+bool DecodedByte::writeFooter(WriteFormat fmt, CFile& outfp, const char *filename, bool test_mode,
 			      DecodeBuffer *dbuf)
 {
    if (fmt == WFMT_HTML)
       {
       if (test_mode)
-	 fputs("\n\n\n************** TEST MODE ***************\n", outfp) ;
-      return fputs(PRE_TAG_CLOSE "</BODY></HTML>\n", outfp) != EOF ;
+	 outfp.puts("\n\n\n************** TEST MODE ***************\n") ;
+      outfp.puts(PRE_TAG_CLOSE "</BODY></HTML>\n") ;
+      return true ;
       }
    else if (fmt == WFMT_Listing)
       {

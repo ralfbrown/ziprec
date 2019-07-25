@@ -29,6 +29,7 @@
 #include <memory.h>
 #include "dbyte.h"
 #include "framepac/cstring.h"
+#include "framepac/file.h"
 
 //----------------------------------------------------------------------
 
@@ -88,35 +89,8 @@ class WildcardCounts
 
 class DecodeBuffer
    {
-   private:
-      DecodedByte    *m_buffer ;
-      DecodedByte    *m_filebuffer ;
-      ContextFlags   *m_context_flags ;
-      DecodedByte    *m_replacements ;
-      FILE           *m_infp ;
-      FILE           *m_outfp ;
-      const char     *m_filename ;	// filename for WFMT_Listing
-      Fr::CharPtr     m_backingfile ;
-      WildcardCounts *m_wildcardcounts ;
-      unsigned        m_bufptr ;
-      unsigned	      m_refwindow ;
-      size_t          m_numreplacements ;
-      size_t          m_numbytes ;
-      size_t	      m_loadedbytes ;
-      off_t	      m_datastart ;
-      unsigned	      m_highest_replaced ;
-      unsigned	      m_discontinuities ;
-      WriteFormat     m_format ;
-      unsigned char   m_unknown ;
-      bool	      m_deflate64 ;
-      bool	      m_prev_correct ;
-      bool	      m_show_errors ;
-   private: // methods
-      bool finalizeDB() ;
-
    public: // methods
-      DecodeBuffer(FILE *fp = 0,
-		   WriteFormat = WFMT_PlainText,
+      DecodeBuffer(Fr::CFile& fp, WriteFormat = WFMT_PlainText,
 		   unsigned char unk = DEFAULT_UNKNOWN,
 		   const char *friendly_filename = 0,
 		   bool deflate64 = true,
@@ -126,8 +100,8 @@ class DecodeBuffer
       // accessors
       unsigned referenceWindow() const { return m_refwindow ; }
       bool deflate64() const { return m_deflate64 ; }
-      FILE *inputFile() const { return m_infp ; }
-      FILE *outputFile() const { return m_outfp ; }
+      Fr::CFile& inputFile() { return m_infp ; }
+      Fr::CFile& outputFile() { return m_outfp ; }
       unsigned offset() const { return m_bufptr ; }
       WriteFormat writeFormat() const { return m_format ; }
       unsigned char unknownChar() const { return m_unknown ; }
@@ -163,8 +137,8 @@ class DecodeBuffer
       void rewind() { m_bufptr = 0 ; }
       void rewindInput() ;
       unsigned char setUnknownChar(unsigned char unk) ;
-      bool openInputFile(FILE *fp, const char *filename) ;
-      bool setOutputFile(FILE *fp, WriteFormat fmt, unsigned char unk = '?',
+      bool openInputFile(Fr::CFile& fp, const char *filename) ;
+      bool setOutputFile(Fr::CFile& fp, WriteFormat fmt, unsigned char unk = '?',
 			 const char *friendlyfile = 0,
 			 const char *encoding_name = 0, bool test_mode = false) ;
       DecodedByte *loadBytes(bool sentinel = false, bool include_wild = true) ;
@@ -205,6 +179,33 @@ class DecodeBuffer
       bool writeReplacements(size_t num_discontinuities,
 			     unsigned max_backref, FILE *reffp = 0) ;
       void compareToReference(DecodedByte db, FILE *reffp, bool replaced) ;
+
+   private: // methods
+      bool finalizeDB() ;
+
+   private:
+      DecodedByte    *m_buffer ;
+      DecodedByte    *m_filebuffer ;
+      ContextFlags   *m_context_flags ;
+      DecodedByte    *m_replacements ;
+      Fr::CFile       m_infp ;
+      Fr::CFile       m_outfp ;
+      const char     *m_filename ;	// filename for WFMT_Listing
+      Fr::CharPtr     m_backingfile ;
+      WildcardCounts *m_wildcardcounts ;
+      unsigned        m_bufptr ;
+      unsigned	      m_refwindow ;
+      size_t          m_numreplacements ;
+      size_t          m_numbytes ;
+      size_t	      m_loadedbytes ;
+      off_t	      m_datastart ;
+      unsigned	      m_highest_replaced ;
+      unsigned	      m_discontinuities ;
+      WriteFormat     m_format ;
+      unsigned char   m_unknown ;
+      bool	      m_deflate64 ;
+      bool	      m_prev_correct ;
+      bool	      m_show_errors ;
    } ;
 
 #endif /* !__DBUFFER_H_INCLUDED */

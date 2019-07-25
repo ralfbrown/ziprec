@@ -4,10 +4,10 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  File: byteio.C - multi-byte input/output functions			*/
-/*  Version:  1.00gamma				       			*/
-/*  LastEdit: 09may2013							*/
+/*  Version:  1.10beta				       			*/
+/*  LastEdit: 2019-07-25						*/
 /*									*/
-/*  (c) Copyright 2011,2012,2013 Ralf Brown/CMU				*/
+/*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -57,22 +57,6 @@ static uint64_t readN(FILE *fp, unsigned count, bool &OK)
 /************************************************************************/
 /************************************************************************/
 
-bool read16(FILE *fp, uint16_t &value)
-{
-   bool success ;
-   value = (uint16_t)readN(fp,2,success) ;
-   return success ;
-}
-
-//----------------------------------------------------------------------
-
-bool read24(FILE *fp, uint32_t &value)
-{
-   bool success ;
-   value = (uint32_t)readN(fp,3,success) ;
-   return success ;
-}
-
 //----------------------------------------------------------------------
 
 bool read32(FILE *fp, uint32_t &value)
@@ -96,15 +80,6 @@ bool read64(FILE *fp, uint64_t &value)
 bool write16(uint16_t val, FILE *outfp)
 {
    return (fputc((val >> 8) & 0xFF, outfp) != EOF &&
-	   fputc(val & 0xFF, outfp) != EOF) ;
-}
-
-//----------------------------------------------------------------------
-
-bool write24(uint32_t val, FILE *outfp)
-{
-   return (fputc((val >> 16) & 0xFF, outfp) != EOF &&
-	   fputc((val >> 8) & 0xFF, outfp) != EOF &&
 	   fputc(val & 0xFF, outfp) != EOF) ;
 }
 

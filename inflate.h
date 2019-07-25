@@ -4,10 +4,10 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  File: inflate.h - DEFLATE decompression				*/
-/*  Version:  1.00rc1				       			*/
-/*  LastEdit: 19sep2013							*/
+/*  Version:  1.10beta				       			*/
+/*  LastEdit: 2019-07-25						*/
 /*									*/
-/*  (c) Copyright 2011,2012,2013 Ralf Brown/CMU				*/
+/*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -27,6 +27,7 @@
 #define __INFLATE_H_INCLUDED
 
 #include "huffman.h"
+#include "framepac/file.h"
 
 /************************************************************************/
 /*	Manifest Constants						*/
@@ -94,29 +95,12 @@ class FileInformation ;
 
 class DeflatePacketDesc
    {
-   private:
-      DeflatePacketDesc *m_next ;
-      uint8_t	       *m_stream_data ;
-      BitPointer	m_stream_start ;
-      BitPointer 	m_packet_header ;
-      BitPointer 	m_packet_body ;
-      BitPointer 	m_packet_end ;
-      off_t		m_uncomp_offset ;
-      unsigned long	m_uncomp_size ;
-      unsigned long	m_stream_len ;
-      unsigned long	m_corruption_start ;
-      unsigned long	m_corruption_end ;
-      PacketType	m_packet_type ;
-      bool		m_last ;
-      bool		m_deflate64 ;
-      bool		m_corruption_end_unknown ;
-
    public:
       DeflatePacketDesc(const BitPointer *stream_start,
 			const BitPointer *packet_start,
 			const BitPointer *packet_end, bool last = false,
 			bool deflate64 = false) ;
-      DeflatePacketDesc(FILE *fp) { read(fp) ; }
+      DeflatePacketDesc(Fr::CFile& fp) { read(fp) ; }
       ~DeflatePacketDesc() ;
 
       // accessors
@@ -159,8 +143,25 @@ class DeflatePacketDesc
 		 unsigned type = PT_DYNAMIC) ;
 
       // I/O
-      bool read(FILE *infp) ;
-      bool write(FILE *outfp) const ;
+      bool read(class Fr::CFile& infp) ;
+      bool write(Fr::CFile& outfp) const ;
+
+   private:
+      DeflatePacketDesc *m_next ;
+      uint8_t	       *m_stream_data ;
+      BitPointer	m_stream_start ;
+      BitPointer 	m_packet_header ;
+      BitPointer 	m_packet_body ;
+      BitPointer 	m_packet_end ;
+      off_t		m_uncomp_offset ;
+      unsigned long	m_uncomp_size ;
+      unsigned long	m_stream_len ;
+      unsigned long	m_corruption_start ;
+      unsigned long	m_corruption_end ;
+      PacketType	m_packet_type ;
+      bool		m_last ;
+      bool		m_deflate64 ;
+      bool		m_corruption_end_unknown ;
    } ;
 
 /************************************************************************/
