@@ -23,7 +23,6 @@
 /*                                                                      */
 /************************************************************************/
 
-#include "byteio.h"
 #include "inflate.h"
 #include "framepac/config.h"
 

@@ -24,7 +24,6 @@
 /************************************************************************/
 
 #include <memory.h>
-#include "byteio.h"
 #include "dbyte.h"
 #include "global.h"
 

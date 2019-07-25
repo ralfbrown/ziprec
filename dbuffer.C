@@ -24,7 +24,6 @@
 /************************************************************************/
 
 #include <cmath>
-#include "byteio.h"
 #include "dbuffer.h"
 #include "inflate.h"
 #include "global.h"

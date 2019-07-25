@@ -2,13 +2,28 @@
 
 INCDIR=./framepac
 
-OBJS = build/bits.o build/byteio.o build/chartype.o build/dbyte.o \
-	build/dbuffer.o build/huffman.o build/index.o \
-	build/inflate.o build/lenmodel.o build/loclist.o \
-	build/models.o build/packet.o build/partial.o build/pstrie.o \
-	build/recover.o build/reconstruct.o build/sort.o \
-	build/symtab.o build/utility.o build/wordhash.o \
-	build/words.o build/global.o build/scan_ziprec.o \
+OBJS = build/bits.o \
+	build/chartype.o \
+	build/dbyte.o \
+	build/dbuffer.o \
+	build/huffman.o \
+	build/index.o \
+	build/inflate.o \
+	build/lenmodel.o \
+	build/loclist.o \
+	build/models.o \
+	build/packet.o \
+	build/partial.o \
+	build/pstrie.o \
+	build/recover.o \
+	build/reconstruct.o \
+	build/sort.o \
+	build/symtab.o \
+	build/utility.o \
+	build/wordhash.o \
+	build/words.o \
+	build/global.o \
+	build/scan_ziprec.o \
 	build/wildcard.o
 
 ALLOBJS = build/ziprec.o build/ziprecui.o $(OBJS)
@@ -144,13 +159,11 @@ null.lang: bin/mklang
 
 build/bits.o: 		bits.C bits.h global.h
 
-build/byteio.o: 	byteio.C byteio.h
-
 build/chartype.o: 	chartype.C chartype.h
 
-build/dbyte.o: 		dbyte.C dbyte.h byteio.h global.h
+build/dbyte.o: 		dbyte.C dbyte.h global.h
 
-build/dbuffer.o: 	dbuffer.C dbuffer.h byteio.h inflate.h global.h
+build/dbuffer.o: 	dbuffer.C dbuffer.h inflate.h global.h
 
 build/global.o: 	global.C global.h
 
@@ -168,7 +181,7 @@ build/loclist.o: 	loclist.C loclist.h
 
 build/models.o: 	models.C models.h dbuffer.o global.h wildcard.h
 
-build/packet.o: 	packet.C byteio.h inflate.h
+build/packet.o: 	packet.C inflate.h
 
 build/partial.o: 	partial.C partial.h bits.h inflate.h symtab.h global.h
 
