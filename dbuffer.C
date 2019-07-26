@@ -23,6 +23,7 @@
 /*                                                                      */
 /************************************************************************/
 
+#include <algorithm>
 #include <cmath>
 #include "dbuffer.h"
 #include "inflate.h"
@@ -51,7 +52,7 @@ using namespace Fr ;
 
 WildcardCounts::WildcardCounts(unsigned size)
 {
-   m_counts = New<uint32_t>(size) ;
+   m_counts = new uint32_t[size] ;
    m_numcounts = m_counts ? size : 0 ;
    clear() ;
    return ;
@@ -61,8 +62,6 @@ WildcardCounts::WildcardCounts(unsigned size)
 
 WildcardCounts::~WildcardCounts()
 {
-   Free(m_counts) ;
-   m_counts = 0 ;
    m_numcounts = 0 ;
    return ;
 }
@@ -71,8 +70,7 @@ WildcardCounts::~WildcardCounts()
 
 void WildcardCounts::clear()
 { 
-   for (size_t i = 0 ; i < numCounts() ; i++)
-      m_counts[i] = 0 ;
+   std::fill_n(m_counts.begin(),numCounts(),0) ;
    m_prevhighest = 0 ;
    m_known_highest = false ;
    return ;
@@ -111,14 +109,9 @@ bool WildcardCounts::expandTo(unsigned new_size)
 {
    if (new_size <= numCounts())
       return true ;
-   uint32_t *new_counts = NewR<uint32_t>(m_counts,new_size) ;
-   if (new_counts)
+   if (m_counts.reallocate(numCounts(),new_size))
       {
-      m_counts = new_counts ;
-      for (size_t i = numCounts() ; i < new_size ; i++)
-	 {
-	 m_counts[i] = 0 ;
-	 }
+      std::fill_n(&m_counts[numCounts()],new_size-numCounts(),0) ;
       m_numcounts = new_size ;
       return true ;
       }

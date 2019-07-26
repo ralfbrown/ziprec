@@ -5,7 +5,7 @@
 /*									*/
 /*  File: dbuffer.h - file-wise buffer for bytes/back-references	*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 27jun2019							*/
+/*  LastEdit: 2019-07-25						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -60,11 +60,6 @@ class ContextFlags
 
 class WildcardCounts
    {
-   private:
-      uint32_t *m_counts ;
-      unsigned m_numcounts ;
-      mutable unsigned m_prevhighest ;
-      bool     m_known_highest ;
    public:
       WildcardCounts(unsigned size) ;
       ~WildcardCounts() ;
@@ -83,6 +78,12 @@ class WildcardCounts
       void setHighestUsed() ;
       bool expandTo(unsigned new_size) ;
       bool expand(unsigned extra) { return expandTo(numCounts()+extra) ; }
+
+   private:
+      Fr::NewPtr<uint32_t> m_counts ;
+      unsigned             m_numcounts ;
+      mutable unsigned     m_prevhighest ;
+      bool                 m_known_highest ;
    } ;
 
 //----------------------------------------------------------------------
