@@ -4,10 +4,10 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  File: huffman.h - Huffman-coding classes				*/
-/*  Version:  1.00gamma				       			*/
-/*  LastEdit: 09may2013							*/
+/*  Version:  1.10beta				       			*/
+/*  LastEdit: 2019-07-26						*/
 /*									*/
-/*  (c) Copyright 2011,2012,2013 Ralf Brown/CMU				*/
+/*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -27,6 +27,7 @@
 #define __HUFFMAN_H_INCLUDED
 
 #include "bits.h"
+#include "framepac/smartptr.h"
 
 /************************************************************************/
 /*	Manifest Constants						*/
@@ -54,9 +55,6 @@ class HuffmanLocation ;
 
 class HuffmanLengthTable
    {
-   private:
-      unsigned	m_counts[MAX_HUFFMAN_LENGTH] ;
-      HuffSymbol	m_symbols[MAX_HUFFMAN_LENGTH * MAX_SAME_LENGTH] ;
    public:
       HuffmanLengthTable() ;
       ~HuffmanLengthTable() {}
@@ -78,38 +76,31 @@ class HuffmanLengthTable
 
       // debugging support
       void dump() const ;
+
+   private:
+      unsigned	  m_counts[MAX_HUFFMAN_LENGTH] ;
+      HuffSymbol  m_symbols[MAX_HUFFMAN_LENGTH * MAX_SAME_LENGTH] ;
    } ;
 
 //----------------------------------------------------------------------
 
-typedef bool HuffmanTreeIterFn(HuffSymbol sym, VariableBits codestring,
-			       void *user_data) ;
+typedef bool HuffmanTreeIterFn(HuffSymbol sym, VariableBits codestring, void* user_data) ;
 
 class HuffmanTree
    {
-   private:
-      unsigned     m_bits ;	// number of bits covered by this node
-      HuffmanTree **m_next ;	// subtree pointers, or NULL for leaves
-      HuffSymbol      *m_symbols ;	// symbol values for leaf nodes
-      VariableBits m_prefix ;	// all entries in this node share the prefix
-      HuffmanTree *m_parent ;
-      unsigned     m_parentloc ;// offset within parent's m_next array
    public:
-      HuffmanTree(unsigned bits, VariableBits prefix,
-		  HuffmanTree *parent = 0, unsigned parentloc = 0) ;
+      HuffmanTree(unsigned bits, VariableBits prefix, HuffmanTree* parent = nullptr, unsigned parentloc = 0) ;
       ~HuffmanTree() ;
 
       // accessors
-      HuffmanTree *parent() const { return m_parent ; }
+      HuffmanTree* parent() const { return m_parent ; }
       unsigned parentLocation() const { return m_parentloc ; }
       unsigned commonBits() const { return m_bits ; }
-      unsigned childCount() const
-	 { return commonBits() ? 1 << commonBits() : 0 ; }
+      unsigned childCount() const { return commonBits() ? 1 << commonBits() : 0 ; }
       VariableBits prefix() const { return m_prefix ; }
       unsigned prefixLength() const { return m_prefix.length() ; }
       unsigned codeLength() const { return commonBits() + prefixLength() ; }
-      bool nextSymbol(BitPointer &ptr, const BitPointer &str_end,
-		      HuffSymbol &symbol) const ;
+      bool nextSymbol(BitPointer& ptr, const BitPointer& str_end, HuffSymbol& symbol) const ;
 
       // manipulators
       bool addChild(HuffmanTree *child, unsigned offset) ;
@@ -123,23 +114,25 @@ class HuffmanTree
 
       // debugging support
       void dump() const ;
+
+   private:
+      Fr::NewPtr<HuffSymbol>   m_symbols ;	// symbol values for leaf nodes
+      Fr::NewPtr<HuffmanTree*> m_next ;		// subtree pointers, or NULL for leaves
+      HuffmanTree*             m_parent ;
+      unsigned                 m_bits ;		// number of bits covered by this node
+      VariableBits             m_prefix ;	// all entries in this node share the prefix
+      unsigned                 m_parentloc ;	// offset within parent's m_next array
    } ;
 
 //----------------------------------------------------------------------
 
 class HuffmanLocation
    {
-   private:
-      HuffmanLengthTable *m_table ;
-      HuffmanTree        *m_tree ;
-      unsigned            m_level ;
-      unsigned            m_offset ;
    public:
       HuffmanLocation() ;
-      HuffmanLocation(HuffmanLengthTable *table, unsigned length = 0) ;
-      HuffmanLocation(HuffmanTree *tree) ;
-      ~HuffmanLocation()
-	 { m_table = 0 ; m_tree = 0 ; m_level = m_offset = 0 ; }
+      HuffmanLocation(HuffmanLengthTable* table, unsigned length = 0) ;
+      HuffmanLocation(HuffmanTree* tree) ;
+      ~HuffmanLocation() { m_table = nullptr ; m_tree = nullptr ; m_level = m_offset = 0 ; }
 
       // accessors
       unsigned level() const { return m_level ; }
@@ -150,13 +143,18 @@ class HuffmanLocation
       // manipulators
       bool advance() ;
       void incrOffset() { m_offset++ ; }
-      void newLevel(unsigned level)
-	 { m_level = level ; m_offset = 0 ; }
+      void newLevel(unsigned level) { m_level = level ; m_offset = 0 ; }
       void newLevel(unsigned level, unsigned offset, HuffmanTree *tree)
 	 { m_level = level ; m_offset = offset ; m_tree = tree ; }
-      void newTree(HuffmanTree *tree) { m_tree = tree ; }
-      void newTable(HuffmanLengthTable *table) { m_table = table ; }
+      void newTree(HuffmanTree* tree) { m_tree = tree ; }
+      void newTable(HuffmanLengthTable* table) { m_table = table ; }
       bool addSymbol(HuffSymbol sym, unsigned length) ;
+
+   private:
+      HuffmanLengthTable* m_table ;
+      HuffmanTree*        m_tree ;
+      unsigned            m_level ;
+      unsigned            m_offset ;
    } ;
 
 

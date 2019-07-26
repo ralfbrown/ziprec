@@ -204,7 +204,7 @@ static bool count_trigrams(const char *filename)
 {
    if (!trigram_counts)
       {
-      trigram_counts = new uint16_t[256*256*256] ;
+      trigram_counts.allocate(256*256*256) ;
       if (!trigram_counts)
 	 return false ;
       std::fill_n(trigram_counts.begin(),256*256*256,0) ;
@@ -555,8 +555,7 @@ int main(int argc, char **argv)
    argc -= 2 ;
    argv += 2 ;
    uint64_t total_bytes = 0 ;
-   NybbleTrie *forward = new NybbleTrie ;
-   NybbleTrie *reverse = nullptr ;
+   Owned<NybbleTrie> forward ;
    for (int arg = 0 ; arg < argc ; arg++)
       {
       const char *trainfile = argv[arg] ;
@@ -569,8 +568,7 @@ int main(int argc, char **argv)
    while (argc > 0)
       {
       const char *trainfile = argv[0] ;
-      if (process_file(trainfile,forward,max_ngram,total_bytes,
-		       filter_factor*filter_thresh))
+      if (process_file(trainfile,forward,max_ngram,total_bytes, filter_factor*filter_thresh))
 	 {
 	 fprintf(stdout,"Processed file '%s'\n",trainfile) ;
 	 }
@@ -582,7 +580,7 @@ int main(int argc, char **argv)
    frequencies = sort_words(frequencies,compare_frequencies) ;
    if (filter_thresh < 1)
       filter_thresh = DEFAULT_FILTER_THRESHOLD ;
-   ngram_counts = new size_t[max_ngram+1] ;
+   ngram_counts.allocate(max_ngram+1) ;
    std::fill_n(ngram_counts.begin(),max_ngram+1,0) ;
    if (forward && store_unfiltered_counts)
       {
@@ -590,9 +588,8 @@ int main(int argc, char **argv)
       unsigned min_freq = filter_thresh ;
       forward->enumerate(keybuf,max_ngram,count_ngrams,&min_freq) ;
       }
-   auto forward_ngrams = new LangIDPackedTrie(forward,filter_thresh) ;
-   delete forward ;
-   LangIDPackedTrie *reverse_ngrams = nullptr ;
+   Owned<LangIDPackedTrie> forward_ngrams(forward.get(),filter_thresh) ;
+   Owned<LangIDPackedTrie> reverse_ngrams { nullptr } ;
    if (forward_only)
       {
       if (!store_unfiltered_counts)
@@ -604,13 +601,13 @@ int main(int argc, char **argv)
    else
       {
       gc() ;
-      reverse = new NybbleTrie ;
+      Owned<NybbleTrie> reverse ;
       uint8_t keybuf[max_ngram+1] ;
       forward_ngrams->enumerate(keybuf,max_ngram,reverse_ngram,reverse) ;
       reverse->addTokenCount(forward->totalTokens()) ;
-      reverse_ngrams = new LangIDPackedTrie(reverse,filter_thresh) ;
-      delete reverse ;
+      reverse_ngrams.reinit(reverse,filter_thresh) ;
       }
+   forward = nullptr ;
    if (!write_frequencies(outfile,forward_ngrams,reverse_ngrams,
 			  ngram_counts,frequencies,total_bytes,display_words))
       {
@@ -632,8 +629,6 @@ int main(int argc, char **argv)
       }
    ngram_counts = nullptr ;
    trigram_counts = nullptr ;
-   delete forward_ngrams ;
-   delete reverse_ngrams ;
    return 0 ;
 }
 

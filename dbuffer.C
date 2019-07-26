@@ -462,23 +462,14 @@ DecodedByte *DecodeBuffer::copyReplacements() const
 
 bool DecodeBuffer::expandReplacements(size_t added_repl)
 {
-   auto replacements = new DecodedByte[numReplacements() + added_repl + 1] ;
-   if (!replacements)
+   if (!m_replacements.reallocate(numReplacements(),numReplacements()+added_repl+1))
       return false ;
-   if (numReplacements() > 0)
-      {
-      for (size_t i = 0 ; i <= numReplacements() ; i++)
-	 {
-	 replacements[i] = m_replacements[i] ;
-	 }
-      }
    size_t first = numReplacements() ? 1 : 0 ;
    for (size_t i = first ; i <= added_repl ; i++)
       {
       size_t loc = i + numReplacements() ;
-      replacements[loc].setOriginalLocation(loc) ;
+      m_replacements[loc].setOriginalLocation(loc) ;
       }
-   m_replacements = replacements ;
    m_numreplacements += added_repl ;
    return true ;
 }
@@ -705,7 +696,7 @@ bool DecodeBuffer::openInputFile(CFile& fp, const char *filename)
    if (packet_count > 0)
       {
       fp.seek(packet_offset) ;
-      DeflatePacketDesc *packets = 0 ;
+      DeflatePacketDesc *packets = nullptr ;
       for (size_t i = 0 ; i < packet_count && !inputFile().eof() ; i++)
 	 {
 	 auto p = new DeflatePacketDesc(inputFile()) ;

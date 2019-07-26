@@ -4,10 +4,10 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  File: huffman.C - Huffman-coding classes				*/
-/*  Version:  1.00gamma				       			*/
-/*  LastEdit: 09may2013							*/
+/*  Version:  1.10beta				       			*/
+/*  LastEdit: 2019-07-26						*/
 /*									*/
-/*  (c) Copyright 2011,2012,2013 Ralf Brown/CMU				*/
+/*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -140,23 +140,20 @@ void HuffmanLengthTable::dump() const
 /*	Methods for class HuffmanTree					*/
 /************************************************************************/
 
-HuffmanTree::HuffmanTree(unsigned bits, VariableBits prefix,
-			 HuffmanTree *parent, unsigned parentloc)
+HuffmanTree::HuffmanTree(unsigned bits, VariableBits prefix, HuffmanTree *parent, unsigned parentloc)
 {
    m_prefix = prefix ;
    m_bits = bits ;
    size_t entries = childCount() ;
-   m_next =  new HuffmanTree* [entries] ;
-   m_symbols = new HuffSymbol[entries] ;
+   m_next.allocate(entries) ;
+   m_symbols.allocate(entries) ;
    if (m_next)
       {
-      for (size_t i = 0 ; i < entries ; i++)
-	 m_next[i] = 0 ;
+      std::fill_n(m_next.begin(),entries,nullptr) ;
       }
    if (m_symbols)
       {
-      for (size_t i = 0 ; i < entries ; i++)
-	 m_symbols[i] = INVALID_SYMBOL ;
+      std::fill_n(m_symbols.begin(),entries,INVALID_SYMBOL) ;
       }
    m_parent = parent ;
    m_parentloc = parentloc ;
@@ -171,10 +168,6 @@ HuffmanTree::~HuffmanTree()
       {
       delete m_next[i] ;
       }
-   delete [] m_next ;
-   m_next = 0 ;
-   delete [] m_symbols ;
-   m_symbols = 0 ;
    m_bits = 0 ;
    return ;
 }
@@ -242,7 +235,7 @@ bool HuffmanTree::addSymbol(HuffSymbol symbol, unsigned offset)
       if (m_next[offset])
 	 {
 	 delete m_next[offset] ;
-	 m_next[offset] = 0 ;
+	 m_next[offset] = nullptr ;
 	 }
       m_symbols[offset] = symbol ;
       return true ;
@@ -403,7 +396,7 @@ bool HuffmanLocation::addSymbol(HuffSymbol sym, unsigned length)
       // the new symbol's length is greater than the current node's total
       //   symbol length, so we need to create a sub-node to accomodate
       //   the extra bits
-      HuffmanTree *subtree = new HuffmanTree(length - codelen, currentCode()) ;
+      auto subtree = new HuffmanTree(length - codelen, currentCode()) ;
       if (subtree)
 	 {
 	 // drop down into the subtree

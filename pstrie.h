@@ -5,7 +5,7 @@
 /*									*/
 /*  File: pstrie.h - packed simple word-frequency trie			*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-16						*/
+/*  LastEdit: 2019-07-26						*/
 /*									*/
 /*  (c) Copyright 2012,2013,2015,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -157,8 +157,7 @@ class LangIDPackedTrie
       static constexpr uint32_t TERMINAL_MASK = 0x80000000 ;
     public:
       LangIDPackedTrie() { init() ; }
-      LangIDPackedTrie(const NybbleTrie *trie, uint32_t min_freq = 1,
-		 bool show_conversion = true) ;
+      LangIDPackedTrie(const NybbleTrie* trie, uint32_t min_freq = 1, bool show_conversion = true) ;
       LangIDPackedTrie(Fr::CFile& f, const char *filename) ;
       ~LangIDPackedTrie() ;
 

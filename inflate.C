@@ -305,30 +305,27 @@ static bool check_compressed_stream(const HuffSymbolTable *symtab,
 
 //----------------------------------------------------------------------
 
-static bool corrupted_words(DecodeBuffer &decode_buf,
-			    const WordLengthModel *lenmodel,
-			    WordLengthModel *&running_model)
+static bool corrupted_words(DecodeBuffer &decode_buf, const WordLengthModel *lenmodel,
+			    Owned<WordLengthModel>& running_model)
 {
    bool corrupted = false ;
    if (lenmodel)
       {
       if (!running_model)
 	 {
-	 running_model = new WordLengthModel(lenmodel->type()) ;
+	 running_model.reinit(lenmodel->type()) ;
 	 running_model->combine(lenmodel) ;
 	 }
-      WordLengthModel *curr_lengths = new WordLengthModel(lenmodel->type()) ;
+      Owned<WordLengthModel> curr_lengths(lenmodel->type()) ;
       unsigned char text[LENMODEL_WINDOW] ;
       decode_buf.copyBufferTail(text,sizeof(text)) ;
       const unsigned char *text_start = lenmodel->skipToDelim(text,sizeof(text)) ;
       unsigned buflen = sizeof(text) - (text_start - text) ;
       unsigned minlen = (buflen > 20) ? buflen-20 : buflen ;
       curr_lengths->addWords(text_start,minlen,buflen) ;
-      if (running_model->totalCount() > 4*running_model->maxLength() &&
-	  curr_lengths->totalCount() > 0)
+      if (running_model->totalCount() > 4*running_model->maxLength() && curr_lengths->totalCount() > 0)
 	 {
 	 double similarity = running_model->similarity(curr_lengths) ;
-//cerr<<"sim="<<similarity<<endl;//!!!
 	 if (similarity < 0.8)
 	    {
 	    corrupted = true ;
@@ -337,19 +334,16 @@ static bool corrupted_words(DecodeBuffer &decode_buf,
 	 }
       running_model->scale(0.75) ;
       running_model->combine(curr_lengths) ;
-      delete curr_lengths ;
       }
    return corrupted ;
 }
 
 //----------------------------------------------------------------------
 
-static bool corrupted_words(DecodeBuffer &decode_buf,
-			    const NybbleTrie *wordmodel,
-			    NybbleTrie *&local_words)
+static bool corrupted_words(DecodeBuffer& decode_buf, const NybbleTrie* wordmodel, Owned<NybbleTrie>& local_words)
 {
    bool corrupted = false ;
-   local_words = 0 ; // no local model yet
+   local_words = nullptr ; // no local model yet
    if (wordmodel)
       {
       unsigned char text[WORDMODEL_WINDOW+1] ;
@@ -404,14 +398,13 @@ cerr<<"corruption detected by word model!  frac="<<frac << endl;
 
 //----------------------------------------------------------------------
 
-static bool corrupted_language(DecodeBuffer &decode_buf,
-			       const LanguageIdentifier *langid,
-			       LanguageScores *&prev_scores)
+static bool corrupted_language(DecodeBuffer &decode_buf, const LanguageIdentifier *langid,
+			       Owned<LanguageScores>& prev_scores)
 {
    bool corrupted = false ;
    if (langid)
       {
-      LanguageScores *scores = new LanguageScores(langid->numLanguages()) ;
+      Owned<LanguageScores> scores(langid->numLanguages()) ;
       unsigned char text[LANGIDENT_WINDOW] ;
       decode_buf.copyBufferTail(text,sizeof(text)) ;
       if (langid->identify(scores,(const char*)text,sizeof(text),(uint8_t*)0))
@@ -423,7 +416,6 @@ static bool corrupted_language(DecodeBuffer &decode_buf,
 	    corrupted = true ;
 	    }
 	 }
-      delete prev_scores ;
       prev_scores = scores ;
       }
    return corrupted ;
@@ -476,8 +468,8 @@ static bool check_compressed_stream(const HuffSymbolTable *symtab,
       highwater = LENMODEL_WINDOW ;
       num_checkpoints = (LENMODEL_WINDOW / LENMODEL_WINDOW_SLIDE) ;
       }
-   LanguageScores *scores = 0 ;
-   WordLengthModel *word_lengths = 0 ;
+   Owned<LanguageScores> scores { nullptr } ;
+   Owned<WordLengthModel> word_lengths { nullptr } ;
    CheckPoints checkpoints(currpos,num_checkpoints) ;
    BitPointer prevpos(currpos) ;
    while (currpos < str_end)
@@ -540,9 +532,8 @@ static bool check_compressed_stream(const HuffSymbolTable *symtab,
 	 else if (wordmodel)
 	    {
 	    highwater = offset + WORDMODEL_WINDOW_SLIDE ;
-	    NybbleTrie *localwords = 0 ;
+	    Owned<NybbleTrie> localwords { nullptr } ;
 	    bool corr = corrupted_words(decode_buf,wordmodel,localwords) ;
-	    delete localwords ;
 	    if (corr)
 	       {
 	       corruption_size = WORDMODEL_WINDOW + WORDMODEL_WINDOW_SLIDE ;
@@ -569,8 +560,6 @@ static bool check_compressed_stream(const HuffSymbolTable *symtab,
       currpos = checkpoints.checkpoint() ;
       correct = false ;
       }
-   delete scores ;
-   delete word_lengths ;
    uncomp_size = offset ;
    return correct ;
 }
@@ -1071,9 +1060,8 @@ static PacketType find_packet_start(BitPointer &str_pos,
 
 //----------------------------------------------------------------------
 
-static bool decompress(BitPointer &str_pos, const BitPointer &str_end,
-		       const HuffSymbolTable *symtab,
-		       DecodeBuffer *decode_buffer,
+static bool decompress(BitPointer& str_pos, const BitPointer& str_end,
+		       const HuffSymbolTable* symtab, DecodeBuffer* decode_buffer,
 		       bool start_of_stream, bool exact_end)
 {
    if (!decode_buffer || !symtab || str_pos >= str_end)
@@ -1121,13 +1109,10 @@ static bool decompress(BitPointer &str_pos, const BitPointer &str_end,
 
 //----------------------------------------------------------------------
 
-static bool decompress(BitPointer &str_pos, const BitPointer str_start,
-		       const BitPointer &str_end,
-		       DecodeBuffer *decode_buffer, const char *type,
-		       const char *outfile,
-		       bool may_be_corrupt, bool start_of_stream,
-		       bool *hit_final_packet = 0,
-		       BitPointer *last_packet_header = 0)
+static bool decompress(BitPointer& str_pos, const BitPointer str_start, const BitPointer& str_end,
+		       DecodeBuffer* decode_buffer, const char* type, const char* outfile,
+		       bool may_be_corrupt, bool start_of_stream, bool* hit_final_packet = 0,
+		       BitPointer* last_packet_header = 0)
 {
    if (verbosity >= VERBOSITY_PROGRESS)
       {
@@ -1161,9 +1146,8 @@ static bool decompress(BitPointer &str_pos, const BitPointer str_start,
 	       fprintf(stderr,"  decompressing fixed-Huff packet @ %lu.%u\n",
 		       (unsigned long)(str_pos - str_start),
 		       str_pos.bitNumber()) ;
-	    HuffSymbolTable *symtab = build_default_symtable(deflate64) ;
-	    if (!decompress(str_pos,str_end,symtab,decode_buffer,
-			    start_of_stream,exact_end))
+	    auto symtab = build_default_symtable(deflate64) ;
+	    if (!decompress(str_pos,str_end,symtab,decode_buffer,start_of_stream,exact_end))
 	       {
 	       success = false ;
 	       }
@@ -1174,13 +1158,9 @@ static bool decompress(BitPointer &str_pos, const BitPointer str_start,
 	    {
 	    if (verbosity > VERBOSITY_PACKETS)
 	       fprintf(stderr,"  decompressing dyn-Huff packet @ %lu.%u\n",
-		       (unsigned long)(str_pos - str_start),
-		       str_pos.bitNumber()) ;
-	    HuffSymbolTable *symtab
-	       = build_symbol_table(str_pos,str_end,
-				    decode_buffer->deflate64()) ;
-	    if (!decompress(str_pos,str_end,symtab,decode_buffer,
-			    start_of_stream,exact_end))
+		       (unsigned long)(str_pos - str_start), str_pos.bitNumber()) ;
+	    auto symtab = build_symbol_table(str_pos,str_end, decode_buffer->deflate64()) ;
+	    if (!decompress(str_pos,str_end,symtab,decode_buffer, start_of_stream,exact_end))
 	       {
 	       success = false ;
 	       }
@@ -1242,17 +1222,13 @@ static bool decompress(BitPointer &str_pos, const BitPointer str_start,
       fprintf(stderr,"  ** decoded up to %lu of %lu\n",
 	      (unsigned long)(str_pos - str_start),
 	      (unsigned long)(str_end - str_start)) ;
-   delete decode_buffer ;
-   decode_buffer = 0 ;
    return success ;
 }
 
 //----------------------------------------------------------------------
 
-static char *decompress_reference(const char *stream_start,
-				  const char *stream_end,
-				  const ZipRecParameters &params,
-				  const char *outfile_hint,
+static char *decompress_reference(const char* stream_start, const char* stream_end,
+				  const ZipRecParameters& params, const char* outfile_hint,
 				  bool deflate64 = true)
 {
    BitPointer::initBitReversal() ;
@@ -1268,8 +1244,8 @@ static char *decompress_reference(const char *stream_start,
       CpuTimer timer ;
       ZipRecParameters sub_params(params) ;
       sub_params.write_format = WFMT_PlainText ;
-      DecodeBuffer *decode_buffer = new DecodeBuffer(outfp,sub_params.write_format,DEFAULT_UNKNOWN,outfile,deflate64) ;
-      success = decompress(str_start,str_start,str_end,decode_buffer,"reference",outfile,false,true) ;
+      DecodeBuffer decode_buffer(outfp,sub_params.write_format,DEFAULT_UNKNOWN,outfile,deflate64) ;
+      success = decompress(str_start,str_start,str_end,&decode_buffer,"reference",outfile,false,true) ;
       ADD_TIME(timer,time_reference) ;
       }
    if (!success)
@@ -1298,12 +1274,10 @@ static bool extract_uncompressed(CFile& outfp, const char *outfile, WriteFormat 
 
 //----------------------------------------------------------------------
 
-static DeflatePacketDesc *locate_packets(BitPointer str_start,
-					 BitPointer str_end,
-					 size_t base_offset,
+static DeflatePacketDesc* locate_packets(BitPointer str_start, BitPointer str_end, size_t base_offset,
 					 bool deflate64)
 {
-   DeflatePacketDesc *packets = 0 ;
+   DeflatePacketDesc* packets = nullptr ;
    BitPointer str_pos(str_end) ;
    BitPointer curr_end(str_end) ;
    bool exact_bit = false ;
@@ -1311,8 +1285,7 @@ static DeflatePacketDesc *locate_packets(BitPointer str_start,
    while (str_pos > str_start)
       {
       str_pos.retreat(MINIMUM_PACKET_SIZE_BITS) ;
-      PacketType ptype = find_packet_start(str_pos,str_start,curr_end,
-					   base_offset,packets == 0,
+      PacketType ptype = find_packet_start(str_pos,str_start,curr_end, base_offset,packets == 0,
 					   exact_bit,deflate64) ;
       if (ptype == PT_INVALID)
 	 break ;
@@ -1323,9 +1296,7 @@ static DeflatePacketDesc *locate_packets(BitPointer str_start,
       //   packet to test multiple positions
       exact_bit = (ptype != PT_UNCOMP) || (packets == 0) ;
       // add the packet to the list of all packets found
-      DeflatePacketDesc *p = new DeflatePacketDesc(&str_start,&str_pos,
-						   &curr_end,packets==0,
-						   deflate64) ;
+      DeflatePacketDesc *p = new DeflatePacketDesc(&str_start,&str_pos,&curr_end,packets==0,deflate64) ;
       p->setNext(packets) ;
       p->setPacketType(ptype) ;
       packets = p ;
@@ -1337,10 +1308,8 @@ static DeflatePacketDesc *locate_packets(BitPointer str_start,
 
 //----------------------------------------------------------------------
 
-static bool contains_corruption(DeflatePacketDesc *packet,
-				const DeflatePacketDesc *prev,
-				DecodeBuffer &decode_buf,
-				const FileInformation *fileinfo,
+static bool contains_corruption(DeflatePacketDesc* packet, const DeflatePacketDesc* prev,
+				DecodeBuffer& decode_buf, const FileInformation* fileinfo,
 				bool previous_corruption)
 {
    if (!fileinfo || !packet || packet->isUncompressed())
@@ -1376,8 +1345,7 @@ static bool contains_corruption(DeflatePacketDesc *packet,
    // check whether we can correctly decompress the packet; if an
    //   error occurs, we call the point at which it is detected the
    //   start of the corruption
-   unsigned long uncomp_size
-      = packet->deflate64() ? REFERENCE_WINDOW_DEFLATE64 : REFERENCE_WINDOW_DEFLATE ;
+   unsigned long uncomp_size = packet->deflate64() ? REFERENCE_WINDOW_DEFLATE64 : REFERENCE_WINDOW_DEFLATE ;
    if (packet->corruptionStart() > 0 &&
        !check_compressed_packet(packet,decode_buf,fileinfo,uncomp_size,
 				previous_corruption))
@@ -1392,8 +1360,7 @@ static bool contains_corruption(DeflatePacketDesc *packet,
 
 //----------------------------------------------------------------------
 
-static bool locate_corrupt_segments(DeflatePacketDesc *packet_list,
-				    const FileInformation *fileinfo)
+static bool locate_corrupt_segments(DeflatePacketDesc* packet_list, const FileInformation* fileinfo)
 {
    START_TIME(timer) ;
    bool corruption_found = false ;
@@ -1416,11 +1383,9 @@ static bool locate_corrupt_segments(DeflatePacketDesc *packet_list,
 
 //----------------------------------------------------------------------
 
-static bool decompress_packet(DecodeBuffer *decode_buffer,
-			      const DeflatePacketDesc *packet,
-			      const BitPointer &packet_end,
-			      HuffSymbolTable **symtab,
-			      BitPointer &corruption_loc)
+static bool decompress_packet(DecodeBuffer* decode_buffer, const DeflatePacketDesc* packet,
+			      const BitPointer& packet_end, HuffSymbolTable** symtab,
+			      BitPointer& corruption_loc)
 {
    BitPointer packet_start(packet->packetHeader()) ;
    uint32_t phdr = packet_start.nextBits(PACKHDR_SIZE) ;
@@ -1457,10 +1422,8 @@ static bool decompress_packet(DecodeBuffer *decode_buffer,
    bool success = true ;
    if (symbol_table)
       {
-      success = decompress(packet_start,packet_end,symbol_table,
-			   decode_buffer,
-			   packet->packetHeader() == packet->streamStart(),
-			   packet->next()) ;
+      success = decompress(packet_start,packet_end,symbol_table, decode_buffer,
+			   packet->packetHeader() == packet->streamStart(), packet->next()) ;
       if (success)
 	 {
 	 if (symtab)
@@ -1617,8 +1580,7 @@ static bool decompress_packet(DecodeBuffer *decode_buffer,
 	 str_pos = resynchronize(str_pos,packet_end,symtab,
 				 decode_buffer->deflate64()) ;
 	 }
-      if (!decompress(str_pos,packet_end,symtab,decode_buffer,
-		      false,packet->next()))
+      if (!decompress(str_pos,packet_end,symtab,decode_buffer,false,packet->next()))
 	 success = false ;
       free_symbol_table(symtab) ;
       }
@@ -1720,28 +1682,24 @@ static bool recover_stream(const ZipRecParameters &params, const FileInformation
    BitPointer str_start(stream_start) ;
    if (known_start && packet_start != stream_start)
       {
-      DeflatePacketDesc *prefix
-	 = new DeflatePacketDesc(&str_start,&str_start,&packet_start,
-				 known_end,deflate64) ;
+      Owned<DeflatePacketDesc> prefix(&str_start,&str_start,&packet_start,known_end,deflate64) ;
       prefix->setNext(packet_list) ;
       if (split_into_packets(prefix,deflate64))
 	 {
-	 packet_list = prefix ;
+	 packet_list = prefix.move() ;
 	 success = true ; // we got something valid out of the stream
 	 INCR_STAT(truncated_files_recovered) ;
 	 }
       else
 	 {
-	 prefix->setNext(0) ;
-	 delete prefix ;
+	 prefix->setNext(nullptr) ;
 	 }
       }
    unsigned num_packets = packet_list->length() ;
    if (num_packets == 0 && known_start)
       num_packets = 1 ;
    if (num_packets)
-      num_packets = (num_packets > PACKET_HISTOGRAM_SIZE
-		      ? PACKET_HISTOGRAM_SIZE : num_packets-1) ;
+      num_packets = (num_packets > PACKET_HISTOGRAM_SIZE ? PACKET_HISTOGRAM_SIZE : num_packets-1) ;
    INCR_STAT(packet_count[num_packets]) ;
    bool have_corruption = locate_corrupt_segments(packet_list,fileinfo) ;
    if (known_start && packet_list && params.test_mode && !have_corruption)
@@ -1928,7 +1886,7 @@ static void generate_output_filenames(const ZipRecParameters &params, const char
 	    }
 	 }
       unsigned dir_len = strlen(output_directory) ;
-      filename = new char[dir_len + strlen(filename_hint) + 8] ;
+      filename.allocate(dir_len + strlen(filename_hint) + 8) ;
       if (filename)
 	 {
 	 if (strcmp(output_directory,".") != 0 &&
