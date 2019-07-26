@@ -5,9 +5,9 @@
 /*									*/
 /*  File: packet.C - DEFLATE Packet Descriptor				*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 27jun2019							*/
+/*  LastEdit: 2019-07-26						*/
 /*									*/
-/*  (c) Copyright 2012,2013,2019 Ralf Brown/CMU				*/
+/*  (c) Copyright 2012,2013,2019 Carnegie Mellon University		*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -181,19 +181,16 @@ bool DeflatePacketDesc::cacheStreamData()
 
 //----------------------------------------------------------------------
 
-bool DeflatePacketDesc::split(const BitPointer &next_packet_start,
-			      unsigned ptype)
+bool DeflatePacketDesc::split(const BitPointer &next_packet_start, unsigned ptype)
 {
    if (next_packet_start > packetHeader() && next_packet_start < packetEnd())
       {
-      DeflatePacketDesc *newpacket
-	 = new DeflatePacketDesc(&streamStart(),&next_packet_start,
-				 &packetEnd(),last(),deflate64()) ;
+      Owned<DeflatePacketDesc> newpacket(&streamStart(), &next_packet_start, &packetEnd(),last(),deflate64()) ;
       if (newpacket)
 	 {
 	 newpacket->setPacketType((PacketType)ptype) ;
 	 newpacket->setNext(next()) ;
-	 setNext(newpacket) ;
+	 setNext(newpacket.move()) ;
 	 m_packet_end = next_packet_start ;
 	 m_last = false ;
 	 return true ;

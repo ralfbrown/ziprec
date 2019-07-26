@@ -85,13 +85,13 @@ struct LocationSpec
 /*	Global variables for this module				*/
 /************************************************************************/
 
-static Fr::CharPtr current_language_model ;
-static size_t *global_ngram_counts = 0 ;
+static CharPtr current_language_model ;
+static SizeTPtr global_ngram_counts ;
+static DoublePtr global_ngram_avgfreq ;
 static size_t global_ngram_length = 0 ;
-static double *global_ngram_avgfreq = 0 ;
-NybbleTrie *global_word_frequencies = 0 ;
-LangIDPackedTrie *global_ngrams_forward = 0 ;
-LangIDPackedTrie *global_ngrams_reverse = 0 ;
+Owned<NybbleTrie> global_word_frequencies { nullptr } ;
+Owned<LangIDPackedTrie> global_ngrams_forward { nullptr } ;
+Owned<LangIDPackedTrie> global_ngrams_reverse { nullptr } ;
 
 static double center_match_factor_2 = 0.15 ;    // bidirectional models
 static double center_match_factor_1 = 0.25 ;    // forward model only
@@ -543,10 +543,10 @@ bool BidirModel::computeCenterScores(const DecodedByte *bytes,
 /************************************************************************/
 /************************************************************************/
 
-static size_t *load_ngram_counts(CFile& fp, size_t &max_length)
+static SizeTPtr load_ngram_counts(CFile& fp, size_t& max_length)
 {
    max_length = fp.read32LE() ;
-   size_t *counts = new size_t[max_length+1] ;
+   SizeTPtr counts(max_length+1) ;
    if (max_length > 0 && counts)
       {
       for (size_t i = 0 ; i <= max_length ; i++)
@@ -559,10 +559,9 @@ static size_t *load_ngram_counts(CFile& fp, size_t &max_length)
 
 //----------------------------------------------------------------------
 
-static void compute_ngram_frequencies(size_t maxlen, const size_t *counts,
-				      double *&avgfreq)
+static void compute_ngram_frequencies(size_t maxlen, const size_t* counts, DoublePtr& avgfreq)
 {
-   avgfreq = new double[maxlen+1] ;
+   avgfreq.allocate(maxlen+1) ;
    if (!avgfreq)
       return ;
    avgfreq[0] = DBL_MAX ;
@@ -578,8 +577,7 @@ static void compute_ngram_frequencies(size_t maxlen, const size_t *counts,
 
 //----------------------------------------------------------------------
 
-static unsigned most_frequent_language(DecodeBuffer &decode_buffer,
-				       const LanguageIdentifier *langid,
+static unsigned most_frequent_language(DecodeBuffer& decode_buffer, const LanguageIdentifier* langid,
 				       unsigned samples)
 {
    // ensure that we have enough data for a proper determination
@@ -590,7 +588,7 @@ static unsigned most_frequent_language(DecodeBuffer &decode_buffer,
       size_t step = (filesize - start_offset - SAMPLE_SIZE) / samples ;
       if (step == 0)
 	 step = 1 ;
-      LanguageScores *top_scores = new LanguageScores(langid->numLanguages());
+      Owned<LanguageScores> top_scores(langid->numLanguages());
       char decoded[SAMPLE_SIZE] ;
       bool literals[SAMPLE_SIZE] ;
       for (size_t i = 0 ; i < samples ; i++)
@@ -617,15 +615,13 @@ static unsigned most_frequent_language(DecodeBuffer &decode_buffer,
 	    while (end < SAMPLE_SIZE && literals[end])
 	       end++ ;
 	    if (end - start > 2)
-	       langid->identify(scores,decoded+start,end-start,
-				langid->alignments(),false,true,SAMPLE_SIZE) ;
+	       langid->identify(scores,decoded+start,end-start,langid->alignments(),false,true,SAMPLE_SIZE) ;
 	    start = end ;
 	    }
 	 top_scores->addThresholded(scores,scores->highestScore()*0.8) ;
 	 delete scores ;
 	 }
       unsigned top_lang = top_scores->highestLangID() ;
-      delete top_scores ;
       return top_lang ;
       }
    return ~0 ;
@@ -674,19 +670,17 @@ static bool load_reconstruction_data(CFile& fp, const char *filename)
       fp.seek(offset_counts) ;
       global_ngram_counts = load_ngram_counts(fp,global_ngram_length) ;
       if (global_ngram_counts)
-	 compute_ngram_frequencies(global_ngram_length,global_ngram_counts,
-				   global_ngram_avgfreq) ;
+	 compute_ngram_frequencies(global_ngram_length,global_ngram_counts,global_ngram_avgfreq) ;
       else
 	 success = false ;
       }
    if (offset_words != 0)
       {
       fp.seek(offset_words) ;
-      delete global_word_frequencies ;
-      NybbleTrie *frequencies = new NybbleTrie ;
-      global_word_frequencies = frequencies ;
-      if (frequencies)
+      global_word_frequencies.reinit() ;
+      if (global_word_frequencies)
 	 {
+	 auto frequencies = global_word_frequencies.get() ;
 	 // read the number of words to expect
 	 uint32_t count = fp.read32LE() ;
 	 uint32_t total_tokens = 0 ;
@@ -828,11 +822,11 @@ bool load_reconstruction_data_by_lang(DecodeBuffer &decode_buffer, const Languag
 
 void clear_reconstruction_data()
 {
-   delete global_word_frequencies ;	global_word_frequencies = nullptr ;
-   delete global_ngrams_forward ;	global_ngrams_forward = nullptr ;
-   delete global_ngrams_reverse ;	global_ngrams_reverse = nullptr ;
-   delete global_ngram_counts ;		global_ngram_counts = nullptr ;
-   delete global_ngram_avgfreq ;	global_ngram_avgfreq = nullptr ;
+   global_word_frequencies = nullptr ;
+   global_ngrams_forward = nullptr ;
+   global_ngrams_reverse = nullptr ;
+   global_ngram_counts = nullptr ;
+   global_ngram_avgfreq = nullptr ;
    global_ngram_length = 0 ;
    current_language_model = nullptr ;
    return ;

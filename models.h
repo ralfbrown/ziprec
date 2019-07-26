@@ -32,9 +32,9 @@
 /************************************************************************/
 /************************************************************************/
 
-extern class NybbleTrie *global_word_frequencies ;
-extern LangIDPackedTrie *global_ngrams_forward ;
-extern LangIDPackedTrie *global_ngrams_reverse ;
+extern Fr::Owned<class NybbleTrie> global_word_frequencies ;
+extern Fr::Owned<LangIDPackedTrie> global_ngrams_forward ;
+extern Fr::Owned<LangIDPackedTrie> global_ngrams_reverse ;
 
 /************************************************************************/
 /*	Types								*/

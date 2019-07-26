@@ -5,9 +5,9 @@
 /*									*/
 /*  File: partial.C - reconstruction of partial DEFLATE packet		*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 01jul2019							*/
+/*  LastEdit: 2019-07-26						*/
 /*									*/
-/*  (c) Copyright 2012,2013,2019 Ralf Brown/CMU				*/
+/*  (c) Copyright 2012,2013,2019 Carnegie Mellon University		*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -172,30 +172,8 @@ class CodeHypothesis
 
 class HuffmanTreeHypothesis
    {
-   private:
-      static Fr::SmallAlloc *allocator ;
-      static Fr::SmallAlloc *code_allocators[CODE_HYP_BUCKETS+1] ;
-      static size_t          code_alloc_used[CODE_HYP_BUCKETS+1] ;
-
-      HuffmanTreeHypothesis *m_next ;
-      HuffmanTreeHypothesis *m_prev ;
-      const HuffmanTreeHypothesis *m_parent ;
-      CodeHypothesis        *m_codes ;
-      uint32_t		     m_hashcode ;
-      uint32_t		     m_refcount ;
-      HuffmanCode	     m_EOD ;
-      HuffmanCode	     m_leftmost[MAX_BITLENGTH+2] ;
-      HuffmanCode	     m_rightmost[MAX_BITLENGTH+1] ;
-      unsigned short	     m_maxcodes ;
-      unsigned short	     m_used ;
-      uint8_t		     m_minlength ;
-      uint8_t		     m_maxlength ;
-      uint8_t		     m_min_extra ;
-      uint8_t   	     m_extra_counts[MAX_EXTRABITS+1] ;
    protected:
       HuffmanTreeHypothesis(const HuffmanTreeHypothesis *orig) ;
-      HuffmanTreeHypothesis(const HuffmanTreeHypothesis *orig,
-			    CodeHypothesis *codes, unsigned num_codes) ;
       static CodeHypothesis *newCodeBuffer(unsigned num_codes) ;
       void allocateCodeBuffer() ;
       void releaseCodeBuffer() ;
@@ -210,6 +188,7 @@ class HuffmanTreeHypothesis
       void operator delete(void *blk) { allocator->release(blk) ; }
 
       HuffmanTreeHypothesis(unsigned max_codes) ;
+      HuffmanTreeHypothesis(const HuffmanTreeHypothesis *orig, CodeHypothesis *codes, unsigned num_codes) ;
       ~HuffmanTreeHypothesis() ;
 
       // utility
@@ -280,20 +259,38 @@ class HuffmanTreeHypothesis
 
       // debugging support
       void dump() const ;
+
+   private:
+      static Fr::SmallAlloc *allocator ;
+      static Fr::SmallAlloc *code_allocators[CODE_HYP_BUCKETS+1] ;
+      static size_t          code_alloc_used[CODE_HYP_BUCKETS+1] ;
+
+      HuffmanTreeHypothesis *m_next ;
+      HuffmanTreeHypothesis *m_prev ;
+      const HuffmanTreeHypothesis *m_parent ;
+      CodeHypothesis        *m_codes ;
+      uint32_t		     m_hashcode ;
+      uint32_t		     m_refcount ;
+      HuffmanCode	     m_EOD ;
+      HuffmanCode	     m_leftmost[MAX_BITLENGTH+2] ;
+      HuffmanCode	     m_rightmost[MAX_BITLENGTH+1] ;
+      unsigned short	     m_maxcodes ;
+      unsigned short	     m_used ;
+      uint8_t		     m_minlength ;
+      uint8_t		     m_maxlength ;
+      uint8_t		     m_min_extra ;
+      uint8_t   	     m_extra_counts[MAX_EXTRABITS+1] ;
    } ;
 
 //----------------------------------------------------------------------
 
 class HuffmanHypothesis : public Fr::Object
    {
-   protected:
-      HuffmanHypothesis(const HuffmanHypothesis *,
-			const BitPointer &pos,
-			size_t extension_len) ;
    public:
 //      void *operator new(size_t) { return allocator.allocate() ; }
 //      void operator delete(void *blk) { allocator.release(blk) ; }
       HuffmanHypothesis(const BitPointer &pos) ;
+      HuffmanHypothesis(const HuffmanHypothesis*, const BitPointer& pos, size_t extension_len) ;
       ~HuffmanHypothesis() ;
 
       // accessors
@@ -363,8 +360,8 @@ class HuffmanHypothesis : public Fr::Object
 
    private:
 //      static Fr::Allocator   allocator ;
-      HuffmanTreeHypothesis *m_litcodes ;
-      HuffmanTreeHypothesis *m_distcodes ;
+      HuffmanTreeHypothesis* m_litcodes ;
+      HuffmanTreeHypothesis* m_distcodes ;
 
       HuffmanHypothesis     *m_next ;
       HuffmanHypothesis	    *m_dirnext ;

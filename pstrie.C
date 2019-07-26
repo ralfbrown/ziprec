@@ -562,19 +562,18 @@ unsigned PackedSimpleTrieNode::enumerateMatches(const EnumerationInfo *info,
 /*	Methods for class PackedTrie					*/
 /************************************************************************/
 
-LangIDPackedTrie::LangIDPackedTrie(const NybbleTrie *trie, uint32_t min_freq,
-   bool show_conversion)
+LangIDPackedTrie::LangIDPackedTrie(const NybbleTrie* trie, uint32_t min_freq, bool show_conversion)
 {
    init() ;
    if (trie)
       {
       m_size = trie->numFullByteNodes(min_freq) ;
       m_numterminals = trie->numTerminalNodes(min_freq) ;
-      m_nodes = new PackedSimpleTrieNode[m_size] ;
-      m_terminals = new PackedTrieTerminalNode[m_numterminals] ;
+      m_nodes.allocate(m_size) ;
+      m_terminals.allocate(m_numterminals) ;
       if (m_nodes && m_terminals)
 	 {
-	 PackedSimpleTrieNode *proot = &m_nodes[PTRIE_ROOT_INDEX] ;
+	 auto proot = &m_nodes[PTRIE_ROOT_INDEX] ;
 	 new (proot) PackedSimpleTrieNode ;
 	 m_used = 1 ;
 	 if (!insertChildren(proot,trie,PTRIE_ROOT_INDEX,0,min_freq))
@@ -592,8 +591,6 @@ LangIDPackedTrie::LangIDPackedTrie(const NybbleTrie *trie, uint32_t min_freq,
 	 }
       else
 	 {
-	 delete[] m_nodes ;
-	 delete[] m_terminals ;
 	 m_nodes = nullptr ; 
 	 m_terminals = nullptr ;
 	 m_size = 0 ;
@@ -624,15 +621,13 @@ LangIDPackedTrie::LangIDPackedTrie(Fr::CFile& f, const char *filename)
 	 {
 	 // unable to memory-map the file, so read its contents into buffers
 	 //   and point our variables at the buffers
-	 char *nodebuffer = new char[(m_size * sizeof(PackedSimpleTrieNode)) + (m_numterminals * sizeof(PackedTrieTerminalNode))] ;
-	 m_nodes = (PackedSimpleTrieNode*)nodebuffer ;
-	 m_terminals = (PackedTrieTerminalNode*)(m_nodes + m_size) ;
-	 m_terminals_contiguous = true ;
-	 if (!m_nodes ||
-	     f.read(m_nodes,m_size,sizeof(PackedSimpleTrieNode)) != m_size ||
-	     f.read(m_terminals,m_numterminals,sizeof(PackedTrieTerminalNode)) != m_numterminals)
+	 m_nodes.allocate(m_size) ;
+	 m_terminals.allocate(m_numterminals) ;
+	 if (!m_nodes || !m_terminals ||
+	    f.read(m_nodes.begin(),m_size,sizeof(PackedSimpleTrieNode)) != m_size ||
+	    f.read(m_terminals.begin(),m_numterminals,sizeof(PackedTrieTerminalNode)) != m_numterminals)
 	    {
-	    delete[] m_nodes ;  m_nodes = nullptr ;
+	    m_nodes = nullptr ;
 	    m_terminals = nullptr ;
 	    m_size = 0 ; 
 	    m_numterminals = 0 ;
@@ -650,12 +645,13 @@ LangIDPackedTrie::~LangIDPackedTrie()
       {
       delete m_fmap ;
       m_fmap = nullptr ;
+      m_nodes.release() ;
+      m_terminals.release() ;
       }
    else
       {
-      delete[] m_nodes ;
-      if (!m_terminals_contiguous)
-	 delete[] m_terminals ;
+      m_nodes = nullptr ;
+      m_terminals = nullptr ;
       }
    init() ;				// clear all of the fields
    return ;
@@ -666,14 +662,11 @@ LangIDPackedTrie::~LangIDPackedTrie()
 void LangIDPackedTrie::init()
 {
    m_fmap = nullptr ;
-   m_nodes = nullptr ;
-   m_terminals = nullptr ;
    m_size = 0 ;
    m_used = 0 ;
    m_numterminals = 0 ;
    m_termused = 0 ;
    m_maxkeylen = 0 ;
-   m_terminals_contiguous = false ;
    return ;
 }
 
@@ -692,7 +685,7 @@ cerr<<"out of full nodes"<<endl;
    // initialize each of the new children
    for (size_t i = 0 ; i < numchildren ; i++)
       {
-      new (m_nodes + index + i) PackedSimpleTrieNode ;
+      new (m_nodes.at(index + i)) PackedSimpleTrieNode ;
       }
    return index ;
 }
@@ -712,7 +705,7 @@ cerr<<"out of terminal nodes"<<endl;
    // initialize each of the new children
    for (size_t i = 0 ; i < numchildren ; i++)
       {
-      new (m_terminals + index + i) PackedTrieTerminalNode ;
+      new (m_terminals.at(index + i)) PackedTrieTerminalNode ;
       }
    return (index | PTRIE_TERMINAL_MASK) ;
 }

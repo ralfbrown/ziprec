@@ -152,6 +152,7 @@ class LangIDPackedTrie
       static constexpr uint32_t ROOT_INDEX = 0U ;
       static constexpr uint32_t NULL_INDEX = 0U ;
       typedef PackedSimpleTrieNode Node ;
+      typedef PackedTrieTerminalNode TermNode ;
 
       // how do we distinguish non-terminal from terminal nodes?
       static constexpr uint32_t TERMINAL_MASK = 0x80000000 ;
@@ -223,15 +224,14 @@ class LangIDPackedTrie
       bool insertTerminals(Node *parent, const NybbleTrie *trie, uint32_t node_index,
 			   unsigned keylen, uint32_t min_freq = 1) ;
    private:
-      Node    *m_nodes ; // array of nodes
-      PackedTrieTerminalNode *m_terminals ;
+      Fr::NewPtr<Node>   m_nodes ; // array of nodes
+      Fr::NewPtr<TermNode> m_terminals ;
       Fr::MemMappedFile	*m_fmap ;	 // memory-map info
       uint32_t	 	 m_size ;	 // number of nodes in m_nodes
       uint32_t		 m_used ;	 // #nodes in use (temp during ctor)
       uint32_t		 m_numterminals ;
       uint32_t		 m_termused ;
       unsigned		 m_maxkeylen ;
-      bool		 m_terminals_contiguous ;
    } ;
 
 //----------------------------------------------------------------------
