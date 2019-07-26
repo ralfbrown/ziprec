@@ -23,6 +23,7 @@
 /*                                                                      */
 /************************************************************************/
 
+#include <functional>
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
@@ -106,7 +107,7 @@ class EnumerationInfo
 /*	Global variables						*/
 /************************************************************************/
 
-void write_escaped_key(Fr::CFile& f, const uint8_t* key, unsigned keylen) ;
+void write_escaped_key(CFile& f, const uint8_t* key, unsigned keylen) ;
 
 /************************************************************************/
 /*	Helper functions						*/
@@ -132,8 +133,7 @@ PackedSimpleTrieNode::PackedSimpleTrieNode()
 
 unsigned PackedSimpleTrieNode::numChildren() const
 {
-   return (m_popcounts[lengthof(m_popcounts)-1]
-      + Fr::popcount(m_children[lengthof(m_popcounts)-1].load())) ;
+   return (m_popcounts[lengthof(m_popcounts)-1] + popcount(m_children[lengthof(m_popcounts)-1].load())) ;
 }
 
 //----------------------------------------------------------------------
@@ -155,7 +155,7 @@ uint32_t PackedSimpleTrieNode::childIndex(unsigned int N) const
       return LangIDPackedTrie::NULL_INDEX ;
    uint32_t mask = (1U << (N % 32)) - 1 ;
    uint32_t children = m_children[N/32].load() ;
-   return (firstChild() + m_popcounts[N/32] + Fr::popcount(children & mask)) ;
+   return (firstChild() + m_popcounts[N/32] + popcount(children & mask)) ;
 }
 
 //----------------------------------------------------------------------
@@ -169,7 +169,7 @@ uint32_t PackedSimpleTrieNode::childIndexIfPresent(unsigned int N) const
    if ((children & mask) == 0)
       return LangIDPackedTrie::NULL_INDEX ;
    mask-- ;
-   return (firstChild() + m_popcounts[N/32] + Fr::popcount(children & mask)) ;
+   return (firstChild() + m_popcounts[N/32] + popcount(children & mask)) ;
 }
 
 //----------------------------------------------------------------------
@@ -184,7 +184,7 @@ PackedSimpleTrieNode* PackedSimpleTrieNode::childNodeIfPresent(unsigned int N, c
    if ((children & mask) == 0)
       return nullptr ;
    mask-- ;
-   return trie->node(firstChild() + m_popcounts[N/32] + Fr::popcount(children & mask)) ;
+   return trie->node(firstChild() + m_popcounts[N/32] + popcount(children & mask)) ;
 }
 
 //----------------------------------------------------------------------
@@ -204,12 +204,12 @@ void PackedSimpleTrieNode::setChild(unsigned N)
 void PackedSimpleTrieNode::setPopCounts()
 {
    // set up running population counts for faster lookup of children
-   unsigned popcount = 0 ;
+   unsigned pcount = 0 ;
    for (size_t i = 0 ; i < lengthof(m_popcounts) ; i++)
       {
-      m_popcounts[i] = (uint8_t)popcount ;
+      m_popcounts[i] = (uint8_t)pcount ;
       uint32_t children = m_children[i].load() ;
-      popcount += Fr::popcount(children) ;
+      pcount += popcount(children) ;
       }
    return ;
 }
@@ -550,8 +550,7 @@ unsigned PackedSimpleTrieNode::enumerateMatches(const EnumerationInfo *info,
 	 {
 	 children &= (mask-1) ;
 	 PackedSimpleTrieNode *childnode
-	    = trie->node(firstChild() + m_popcounts[N/32]
-	       + Fr::popcount(children)) ;
+	    = trie->node(firstChild() + m_popcounts[N/32] + popcount(children)) ;
 	 return childnode->enumerateMatches(info,keylen+1) ;
 	 }
       return 0 ;
@@ -602,7 +601,7 @@ LangIDPackedTrie::LangIDPackedTrie(const NybbleTrie* trie, uint32_t min_freq, bo
 
 //----------------------------------------------------------------------
 
-LangIDPackedTrie::LangIDPackedTrie(Fr::CFile& f, const char *filename)
+LangIDPackedTrie::LangIDPackedTrie(CFile& f, const char *filename)
 {
    init() ;
    if (f && parseHeader(f))
@@ -806,7 +805,7 @@ bool LangIDPackedTrie::insertChildren(PackedSimpleTrieNode *parent,
 
 //----------------------------------------------------------------------
 
-bool LangIDPackedTrie::parseHeader(Fr::CFile& f)
+bool LangIDPackedTrie::parseHeader(CFile& f)
 {
    const size_t siglen = sizeof(PACKEDTRIE_SIGNATURE) ;
    char signature[siglen] ;
@@ -954,9 +953,7 @@ unsigned LangIDPackedTrie::enumerate(uint8_t *keybuf, unsigned keylength,
 
 //----------------------------------------------------------------------
 
-#include <functional>
-
-Owned<LangIDPackedTrie> LangIDPackedTrie::load(Fr::CFile& f, const char* filename)
+Owned<LangIDPackedTrie> LangIDPackedTrie::load(CFile& f, const char* filename)
 {
    if (!f)
       return nullptr ;
@@ -973,13 +970,13 @@ Owned<LangIDPackedTrie> LangIDPackedTrie::load(Fr::CFile& f, const char* filenam
 
 Owned<LangIDPackedTrie> LangIDPackedTrie::load(const char* filename)
 {
-   Fr::CInputFile fp(filename,Fr::CFile::binary) ;
+   CInputFile fp(filename,CFile::binary) ;
    return load(fp,filename) ;
 }
 
 //----------------------------------------------------------------------
 
-bool LangIDPackedTrie::writeHeader(Fr::CFile& f) const
+bool LangIDPackedTrie::writeHeader(CFile& f) const
 {
    // write the signature string
    const size_t siglen = sizeof(PACKEDTRIE_SIGNATURE) ;
@@ -1002,7 +999,7 @@ bool LangIDPackedTrie::writeHeader(Fr::CFile& f) const
 
 //----------------------------------------------------------------------
 
-bool LangIDPackedTrie::write(Fr::CFile& f) const
+bool LangIDPackedTrie::write(CFile& f) const
 {
    if (!f || !writeHeader(f))
       return false ;
@@ -1020,7 +1017,7 @@ bool LangIDPackedTrie::write(Fr::CFile& f) const
 
 bool LangIDPackedTrie::write(const char *filename) const
 {
-   Fr::COutputFile fp(filename,Fr::CFile::safe_rewrite) ;
+   COutputFile fp(filename,CFile::safe_rewrite) ;
    return this->write(fp) ? fp.close() : false ;
 }
 
@@ -1029,7 +1026,7 @@ bool LangIDPackedTrie::write(const char *filename) const
 static bool dump_ngram(const uint8_t *key, unsigned keylen,
 		       uint32_t frequency, void *user_data)
 {
-   Fr::CFile& f = *((Fr::CFile*)user_data) ;
+   CFile& f = *((CFile*)user_data) ;
    if (f && frequency != PackedSimpleTrieNode::INVALID_FREQ)
       {
       f.printf("   ") ;
@@ -1041,9 +1038,9 @@ static bool dump_ngram(const uint8_t *key, unsigned keylen,
 
 //----------------------------------------------------------------------
 
-bool LangIDPackedTrie::dump(Fr::CFile& f) const
+bool LangIDPackedTrie::dump(CFile& f) const
 {
-   Fr::LocalAlloc<uint8_t,10000> keybuf(longestKey()) ;
+   LocalAlloc<uint8_t,10000> keybuf(longestKey()) ;
    return keybuf ? enumerate(keybuf,longestKey(),dump_ngram,&f) : false ;
 }
 
@@ -1069,7 +1066,7 @@ NybbleTrie::NybbleTrie(const class LangIDPackedTrie *ptrie)
    if (ptrie)
       {
       init(ptrie->size() * 3 / 2) ;
-      Fr::LocalAlloc<uint8_t> keybuf(ptrie->longestKey()) ;
+      LocalAlloc<uint8_t> keybuf(ptrie->longestKey()) ;
       if (keybuf)
 	 {
 	 ptrie->enumerate(keybuf,ptrie->longestKey(),add_ngram,this) ;
