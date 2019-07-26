@@ -1,12 +1,12 @@
-/************************************************************************/
+/****************************** -*- C++ -*- *****************************/
 /*									*/
 /*	ZipRecover: extract text from corrupted zip/gzip streams	*/
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
-/*  Version:  1.00beta		User Interface	       			*/
-/*  LastEdit: 04feb2013							*/
+/*  Version:  1.10beta		User Interface	       			*/
+/*  LastEdit: 2019-07-26						*/
 /*									*/
-/*  (c) Copyright 2012,2013 Ralf Brown/CMU				*/
+/*  (c) Copyright 2012,2013,2019 Carnegie Mellon University		*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -36,7 +36,7 @@ using namespace std ;
 static void usage(const char *argv0)
 {
    fprintf(stderr,"ZipRecover UI v" VERSION ": interactively improve recovered data\n") ;
-   fprintf(stderr,"  Copyright 2012 Ralf Brown/Carnegie Mellon University -- GNU GPLv3\n\n") ;
+   fprintf(stderr,"  Copyright 2012,2019 Ralf Brown/Carnegie Mellon University -- GNU GPLv3\n\n") ;
    fprintf(stderr,"Usage: %s [options] recovery-file\n",argv0) ;
 //FIXME
    exit(1) ;
