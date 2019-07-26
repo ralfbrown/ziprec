@@ -4,7 +4,7 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  Version:  1.10beta		User Interface	       			*/
-/*  LastEdit: 27jun2019							*/
+/*  LastEdit: 2019-07-25						*/
 /*									*/
 /*  (c) Copyright 2012,2013,2019 Ralf Brown/CMU				*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -26,6 +26,7 @@
 #include <termios.h>
 
 #include "ui_xterm.h"
+#include "framepac/file.h"
 #include "framepac/texttransforms.h"
 
 using namespace Fr ;
@@ -39,12 +40,11 @@ static bool original_terminal_state_init = false ;
 /************************************************************************/
 /************************************************************************/
 
-static bool init_terminal_modes(FILE *fp, struct termios *term_state,
-				bool allow_bg_process = false)
+static bool init_terminal_modes(CFile& fp, struct termios *term_state, bool allow_bg_process = false)
 {
    if (!fp || !term_state)
       return false ;
-   int fd = fileno(fp) ;
+   int fd = fileno(fp.fp()) ;
    if (!isatty(fd))
       return false ;
    // get the current attributes
@@ -81,11 +81,11 @@ static bool init_terminal_modes(FILE *fp, struct termios *term_state,
 
 //----------------------------------------------------------------------
 
-static bool restore_terminal_modes(FILE *fp, const struct termios *term_state)
+static bool restore_terminal_modes(CFile& fp, const struct termios *term_state)
 {
    if (!fp || !term_state)
       return false ;
-   int fd = fileno(fp) ;
+   int fd = fileno(fp.fp()) ;
    if (tcsetattr(fd,TCSAFLUSH,term_state))
       return false ;
    return true ;

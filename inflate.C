@@ -140,18 +140,13 @@ const char *recovery_name_base = 0 ;
 /*	Helper functions						*/
 /************************************************************************/
 
-static FILE *open_output_file(char *&filename,
-			      char *default_filename,
-			      const char *filename_hint,
-			      bool using_stdin,
+static CFile open_output_file(char *&filename, char *default_filename,
+			      const char *filename_hint, bool using_stdin,
 			      const ZipRecParameters &params)
 {
-   FILE *outfp = 0 ;
-   if (params.write_format == WFMT_Listing)
-      outfp = fopen(NULL_DEVICE,"wb") ;
-   else
-      outfp = safely_open_for_write(filename,using_stdin,
-				    params.force_overwrite) ;
+   const char* outname = (params.write_format != WFMT_Listing) ? filename : NULL_DEVICE ;
+   auto opts = CFile::binary | (params.force_overwrite ? CFile::fail_if_exists : CFile::default_options) ;
+   COutputFile outfp(outname, opts, using_stdin ? nullptr : CFile::askOverwrite) ;
    // the given hinted filename may not be valid on this OS or the
    //   user may have refused to allow an overwrite, so try the
    //   default name if the open failed
@@ -159,8 +154,7 @@ static FILE *open_output_file(char *&filename,
       {
       Free(filename) ;
       filename = default_filename ;
-      outfp = safely_open_for_write(filename,using_stdin,
-				    params.force_overwrite) ;
+      return COutputFile(filename, opts, using_stdin ? nullptr : CFile::askOverwrite) ;
       }
    return outfp ;
 }
@@ -1790,10 +1784,9 @@ static bool reconstruct_stream(const char *reconst_filename,
 			       bool deflate64,
 			       bool known_end)
 {
-//FIXME!   bool using_stdin = fileinfo->usingStdin() ;
-   COutputFile recfp(reconst_filename,CFile::safe_rewrite) ;
-//   FILE *recfp = safely_open_for_write(reconst_filename,using_stdin,
-//				       params.force_overwrite) ;
+   bool using_stdin = fileinfo->usingStdin() ;
+   auto opts = CFile::binary | (params.force_overwrite ? CFile::fail_if_exists : CFile::default_options) ;
+   COutputFile recfp(reconst_filename, opts, using_stdin ? nullptr : CFile::askOverwrite) ;
    if (!recfp)
       {
       fprintf(stderr,"Unable to open temporary file '%s'\n",reconst_filename);

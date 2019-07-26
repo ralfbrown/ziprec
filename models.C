@@ -137,76 +137,6 @@ static LocationSpec model_locations[] =
 /*	Utility functions						*/
 /************************************************************************/
 
-static uint64_t read_N(FILE *fp,unsigned bytes)
-{
-   uint64_t value = 0 ;
-   for (unsigned i = 0 ; i < bytes && !feof(fp) ; i++)
-      {
-      int b = fgetc(fp) ;
-      if (b == EOF)
-	 break ;
-      value = (value << 8) | b ;
-      }
-   return value ;
-}
-
-//----------------------------------------------------------------------
-
-static uint64_t read_N(CFile& fp,unsigned bytes)
-{
-   uint64_t value = 0 ;
-   for (unsigned i = 0 ; i < bytes && !fp.eof() ; i++)
-      {
-      int b = fp.getc() ;
-      if (b == EOF)
-	 break ;
-      value = (value << 8) | b ;
-      }
-   return value ;
-}
-
-//----------------------------------------------------------------------
-
-uint64_t read_64bits(FILE *fp)
-{
-   return read_N(fp,8) ;
-}
-
-//----------------------------------------------------------------------
-
-uint64_t read_64bits(CFile& fp)
-{
-   return read_N(fp,8) ;
-}
-
-//----------------------------------------------------------------------
-
-uint32_t read_32bits(FILE *fp)
-{
-   return (uint32_t)read_N(fp,4) ;
-}
-
-//----------------------------------------------------------------------
-
-uint32_t read_32bits(CFile& fp)
-{
-   return (uint32_t)read_N(fp,4) ;
-}
-
-//----------------------------------------------------------------------
-
-uint16_t read_16bits(FILE *fp)
-{
-   return (uint16_t)read_N(fp,2) ;
-}
-
-//----------------------------------------------------------------------
-
-uint16_t read_16bits(CFile& fp)
-{
-   return (uint16_t)read_N(fp,2) ;
-}
-
 /************************************************************************/
 /*	Scoring functions						*/
 /************************************************************************/
@@ -615,13 +545,13 @@ bool BidirModel::computeCenterScores(const DecodedByte *bytes,
 
 static size_t *load_ngram_counts(CFile& fp, size_t &max_length)
 {
-   max_length = read_32bits(fp) ;
+   max_length = fp.read32LE() ;
    size_t *counts = new size_t[max_length+1] ;
    if (max_length > 0 && counts)
       {
       for (size_t i = 0 ; i <= max_length ; i++)
 	 {
-	 counts[i] = (size_t)read_64bits(fp) ;
+	 counts[i] = (size_t)fp.read64LE() ;
 	 }
       }
    return counts ;
@@ -719,10 +649,10 @@ static bool load_reconstruction_data(CFile& fp, const char *filename)
    if (fp.getc() == EOF || fp.getc() == EOF || fp.getc() == EOF)
       return false ;
    // read the offsets of the embedded models
-   uint64_t offset_forward = read_64bits(fp) ;
-   uint64_t offset_reverse = read_64bits(fp) ;
-   uint64_t offset_counts = read_64bits(fp) ;
-   uint64_t offset_words = read_64bits(fp) ;
+   uint64_t offset_forward = fp.read64LE() ;
+   uint64_t offset_reverse = fp.read64LE() ;
+   uint64_t offset_counts = fp.read64LE() ;
+   uint64_t offset_words = fp.read64LE() ;
    // load in the language models
    bool success = true ;
    if (offset_forward != 0)
@@ -758,14 +688,14 @@ static bool load_reconstruction_data(CFile& fp, const char *filename)
       if (frequencies)
 	 {
 	 // read the number of words to expect
-	 uint32_t count = read_32bits(fp) ;
+	 uint32_t count = fp.read32LE() ;
 	 uint32_t total_tokens = 0 ;
 	 for (size_t i = 0 ; i < count && !fp.eof() ; i++)
 	    {
 	    // read a word record: 64-bit frequency, 16-bit length, and then the word
-	    size_t freq = read_64bits(fp) ;
+	    size_t freq = fp.read64LE() ;
 	    total_tokens += freq ;
-	    unsigned wordlen = read_16bits(fp) ;
+	    unsigned wordlen = fp.read16LE() ;
 	    if (wordlen > MAX_WORD)
 	       {
 	       fprintf(stderr,"Invalid data in language file: word length = %u\n",

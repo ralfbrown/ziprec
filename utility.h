@@ -27,10 +27,10 @@
 #define __UTILITY_H_INCLUDED
 
 #include <cstdio>
+#include "framepac/file.h"
 
 bool ask_yes_no(const char *prompt) ;
-FILE *safely_open_for_write(const char *filename, bool reading_stdin = false,
-			    bool force_overwrite = false) ;
+Fr::CFile safely_open_for_write(const char *filename, bool reading_stdin = false, bool force_overwrite = false) ;
 
 
 #endif /* !__UTILITY_H_INCLUDED */

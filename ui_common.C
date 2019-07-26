@@ -3,10 +3,10 @@
 /*	ZipRecover: extract text from corrupted zip/gzip streams	*/
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
-/*  Version:  1.00gamma		User Interface	       			*/
-/*  LastEdit: 26apr2013							*/
+/*  Version:  1.10beta		User Interface	       			*/
+/*  LastEdit: 2019-07-25						*/
 /*									*/
-/*  (c) Copyright 2012,2013 Ralf Brown/CMU				*/
+/*  (c) Copyright 2012,2013,2019 Carnegie Mellon University		*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -26,8 +26,10 @@
 #include <cstring>
 #include <iostream>
 #include "ui_common.h"
+#include "framepac/file.h"
 
 using namespace std ;
+using namespace Fr ;
 
 /************************************************************************/
 /************************************************************************/
@@ -284,13 +286,12 @@ bool ZiprecUserInterface::loadConfig(const char *cfgfile)
       return true ;
    if (!*cfgfile)
       return false ;
-   FILE *fp = fopen(cfgfile,"r") ;
+   CInputFile fp(cfgfile) ;
    if (!fp)
       return false ;
    bool success = true ;
 //FIXME
 
-   fclose(fp) ;
    return success ;
 }
 

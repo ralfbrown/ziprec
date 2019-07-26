@@ -5,7 +5,7 @@
 /*									*/
 /*  File: dbuffer.C - file-wise buffer for bytes/back-references	*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 27jun2019							*/
+/*  LastEdit: 2019-07-25						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -1114,8 +1114,7 @@ bool DecodeBuffer::applyReplacement(uint32_t which) const
 
 //----------------------------------------------------------------------
 
-bool DecodeBuffer::writeReplacements(size_t num_discontinuities,
-				     unsigned max_backref, FILE *reffp)
+bool DecodeBuffer::writeReplacements(size_t num_discontinuities, unsigned max_backref, CFile& reffp)
 {
    if (!outputFile() || numReplacements() == 0)
       return false ;
@@ -1203,58 +1202,52 @@ unsigned DecodeBuffer::countReplacements(unsigned num_discont,
 
 //----------------------------------------------------------------------
 
-bool DecodeBuffer::applyReplacements(const char *reference_filename,
-				     bool include_predecessors)
+bool DecodeBuffer::applyReplacements(const char *reference_filename, bool include_predecessors)
 {
    if (!inputFile() || !outputFile() || numReplacements() == 0)
       return false ;
    bool success = true ;
-   FILE *reffp = 0 ;
-   if (reference_filename)
+   // open the reference file and skip any un-extracted starting portion
+   CInputFile reffp(reference_filename,CFile::binary) ;
+   if (reffp)
       {
-      // open the reference file and skip any un-extracted starting portion
-      reffp = fopen(reference_filename,"rb") ;
-      if (reffp)
+      auto refsize = reffp.filesize() ;
+      bool forced_load = loadedBytes() == 0 ;
+      if (forced_load)
+	 loadBytes(false,false) ;
+      if (discontinuities() == 0)
 	 {
-	 off_t refsize = file_size(reffp) ;
-	 bool forced_load = loadedBytes() == 0 ;
-	 if (forced_load)
-	    loadBytes(false,false) ;
-	 if (discontinuities() == 0)
+	 off_t pos = refsize - totalBytes() ;
+	 // if the first "real" item in the buffer is a
+	 //   discontinuity marker, we need to adjust the offset
+	 //   because we should not have counted the marker and
+	 //   also need to allow for output of the reconstructed
+	 //   history window
+	 DecodedByte disc = m_filebuffer[firstRealByte()] ;
+	 if (disc.isDiscontinuity())
 	    {
-	    off_t pos = refsize - totalBytes() ;
-	    // if the first "real" item in the buffer is a
-	    //   discontinuity marker, we need to adjust the offset
-	    //   because we should not have counted the marker and
-	    //   also need to allow for output of the reconstructed
-	    //   history window
-	    DecodedByte disc = m_filebuffer[firstRealByte()] ;
-	    if (disc.isDiscontinuity())
+	    pos++ ;
+	    if (include_predecessors)
 	       {
-	       pos++ ;
-	       if (include_predecessors)
-		  {
-		  unsigned max_backref = disc.discontinuitySize() ;
-		  if (max_backref == referenceWindow())
-		     max_backref = highestReplacement(0,max_backref) ;
-		  if (max_backref) max_backref-- ; //ref=0 doesn't exist
-		  if (max_backref < pos)
-		     pos -= max_backref ;
-		  else
-		     pos = 0 ;
-		  }
+	       unsigned max_backref = disc.discontinuitySize() ;
+	       if (max_backref == referenceWindow())
+		  max_backref = highestReplacement(0,max_backref) ;
+	       if (max_backref) max_backref-- ; //ref=0 doesn't exist
+	       if (max_backref < pos)
+		  pos -= max_backref ;
+	       else
+		  pos = 0 ;
 	       }
-	    fseek(reffp,pos,SEEK_SET) ;
 	    }
-	 if (forced_load)
-	    clearLoadedBytes() ;
+	 reffp.seek(pos) ;
 	 }
+      if (forced_load)
+	 clearLoadedBytes() ;
       }
    // rewind to the start of the actual byte data
    rewindInput() ;
    m_prev_correct = true ;
-   m_show_errors = (show_plaintext_errors && verbosity > 0
-		    && (writeFormat() == WFMT_PlainText)) ;
+   m_show_errors = (show_plaintext_errors && verbosity > 0 && (writeFormat() == WFMT_PlainText)) ;
    unsigned num_discont = 0 ;
    size_t bytecount = 0 ;
    while (!inputFile().eof() && bytecount++ < totalBytes())
@@ -1299,8 +1292,8 @@ bool DecodeBuffer::applyReplacements(const char *reference_filename,
 	 if (reffp && bytecount > 0)
 	    {
 	    // Note: the following only works for a single discontinuity per file
-	    off_t pos = file_size(reffp) - totalBytes() + bytecount ;
-	    fseek(reffp,pos,SEEK_SET) ;
+	    auto pos = reffp.filesize() - totalBytes() + bytecount ;
+	    reffp.seek(pos) ;
 	    }
 	 continue ;
 	 }
@@ -1338,19 +1331,16 @@ bool DecodeBuffer::applyReplacements(const char *reference_filename,
 	 break ;
 	 }
       }
-   if (reffp)
-      fclose(reffp) ;
    return success ;
 }
 
 //----------------------------------------------------------------------
 
-void DecodeBuffer::compareToReference(DecodedByte dbyte, FILE *reffp,
-				      bool replaced)
+void DecodeBuffer::compareToReference(DecodedByte dbyte, CFile& reffp, bool replaced)
 {
    if (reffp)
       {
-      int refch = fgetc(reffp) ;
+      int refch = reffp.getc() ;
       INCR_STAT(total_bytes) ;
       INCR_STAT_IF(dbyte.isLiteral()&&dbyte.byteValue()==refch,identical_bytes) ;
       if (replaced)

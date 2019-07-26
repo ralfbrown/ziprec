@@ -43,6 +43,7 @@ using namespace std ;
 #include "whatlang2/langid.h"
 #include "framepac/config.h"
 #include "framepac/byteorder.h"
+#include "framepac/file.h"
 #include "framepac/mmapfile.h"
 #include "framepac/texttransforms.h"
 #include "framepac/timer.h"
@@ -560,20 +561,18 @@ static bool extract_stream(const LocationList *start_sig,
       }
    else if (filename)
       {
-      FILE *outfp = safely_open_for_write(filename,fileinfo->usingStdin(),
-					  params.force_overwrite) ;
+      auto opts = CFile::binary | (params.force_overwrite ? CFile::fail_if_exists : CFile::default_options) ;
+      COutputFile outfp(filename,opts,fileinfo->usingStdin()?nullptr:CFile::askOverwrite) ;
       if (outfp)
 	 {
 	 if (prefix && prefix_len > 0)
-	    (void)fwrite(prefix,sizeof(char),prefix_len,outfp) ;
+	    outfp.write(prefix,prefix_len) ;
 	 if (include_header && start_sig)
 	    {
 	    unsigned headerlen = start_offset - start_sig->offset() ;
-	    (void)fwrite(buffer_start + start_sig->offset(),sizeof(char),
-			 headerlen,outfp) ;
+	    outfp.write(buffer_start + start_sig->offset(),headerlen) ;
 	    }
-	 success = fwrite(buffer_start + start_offset,sizeof(char),
-			  count,outfp) == count ;
+	 success = outfp.write(buffer_start + start_offset,count) == count ;
 	 }
       }
    return success ;
@@ -1566,11 +1565,11 @@ static LocationList *filter_signatures(LocationList *locations,
 
 //----------------------------------------------------------------------
 
-static char *load_file(FILE *zipfp, const char *filename, size_t &datalen,
+static char* load_file(CFile& zipfp, const char *filename, size_t &datalen,
 		       MemMappedFile* &memory_mapped, const ZipRecParameters &params)
 {
    char *buffer = nullptr ;
-   memory_mapped = (zipfp == stdin) ? nullptr : new MemMappedROFile(filename) ;
+   memory_mapped = (zipfp.fp() == stdin) ? nullptr : new MemMappedROFile(filename) ;
    if (memory_mapped)
       {
       buffer = **memory_mapped ;
@@ -1589,14 +1588,14 @@ static char *load_file(FILE *zipfp, const char *filename, size_t &datalen,
       {
       datalen = 0 ;
       errno = 0 ;
-      if (fseek(zipfp,0,SEEK_END) == -1 || errno == EBADF)
+      if (!zipfp.seek(0,SEEK_END) || errno == EBADF)
 	 {
 	 //FIXME: params.scan_range_start = 0 ;
 	 // not seekable, i.e. stdin via a pipe
 	 size_t buflen = buffer_max_size ;
 	 size_t bufpos = 0 ;
 	 buffer = new char[buflen] ;
-	 while (!feof(zipfp))
+	 while (!zipfp.eof())
 	    {
 	    if (bufpos >= buflen)
 	       {
@@ -1615,8 +1614,7 @@ static char *load_file(FILE *zipfp, const char *filename, size_t &datalen,
 		  buflen = newlen ;
 		  }
 	       }
-	    size_t count
-	       = fread(buffer+bufpos,sizeof(char),buflen-bufpos,zipfp) ;
+	    size_t count = zipfp.read(buffer+bufpos,buflen-bufpos) ;
 	    if (count == 0)
 	       break ;
 	    bufpos += count ;
@@ -1625,16 +1623,16 @@ static char *load_file(FILE *zipfp, const char *filename, size_t &datalen,
 	 }
       else
 	 {
-	 off_t flen = ftell(zipfp) ;
+	 off_t flen = zipfp.tell() ;
 	 if ((off_t)params.scan_range_end < flen)
 	    flen = (off_t)params.scan_range_end ;
-	 fseek(zipfp,0,SEEK_SET) ;
+	 zipfp.seek(0) ;
 	 if (flen > 0)
 	    {
 	    buffer = new char[flen] ;
 	    if (buffer)
 	       {
-	       datalen = fread(buffer,sizeof(char),flen,zipfp) ;
+	       datalen = zipfp.read(buffer,flen) ;
 	       }
 	    }
 	 }
@@ -1644,7 +1642,7 @@ static char *load_file(FILE *zipfp, const char *filename, size_t &datalen,
 
 //----------------------------------------------------------------------
 
-static void unload_file(char *filedata, MemMappedFile *memory_mapped)
+static void unload_file(char* filedata, MemMappedFile* memory_mapped)
 {
    if (memory_mapped)
       delete memory_mapped ;
@@ -2446,18 +2444,16 @@ bool process_file_data(const ZipRecParameters &params,
 
 //----------------------------------------------------------------------
 
-static bool recover_file(FILE *zipfp, const ZipRecParameters &params,
-			 FileInformation *fileinfo, unsigned &seqnum)
+static bool recover_file(CFile& zipfp, const ZipRecParameters &params, FileInformation *fileinfo, unsigned &seqnum)
 {
    bool success = false ;
    size_t datalen ;
-   MemMappedFile *memory_mapped ;
-   char *filedata = load_file(zipfp,fileinfo->inputFile(),datalen,
-			      memory_mapped,params) ;
+   MemMappedFile* memory_mapped ;
+   char* filedata = load_file(zipfp,fileinfo->inputFile(),datalen, memory_mapped,params) ;
    if (filedata)
       {
       fileinfo->setBuffer(filedata,filedata+datalen) ;
-      fileinfo->usingStdin(zipfp == stdin) ;
+      fileinfo->usingStdin(zipfp.fp() == stdin) ;
       success = process_file_data(params, fileinfo, seqnum) ;
       }
    unload_file(filedata,memory_mapped) ;
@@ -2482,17 +2478,17 @@ bool recover_file(const ZipRecParameters &params, FileInformation *fileinfo)
 	 seqnum = 1 ;
 	 while (!feof(stdin))
 	    {
-	    if (recover_file(stdin, params, fileinfo, seqnum))
+	    CFile zipfp(stdin) ;
+	    if (recover_file(zipfp, params, fileinfo, seqnum))
 	       success = true ;
 	    }
 	 }
       else
 	 {
-	 FILE *zipfp = fopen(filename,"rb") ;
+	 CInputFile zipfp(filename,CFile::binary) ;
 	 if (zipfp)
 	    {
 	    success = recover_file(zipfp, params, fileinfo, seqnum) ;
-	    fclose(zipfp) ;
 	    }
 	 }
       }

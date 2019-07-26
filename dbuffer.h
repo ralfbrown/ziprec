@@ -176,9 +176,8 @@ class DecodeBuffer
       bool finalize() ;
       bool convert(size_t offset, size_t length, unsigned char unk,
 		   char *result, bool *literals = 0) ;
-      bool writeReplacements(size_t num_discontinuities,
-			     unsigned max_backref, FILE *reffp = 0) ;
-      void compareToReference(DecodedByte db, FILE *reffp, bool replaced) ;
+      bool writeReplacements(size_t num_discontinuities, unsigned max_backref, Fr::CFile& reffp) ;
+      void compareToReference(DecodedByte db, Fr::CFile& reffp, bool replaced) ;
 
    private: // methods
       bool finalizeDB() ;

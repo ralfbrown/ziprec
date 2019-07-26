@@ -5,7 +5,7 @@
 /*									*/
 /*  File: utility.C - utility functions					*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 27jun2019							*/
+/*  LastEdit: 2019-07-25						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -38,6 +38,8 @@ using namespace std ;
 #elif defined(unix)
 #  include <sys/stat.h>  // for mkdir()
 #endif
+
+using namespace Fr ;
 
 /************************************************************************/
 /*	Utility functions and macros					*/
@@ -78,29 +80,11 @@ bool ask_yes_no(const char *prompt)
 
 //----------------------------------------------------------------------
 
-FILE *safely_open_for_write(const char *filename, bool reading_stdin,
-			    bool force_overwrite)
+CFile safely_open_for_write(const char *filename, bool reading_stdin, bool force_overwrite)
 {
-   if (!filename || !*filename)
-      return 0 ;
-   if (access(filename,F_OK) == 0 && !force_overwrite)
-      {
-      // file already exists, so check whether OK to overwrite
-      // if we are reading the archive from standard input, we can't ask the
-      //   user, so always fail
-      if (reading_stdin)
-	 return 0 ;
-      unsigned namelen = strlen(filename) ;
-      char *prompt = new char[namelen + 60] ;
-      strcpy(prompt,"File ") ;
-      strcat(prompt,filename) ;
-      strcat(prompt," exists.  Overwrite (Y/N)? ") ;
-      bool allow = ask_yes_no(prompt) ;
-      delete [] prompt ;
-      if (!allow)
-	 return 0 ;
-      }
-   return fopen(filename,"wb") ;
+   COutputFile f(filename,(force_overwrite?CFile::default_options:CFile::fail_if_exists)|CFile::binary,
+      reading_stdin?nullptr:CFile::askOverwrite) ;
+   return f ;
 }
 
 // end of file utility.C //
