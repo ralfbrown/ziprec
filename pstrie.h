@@ -226,7 +226,7 @@ class LangIDPackedTrie
    private:
       Fr::NewPtr<Node>   m_nodes ; // array of nodes
       Fr::NewPtr<TermNode> m_terminals ;
-      Fr::MemMappedFile	*m_fmap ;	 // memory-map info
+      Fr::MemMappedROFile m_fmap ;	 // memory-map info
       uint32_t	 	 m_size ;	 // number of nodes in m_nodes
       uint32_t		 m_used ;	 // #nodes in use (temp during ctor)
       uint32_t		 m_numterminals ;

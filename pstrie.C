@@ -608,13 +608,12 @@ LangIDPackedTrie::LangIDPackedTrie(Fr::CFile& f, const char *filename)
    if (f && parseHeader(f))
       {
       size_t offset = f.tell() ;
-      auto fmap = new MemMappedROFile(filename) ;
-      if (fmap)
+      m_fmap.open(filename) ;
+      if (m_fmap)
 	 {
 	 // we can memory-map the file, so just point our member variables
 	 //   at the mapped data
-	 m_fmap = fmap ;
-	 m_nodes = (PackedSimpleTrieNode*)(**fmap + offset) ;
+	 m_nodes = (PackedSimpleTrieNode*)(**m_fmap + offset) ;
 	 m_terminals = (PackedTrieTerminalNode*)(m_nodes + m_size) ;
 	 }
       else
@@ -643,8 +642,6 @@ LangIDPackedTrie::~LangIDPackedTrie()
 {
    if (m_fmap)
       {
-      delete m_fmap ;
-      m_fmap = nullptr ;
       m_nodes.release() ;
       m_terminals.release() ;
       }
@@ -661,7 +658,6 @@ LangIDPackedTrie::~LangIDPackedTrie()
 
 void LangIDPackedTrie::init()
 {
-   m_fmap = nullptr ;
    m_size = 0 ;
    m_used = 0 ;
    m_numterminals = 0 ;
