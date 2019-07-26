@@ -106,7 +106,7 @@ class DecodeBuffer
       unsigned offset() const { return m_bufptr ; }
       WriteFormat writeFormat() const { return m_format ; }
       unsigned char unknownChar() const { return m_unknown ; }
-      DecodedByte *fileBuffer() const { return m_filebuffer ; }
+      DecodedByte *fileBuffer() const { return m_filebuffer.begin() ; }
       const DecodedByte *replacements() const { return m_replacements ; }
       bool haveReplacement(size_t which) const
 	 { return replacements() && which <= numReplacements()
@@ -184,8 +184,8 @@ class DecodeBuffer
       bool finalizeDB() ;
 
    private:
-      DecodedByte    *m_buffer ;
-      DecodedByte    *m_filebuffer ;
+      Fr::NewPtr<DecodedByte> m_buffer ;
+      Fr::NewPtr<DecodedByte> m_filebuffer ;
       ContextFlags   *m_context_flags ;
       DecodedByte    *m_replacements ;
       Fr::CFile       m_infp ;

@@ -52,7 +52,7 @@ using namespace Fr ;
 
 WildcardCounts::WildcardCounts(unsigned size)
 {
-   m_counts = new uint32_t[size] ;
+   m_counts.allocate(size) ;
    m_numcounts = m_counts ? size : 0 ;
    clear() ;
    return ;
@@ -128,8 +128,7 @@ DecodeBuffer::DecodeBuffer(Fr::CFile& fp, WriteFormat format, unsigned char unkn
 {
    m_refwindow = deflate64 ? REFERENCE_WINDOW_DEFLATE64 : REFERENCE_WINDOW_DEFLATE ;
    m_deflate64 = deflate64 ;
-   m_buffer = new DecodedByte[referenceWindow()] ;
-   m_filebuffer = 0 ;
+   m_buffer.allocate(referenceWindow()) ;
    m_context_flags = 0 ;
    m_backingfile = nullptr ;
    // Note: we need to be able to deal with multiple ref-windows worth of
@@ -152,7 +151,6 @@ DecodeBuffer::~DecodeBuffer()
    finalize() ;
    delete m_wildcardcounts ; m_wildcardcounts = 0 ;
    delete [] m_replacements ;   m_replacements = 0 ;
-   delete [] m_buffer ; m_buffer = 0 ;
    m_refwindow = 0 ;
    m_numreplacements = 0 ;
    return ;
@@ -784,16 +782,15 @@ void DecodeBuffer::rewindInput()
 DecodedByte *DecodeBuffer::loadBytes(bool add_sentinel, bool include_wildcards)
 {
    if (totalBytes() == 0)
-      return 0 ;
+      return nullptr ;
    size_t extra = (add_sentinel ? 2 : 0) + (include_wildcards ? numReplacements() : 0) ;
-   DecodedByte *bytes = new DecodedByte[totalBytes()+extra] ;
+   NewPtr<DecodedByte> bytes(totalBytes()+extra) ;
    if (!bytes)
-      return 0 ;
+      return nullptr ;
    ContextFlags *context_flags = new ContextFlags[totalBytes()+extra] ;
    if (!context_flags)
       {
-      delete [] bytes ;
-      return 0 ;
+      return nullptr ;
       }
    m_loadedbytes = totalBytes() + extra ;
    delete m_wildcardcounts ;
@@ -865,15 +862,14 @@ DecodedByte *DecodeBuffer::loadBytes(bool add_sentinel, bool include_wildcards)
       m_filebuffer = bytes ;
       m_context_flags = context_flags ;
       m_wildcardcounts->setHighestUsed() ;
-      return bytes ;
+      return m_filebuffer.begin() ;
       }
    else
       {
-      delete [] bytes ;
       delete [] context_flags ;
-      m_filebuffer = 0 ;
+      m_filebuffer = nullptr ;
       m_context_flags = 0 ;
-      return 0 ;
+      return nullptr ;
       }
 }
 
@@ -882,8 +878,7 @@ DecodedByte *DecodeBuffer::loadBytes(bool add_sentinel, bool include_wildcards)
 void DecodeBuffer::clearLoadedBytes()
 {
    m_loadedbytes = 0 ;
-   delete [] m_filebuffer ;
-   m_filebuffer = 0 ;
+   m_filebuffer = nullptr ;
    return ;
 }
 
