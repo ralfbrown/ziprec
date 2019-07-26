@@ -701,7 +701,7 @@ cerr<<"out of terminal nodes"<<endl;
    // initialize each of the new children
    for (size_t i = 0 ; i < numchildren ; i++)
       {
-      new (m_terminals.at(index + i)) PackedTrieTerminalNode ;
+      m_terminals.at(index + i)->reinit() ;
       }
    return (index | PTRIE_TERMINAL_MASK) ;
 }
@@ -954,14 +954,17 @@ unsigned LangIDPackedTrie::enumerate(uint8_t *keybuf, unsigned keylength,
 
 //----------------------------------------------------------------------
 
-LangIDPackedTrie *LangIDPackedTrie::load(Fr::CFile& f, const char *filename)
+#include <functional>
+
+Owned<LangIDPackedTrie> LangIDPackedTrie::load(Fr::CFile& f, const char* filename)
 {
    if (!f)
       return nullptr ;
-   auto trie = new LangIDPackedTrie(f,filename) ;
+   // std::reference_wrapper is an ugly hack to keep the templated Owned ctor from trying to copy-construct
+   //    a CFile from f....
+   Owned<LangIDPackedTrie> trie(std::reference_wrapper<CFile>(f),filename) ;
    if (!trie || !trie->good())
       {
-      delete trie ;
       return nullptr ;
       }
    return trie ;
@@ -969,7 +972,7 @@ LangIDPackedTrie *LangIDPackedTrie::load(Fr::CFile& f, const char *filename)
 
 //----------------------------------------------------------------------
 
-LangIDPackedTrie *LangIDPackedTrie::load(const char *filename)
+Owned<LangIDPackedTrie> LangIDPackedTrie::load(const char* filename)
 {
    Fr::CInputFile fp(filename,Fr::CFile::binary) ;
    return load(fp,filename) ;

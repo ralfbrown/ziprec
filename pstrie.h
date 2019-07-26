@@ -209,8 +209,8 @@ class LangIDPackedTrie
 			 bool require_extensible_match) const ;
 
       // I/O
-      static LangIDPackedTrie *load(Fr::CFile& f, const char *filename) ;
-      static LangIDPackedTrie *load(const char *filename) ;
+      static Fr::Owned<LangIDPackedTrie> load(Fr::CFile& f, const char *filename) ;
+      static Fr::Owned<LangIDPackedTrie> load(const char* filename) ;
       bool write(Fr::CFile& f) const ;
       bool write(const char* filename) const ;
       bool dump(Fr::CFile& f) const ;
