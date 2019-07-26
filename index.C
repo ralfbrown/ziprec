@@ -34,14 +34,13 @@ using namespace Fr ;
 
 WildcardIndex::WildcardIndex(const DecodedByte *bytes, size_t num_bytes,
 			     unsigned max_ref)
+   : m_counts(max_ref), m_locations(max_ref)
 {
-   m_counts = New<uint32_t>(max_ref) ;
-   m_locations = New<uint32_t*>(max_ref) ;
    if (!m_counts || !m_locations)
       {
       m_indexsize = 0 ;
-      Free(m_counts) ;	m_counts = 0 ;
-      Free(m_locations) ;	m_locations = 0 ;
+      m_counts = nullptr ;
+      m_locations = nullptr ;
       return ;
       }
    m_indexsize = max_ref ;
@@ -56,12 +55,7 @@ WildcardIndex::WildcardIndex(const DecodedByte *bytes, size_t num_bytes,
       }
    for (size_t i = 0 ; i < indexSize() ; i++)
       {
-      if (m_counts[i])
-	 {
-	 m_locations[i] = New<uint32_t>(m_counts[i]) ;
-	 }
-      else
-	 m_locations[i] = 0 ;
+      m_locations[i] = m_counts[i] ? new uint32_t[m_counts[i]] : nullptr ;
       }
    LocalAlloc<uint32_t,50000> in_use(indexSize()+1) ;
    for (size_t i = 0 ; i <= indexSize() ; i++)
@@ -88,10 +82,8 @@ WildcardIndex::~WildcardIndex()
 {
    for (size_t i = 0 ; i < indexSize() ; i++)
       {
-      Free(m_locations[i]) ;
+      delete[] m_locations[i] ;
       }
-   Free(m_counts) ;	m_counts = 0 ;
-   Free(m_locations) ;	m_locations = 0 ;
    m_indexsize = 0 ;
    return ;
 }

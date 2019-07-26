@@ -4,10 +4,10 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  File: index.h - index for unknown back-references (wildcards)	*/
-/*  Version:  1.00gamma				       			*/
-/*  LastEdit: 09may2013							*/
+/*  Version:  1.10beta				       			*/
+/*  LastEdit: 2019-07-25						*/
 /*									*/
-/*  (c) Copyright 2011,2012,2013 Ralf Brown/CMU				*/
+/*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 #include "dbyte.h"
+#include "framepac/smartptr.h"
 
 /************************************************************************/
 /*	Types								*/
@@ -39,14 +40,8 @@
 
 class WildcardIndex
    {
-   private:
-      uint32_t *m_counts ;
-      uint32_t **m_locations ;
-      unsigned m_indexsize ;
-
    public:
-      WildcardIndex(const DecodedByte *bytes, size_t num_bytes,
-		    unsigned max_ref) ;
+      WildcardIndex(const DecodedByte *bytes, size_t num_bytes, unsigned max_ref) ;
       ~WildcardIndex() ;
 
       // accessors
@@ -54,10 +49,13 @@ class WildcardIndex
       uint32_t location(unsigned wildcard, unsigned index) const
          { return (wildcard < indexSize() && index < m_counts[wildcard]) 
 	       ? m_locations[wildcard][index] : UINT32_MAX ; }
-      const uint32_t *locations(unsigned wildcard) const
-         { return m_locations[wildcard] ; }
-      unsigned numLocations(unsigned wildcard) const
-         { return m_counts[wildcard] ; }
+      const uint32_t *locations(unsigned wildcard) const { return m_locations[wildcard] ; }
+      unsigned numLocations(unsigned wildcard) const { return m_counts[wildcard] ; }
+
+   private:
+      Fr::NewPtr<uint32_t>  m_counts ;
+      Fr::NewPtr<uint32_t*> m_locations ;
+      unsigned              m_indexsize ;
    } ;
 
 #endif /* !__INDEX_H_INCLUDED */
