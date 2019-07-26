@@ -129,7 +129,6 @@ DecodeBuffer::DecodeBuffer(Fr::CFile& fp, WriteFormat format, unsigned char unkn
    m_refwindow = deflate64 ? REFERENCE_WINDOW_DEFLATE64 : REFERENCE_WINDOW_DEFLATE ;
    m_deflate64 = deflate64 ;
    m_buffer.allocate(referenceWindow()) ;
-   m_context_flags = 0 ;
    m_backingfile = nullptr ;
    // Note: we need to be able to deal with multiple ref-windows worth of
    //   replacements, but we won't know how many until later!
@@ -138,7 +137,6 @@ DecodeBuffer::DecodeBuffer(Fr::CFile& fp, WriteFormat format, unsigned char unkn
    m_outfp = 0 ;
    m_numbytes = 0 ;
    m_loadedbytes = 0 ;
-   m_wildcardcounts = 0 ;
    setOutputFile(fp,format,unknown_char,friendly_filename,0,test_mode) ;
    rewind() ;
    return ;
@@ -149,8 +147,6 @@ DecodeBuffer::DecodeBuffer(Fr::CFile& fp, WriteFormat format, unsigned char unkn
 DecodeBuffer::~DecodeBuffer()
 {
    finalize() ;
-   delete m_wildcardcounts ; m_wildcardcounts = 0 ;
-   delete [] m_replacements ;   m_replacements = 0 ;
    m_refwindow = 0 ;
    m_numreplacements = 0 ;
    return ;
@@ -288,8 +284,7 @@ bool DecodeBuffer::alignDiscontinuity(unsigned which,
 	 max_repl = referenceWindow() ;
       // back up to the start of the longest possible overlap region
       file_buffer -= max_repl ;
-      const DecodedByte *replacements
-	 = m_replacements + which * referenceWindow() ;
+      auto replacements = m_replacements.at(which * referenceWindow()) ;
       double total_count = countReplacements(which,max_repl) ;
       // weight byte values inversely by their frequency in the candidate
       //   overlap region
@@ -448,7 +443,7 @@ bool DecodeBuffer::finalize()
 
 DecodedByte *DecodeBuffer::copyReplacements() const
 {
-   DecodedByte *repl = 0 ;
+   DecodedByte *repl = nullptr ;
    if (numReplacements() > 0 && replacements())
       {
       repl = new DecodedByte[numReplacements()] ;
@@ -467,33 +462,25 @@ DecodedByte *DecodeBuffer::copyReplacements() const
 
 bool DecodeBuffer::expandReplacements(size_t added_repl)
 {
-   DecodedByte *replacements
-      = new DecodedByte[numReplacements() + added_repl + 1] ;
-   if (replacements)
-      {
-      if (numReplacements() > 0)
-	 {
-	 for (size_t i = 0 ; i <= numReplacements() ; i++)
-	    {
-	    replacements[i] = m_replacements[i] ;
-	    }
-	 }
-      size_t first = numReplacements() ? 1 : 0 ;
-      for (size_t i = first ; i <= added_repl ; i++)
-	 {
-	 size_t loc = i + numReplacements() ;
-	 replacements[loc].setOriginalLocation(loc) ;
-	 }
-      delete [] m_replacements ;
-      m_replacements = replacements ;
-      m_numreplacements += added_repl ;
-      return true ;
-      }
-   else
-      {
-      delete [] replacements ;
+   auto replacements = new DecodedByte[numReplacements() + added_repl + 1] ;
+   if (!replacements)
       return false ;
+   if (numReplacements() > 0)
+      {
+      for (size_t i = 0 ; i <= numReplacements() ; i++)
+	 {
+	 replacements[i] = m_replacements[i] ;
+	 }
       }
+   size_t first = numReplacements() ? 1 : 0 ;
+   for (size_t i = first ; i <= added_repl ; i++)
+      {
+      size_t loc = i + numReplacements() ;
+      replacements[loc].setOriginalLocation(loc) ;
+      }
+   m_replacements = replacements ;
+   m_numreplacements += added_repl ;
+   return true ;
 }
 
 //----------------------------------------------------------------------
@@ -548,29 +535,25 @@ bool DecodeBuffer::setReplacements(const DecodedByte *repl, size_t num_repl,
    if (init)
       {
       m_highest_replaced = 0 ;
-      m_replacements = 0 ;
+      m_replacements = nullptr ;
       }
    m_numreplacements = num_repl ;
    bool success = true ;
    if (repl)
       {
-      m_replacements = new DecodedByte[num_repl+1] ;
+      m_replacements.allocate(num_repl+1) ;
       if (m_replacements)
 	 {
-	 for (size_t i = 0 ; i < num_repl ; i++)
-	    {
-	    m_replacements[i] = repl[i] ;
-	    }
+	 std::copy_n(repl,num_repl,m_replacements.begin()) ;
 	 }
       else
 	 {
-	 delete [] m_replacements ; m_replacements = 0 ;
 	 success = false ;
 	 }
       }
    else
       {
-      m_replacements = 0 ;
+      m_replacements = nullptr ;
       m_numreplacements = 0 ;
       }
    return success ;
@@ -696,12 +679,9 @@ bool DecodeBuffer::openInputFile(CFile& fp, const char *filename)
    // read the optional replacement information
    if (repl_highest > 0)
       {
-      delete [] m_replacements ;
-      m_replacements = new DecodedByte[repl_highest+1] ;
+      m_replacements.allocate(repl_highest+1) ;
       if (!m_replacements)
 	 {
-	 delete [] m_replacements ;
-	 m_replacements = 0 ;
 	 m_numreplacements = 0 ;
 	 repl_highest = 0 ;
 	 success = false ;
@@ -728,7 +708,7 @@ bool DecodeBuffer::openInputFile(CFile& fp, const char *filename)
       DeflatePacketDesc *packets = 0 ;
       for (size_t i = 0 ; i < packet_count && !inputFile().eof() ; i++)
 	 {
-	 DeflatePacketDesc *p = new DeflatePacketDesc(inputFile()) ;
+	 auto p = new DeflatePacketDesc(inputFile()) ;
 	 if (p)
 	    {
 	    p->setNext(packets) ;
@@ -787,15 +767,14 @@ DecodedByte *DecodeBuffer::loadBytes(bool add_sentinel, bool include_wildcards)
    NewPtr<DecodedByte> bytes(totalBytes()+extra) ;
    if (!bytes)
       return nullptr ;
-   ContextFlags *context_flags = new ContextFlags[totalBytes()+extra] ;
+   NewPtr<ContextFlags> context_flags(totalBytes()+extra) ;
    if (!context_flags)
       {
       return nullptr ;
       }
    m_loadedbytes = totalBytes() + extra ;
-   delete m_wildcardcounts ;
-   m_wildcardcounts = new WildcardCounts(referenceWindow()) ;
-   bool success = (m_wildcardcounts != 0) ;
+   m_wildcardcounts.allocate(referenceWindow()) ;
+   bool success = (m_wildcardcounts != nullptr) ;
    rewindInput() ;
    size_t ofs = 0 ;
    if (add_sentinel)
@@ -866,9 +845,8 @@ DecodedByte *DecodeBuffer::loadBytes(bool add_sentinel, bool include_wildcards)
       }
    else
       {
-      delete [] context_flags ;
       m_filebuffer = nullptr ;
-      m_context_flags = 0 ;
+      m_context_flags = nullptr ;
       return nullptr ;
       }
 }

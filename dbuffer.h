@@ -61,6 +61,7 @@ class ContextFlags
 class WildcardCounts
    {
    public:
+      WildcardCounts() = default ;
       WildcardCounts(unsigned size) ;
       ~WildcardCounts() ;
 
@@ -81,9 +82,9 @@ class WildcardCounts
 
    private:
       Fr::NewPtr<uint32_t> m_counts ;
-      unsigned             m_numcounts ;
-      mutable unsigned     m_prevhighest ;
-      bool                 m_known_highest ;
+      unsigned             m_numcounts { 0 } ;
+      mutable unsigned     m_prevhighest { 0 } ;
+      bool                 m_known_highest { false } ;
    } ;
 
 //----------------------------------------------------------------------
@@ -114,9 +115,8 @@ class DecodeBuffer
       bool inferredLiteral(size_t which) const
 	 { return replacements() && which <= numReplacements() &&
 	       replacements()[which].isInferredLiteral() ; }
-      ContextFlags *contextFlags() const { return m_context_flags ; }
-      ContextFlags contextFlags(size_t which) const
-         { return m_context_flags[which] ; }
+      ContextFlags *contextFlags() const { return m_context_flags.begin() ; }
+      ContextFlags contextFlags(size_t which) const { return m_context_flags[which] ; }
       size_t numReplacements() const { return m_numreplacements ; }
       size_t highestReplacement() const { return m_highest_replaced ; }
       size_t highestReplacement(unsigned num_discont,
@@ -129,10 +129,8 @@ class DecodeBuffer
       unsigned discontinuities() const ;
       DecodedByte *copyReplacements() const ;
       const char *friendlyFilename() const { return m_filename ; }
-      const WildcardCounts *wildcardCounts() const
-	 { return m_wildcardcounts ; }
-      unsigned copyBufferTail(unsigned char *result,
-			      unsigned num_bytes) const ;
+      const WildcardCounts *wildcardCounts() const { return m_wildcardcounts ; }
+      unsigned copyBufferTail(unsigned char *result, unsigned num_bytes) const ;
 
       // manipulators
       void rewind() { m_bufptr = 0 ; }
@@ -184,15 +182,15 @@ class DecodeBuffer
       bool finalizeDB() ;
 
    private:
-      Fr::NewPtr<DecodedByte> m_buffer ;
-      Fr::NewPtr<DecodedByte> m_filebuffer ;
-      ContextFlags   *m_context_flags ;
-      DecodedByte    *m_replacements ;
+      Fr::NewPtr<DecodedByte>    m_buffer ;
+      Fr::NewPtr<DecodedByte>    m_filebuffer ;
+      Fr::NewPtr<ContextFlags>   m_context_flags ;
+      Fr::NewPtr<DecodedByte>    m_replacements ;
+      Fr::NewPtr<WildcardCounts> m_wildcardcounts ;
       Fr::CFile       m_infp ;
       Fr::CFile       m_outfp ;
       const char     *m_filename ;	// filename for WFMT_Listing
       Fr::CharPtr     m_backingfile ;
-      WildcardCounts *m_wildcardcounts ;
       unsigned        m_bufptr ;
       unsigned	      m_refwindow ;
       size_t          m_numreplacements ;
