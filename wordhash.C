@@ -36,12 +36,12 @@ WordString::WordString()
 
 //----------------------------------------------------------------------
 
-WordString::WordString(const uint8_t *word, unsigned length)
+WordString::WordString(const uint8_t* word, unsigned length)
 {
    initClear() ;
    if (word && length > 0)
       {
-      m_chars = new WordCharacter[length] ;
+      m_chars.allocate(length) ;
       if (m_chars)
 	 {
 	 m_length = length ;
@@ -57,20 +57,17 @@ WordString::WordString(const uint8_t *word, unsigned length)
 
 //----------------------------------------------------------------------
 
-WordString::WordString(const WordCharacter *word, unsigned length)
+WordString::WordString(const WordCharacter* word, unsigned length)
 {
    initClear() ;
    if (word && length > 0)
       {
-      m_chars = new WordCharacter[length] ;
+      m_chars.allocate(length) ;
       if (m_chars)
 	 {
 	 m_length = length ;
 	 m_frequency = 1 ;
-	 for (size_t i = 0 ; i < length ; i++)
-	    {
-	    m_chars[i] = word[i] ;
-	    }
+	 std::copy_n(word,length,m_chars.begin()) ;
 	 }
       }
    return ;
@@ -88,7 +85,7 @@ WordString::WordString(const WordString *orig)
       m_userflag = orig->isFlagged() ;
       if (m_length > 0 && orig->m_chars)
 	 {
-	 m_chars = new WordCharacter[m_length] ;
+	 m_chars.allocate(m_length) ;
 	 if (m_chars)
 	    {
 	    for (size_t i = 0 ; i < m_length ; i++)
@@ -121,7 +118,7 @@ WordString::WordString(const WordString *first, WordCharacter separator,
       m_frequency = (first->frequency()+second->frequency())/2 ;
       m_wildcards = first->hasWildcards() || second->hasWildcards() ;
       m_userflag = first->isFlagged() || second->isFlagged() ;
-      m_chars = new WordCharacter[m_length] ;
+      m_chars.allocate(m_length) ;
       if (m_chars)
 	 {
 	 for (size_t i = 0 ; i < len1 ; i++)
@@ -160,7 +157,7 @@ WordString::WordString(const WordString *first, const WordString *second,
 		     third->hasWildcards()) ;
       m_userflag = (first->isFlagged() || second->isFlagged() ||
 		    third->isFlagged()) ;
-      m_chars = new WordCharacter[m_length] ;
+      m_chars.allocate(m_length) ;
       if (m_chars)
 	 {
 	 for (size_t i = 0 ; i < len1 ; i++)
@@ -196,11 +193,10 @@ WordString::WordString(const WordString &orig)
    m_userflag = orig.isFlagged() ;
    if (m_length > 0 && orig.m_chars)
       {
-      m_chars = new WordCharacter[m_length] ;
+      m_chars.allocate(m_length) ;
       if (m_chars)
 	 {
-	 for (size_t i = 0 ; i < m_length ; i++)
-	    m_chars[i] = orig.character(i) ;
+	 std::copy_n(orig.m_chars.begin(),m_length,m_chars.begin()) ;
 	 }
       else
 	 m_length = 0 ;
@@ -229,7 +225,7 @@ WordString::WordString(const WordString &orig, bool add_sentinels)
    m_userflag = orig.isFlagged() ;
    if (m_length > 0 && orig.m_chars)
       {
-      m_chars = new WordCharacter[m_length] ;
+      m_chars.allocate(m_length) ;
       if (m_chars)
 	 {
 	 for (size_t i = 0 ; i < m_length - 2 * ofs ; i++)
@@ -245,7 +241,6 @@ WordString::WordString(const WordString &orig, bool add_sentinels)
       }
    else
       {
-      m_chars = 0 ;
       m_length = 0 ;
       }
    return ;
@@ -255,7 +250,7 @@ WordString::WordString(const WordString &orig, bool add_sentinels)
 
 void WordString::initClear()
 {
-   m_chars = 0 ;
+   m_chars = nullptr ;
    m_frequency = 0 ;
    m_length = 0 ;
    m_wildcards = false ;
@@ -267,8 +262,6 @@ void WordString::initClear()
 
 WordString::~WordString()
 {
-   delete [] m_chars ;
-   m_chars = 0 ;
    m_length = 0 ;
    return ;
 }

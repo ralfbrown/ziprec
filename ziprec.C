@@ -42,6 +42,8 @@ using namespace std ;
 #include "recover.h"
 #include "reconstruct.h"
 
+using namespace Fr ;
+
 extern void print_partial_packet_statistics() ;
 
 /************************************************************************/
@@ -157,10 +159,8 @@ static void parse_offset_range(const char *arg, ZipRecParameters &params,
 
 //----------------------------------------------------------------------
 
-static void parse_reconstruction_opts(const char *arg,
-				      LanguageIdentifier *&langid,
-				      WordLengthModel *&lenmodel,
-				      ZipRecParameters &params)
+static void parse_reconstruction_opts(const char* arg, LanguageIdentifier*& langid,
+				      Owned<WordLengthModel>& lenmodel, ZipRecParameters& params)
 {
    if (!arg || !*arg)
       return ;
@@ -205,8 +205,7 @@ static void parse_reconstruction_opts(const char *arg,
       {
       if (arg[1] == 'l')
 	 {
-	 delete lenmodel ;
-	 lenmodel = new WordLengthModel ;
+	 lenmodel.reinit() ;
 	 }
       else if (arg[1] == 'w')
 	 {
@@ -455,7 +454,7 @@ int main(int argc, char **argv)
    FileFormat file_format = FF_Default ;
    bool gzip_by_extension = false ;
    LanguageIdentifier *langid = 0 ;
-   WordLengthModel *lenmodel = 0 ;
+   Owned<WordLengthModel> lenmodel { nullptr } ;
    ZipRecParameters params ;
 
    while (argc > 1 && argv[1][0] == '-' && argv[1][1] != '\0')
@@ -548,8 +547,7 @@ int main(int argc, char **argv)
       NybbleTrie *wordmodel = 0 ;
       if (params.use_word_model)
 	 wordmodel = global_word_frequencies ;
-      FileInformation fileinfo(input_file,langid,lenmodel,wordmodel,
-			       output_directory,format) ;
+      FileInformation fileinfo(input_file,langid,lenmodel,wordmodel,output_directory,format) ;
       if (!recover_file(params,&fileinfo))
 	 {
 	 fprintf(stderr,"Unable to recover file %s\n",input_file) ;

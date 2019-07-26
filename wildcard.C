@@ -160,8 +160,8 @@ void WildcardSet::removeAll()
 /************************************************************************/
 
 WildcardCollection::WildcardCollection(unsigned max_ref, bool allow_all)
+   : m_wildcards(max_ref)
 {
-   m_wildcards = new WildcardSet[max_ref] ;
    if (!m_wildcards)
       {
       m_numsets = 0 ;
@@ -186,15 +186,14 @@ WildcardCollection::WildcardCollection(unsigned max_ref, bool allow_all)
 
 //----------------------------------------------------------------------
 
-WildcardCollection::WildcardCollection(const WildcardCollection *orig,
-				       bool allow_all_if_empty)
+WildcardCollection::WildcardCollection(const WildcardCollection* orig, bool allow_all_if_empty)
 {
    if (!orig)
       {
       m_numsets = 0 ;
       return  ;
       }
-   m_wildcards = new WildcardSet[orig->numSets()] ;
+   m_wildcards.allocate(orig->numSets()) ;
    if (!m_wildcards)
       {
       m_numsets = 0 ;

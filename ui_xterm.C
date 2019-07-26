@@ -4,9 +4,9 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  Version:  1.10beta		User Interface	       			*/
-/*  LastEdit: 2019-07-25						*/
+/*  LastEdit: 2019-07-26						*/
 /*									*/
-/*  (c) Copyright 2012,2013,2019 Ralf Brown/CMU				*/
+/*  (c) Copyright 2012,2013,2019 Carnegie Mellon University		*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -188,36 +188,26 @@ static void sigsegv_handler(int)
 /************************************************************************/
 
 ZiprecUIXterm::ZiprecUIXterm()
+   : m_sigint(SIGINT,sigint_handler),
+     m_sigill(SIGILL,sigill_handler),
+     m_sigfpe(SIGFPE,sigfpe_handler)
 {
    m_term_state_OK = init_terminal_modes(stdin,&m_term_state) ;
    get_window_size(m_rows,m_columns) ;
-   m_sigint = new SignalHandler(SIGINT,sigint_handler) ;
-   m_sigill = new SignalHandler(SIGILL,sigill_handler) ;
-   m_sigfpe = new SignalHandler(SIGFPE,sigfpe_handler) ;
 #ifdef SIGWINCH
-   m_sigwinch = new SignalHandler(SIGWINCH,sigwinch_handler) ;
-#else
-   m_sigwinch = 0 ;
+   m_sigwinch.reinit(SIGWINCH,sigwinch_handler) ;
 #endif /* SIGWINCH */
 #ifdef SIGHUP
-   m_sighup = new SignalHandler(SIGHUP,sighup_handler) ;
-#else
-   m_sighup = 0 ;
+   m_sighup.reinit(SIGHUP,sighup_handler) ;
 #endif
 #ifdef SIGPIPE
-   m_sigpipe = new SignalHandler(SIGPIPE,sigpipe_handler) ;
-#else
-   m_sigpipe = 0 ;
+   m_sigpipe.reinit(SIGPIPE,sigpipe_handler) ;
 #endif /* SIGPIPE */
 #ifdef SIGBUS
-   m_sigbus = new SignalHandler(SIGBUS,sigbus_handler) ;
-#else
-   m_sigbus = 0 ;
+   m_sigbus.reinit(SIGBUS,sigbus_handler) ;
 #endif /* SIGBUS */
 #ifdef SIGSEGV
-   m_sigsegv = new SignalHandler(SIGSEGV,sigsegv_handler) ;
-#else
-   m_sigsegv = 0 ;
+   m_sigsegv.reinit(SIGSEGV,sigsegv_handler) ;
 #endif /* SIGSEGV */
    return ;
 }
@@ -228,13 +218,6 @@ ZiprecUIXterm::~ZiprecUIXterm()
 {
    if (m_term_state_OK)
       restore_terminal_modes(stdin,&m_term_state) ;
-   delete m_sigill ;
-   delete m_sigfpe ;
-   delete m_sigwinch ;
-   delete m_sighup ;
-   delete m_sigpipe ;
-   delete m_sigbus ;
-   delete m_sigsegv ;
    return ;
 }
 

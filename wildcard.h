@@ -4,10 +4,10 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  File:     wildcard.h						*/
-/*  Version:  1.21							*/
-/*  LastEdit: 09feb2013							*/
+/*  Version:  1.30							*/
+/*  LastEdit: 2019-07-26						*/
 /*                                                                      */
-/*  (c) Copyright 2011,2012,2013 Ralf Brown/Carnegie Mellon University	*/
+/*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -27,6 +27,7 @@
 #define __WILDCARD_H_INCLUDED
 
 #include <limits.h>
+#include "framepac/smartptr.h"
 
 using namespace std ;
 
@@ -90,14 +91,10 @@ class WildcardSet
 
 class WildcardCollection
    {
-   private:
-      WildcardSet *m_wildcards ;
-      unsigned	   m_numsets ;
    public:
       WildcardCollection(unsigned max_ref, bool allow_all = false) ;
-      WildcardCollection(const WildcardCollection *,
-			 bool allow_all_if_empty = false) ;
-      ~WildcardCollection() {}
+      WildcardCollection(const WildcardCollection*, bool allow_all_if_empty = false) ;
+      ~WildcardCollection() = default ;
 
       // accessors
       unsigned numSets() const { return m_numsets ; }
@@ -133,6 +130,10 @@ class WildcardCollection
       void allowAllIfEmpty() ;
       void copy(const WildcardCollection *source,
 		bool allow_all_if_empty = false) ;
+
+   private:
+      Fr::NewPtr<WildcardSet> m_wildcards ;
+      unsigned	              m_numsets ;
    } ;
 
 #endif /* !WILDCARD_H_INCLUDED */

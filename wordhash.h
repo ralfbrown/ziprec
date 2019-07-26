@@ -65,12 +65,6 @@ class WordCharacter : public DecodedByte
 class WordString
    {
    private:
-      WordCharacter *m_chars ;
-      size_t	     m_frequency ;
-      unsigned       m_length ;
-      bool	     m_wildcards ;
-      bool	     m_userflag ;
-   private:
       void initClear() ;
    public:
       WordString() ;
@@ -104,6 +98,13 @@ class WordString
       // comparison
       int compareText(const WordString *other) const ;
       bool operator == (const WordString &other) const ;
+
+   private:
+      Fr::NewPtr<WordCharacter> m_chars ;
+      size_t	     m_frequency ;
+      unsigned       m_length ;
+      bool	     m_wildcards ;
+      bool	     m_userflag ;
    } ;
 
 //----------------------------------------------------------------------

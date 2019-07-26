@@ -28,25 +28,15 @@
 #include "ui_common.h"
 #include <termios.h>
 #include "framepac/signal.h"
+#include "framepac/smartptr.h"
 
 /************************************************************************/
 /************************************************************************/
 
 class ZiprecUIXterm : public ZiprecUICommon
    {
-   private:
-      Fr::SignalHandler  *m_sigint ;
-      Fr::SignalHandler  *m_sigill ;
-      Fr::SignalHandler  *m_sigfpe ;
-      Fr::SignalHandler  *m_sigwinch ;
-      Fr::SignalHandler  *m_sighup ;
-      Fr::SignalHandler  *m_sigpipe ;
-      Fr::SignalHandler  *m_sigbus ;
-      Fr::SignalHandler  *m_sigsegv ;
-      struct termios 	  m_term_state ;
-      unsigned		  m_rows ;
-      unsigned		  m_columns ;
-      bool		  m_term_state_OK ;
+   public:
+      typedef Fr::Owned<Fr::SignalHandler> SigHandler ;
    public:
       ZiprecUIXterm() ;
       virtual ~ZiprecUIXterm() ;
@@ -75,6 +65,20 @@ class ZiprecUIXterm : public ZiprecUICommon
       virtual bool shiftResyncForward() ;
       virtual bool shiftResyncBackward() ;
       virtual bool exitCommand() ;
+      
+   private:
+      SigHandler     m_sigint ;
+      SigHandler     m_sigill ;
+      SigHandler     m_sigfpe ;
+      SigHandler     m_sigwinch { nullptr } ;
+      SigHandler     m_sighup { nullptr } ;
+      SigHandler     m_sigpipe { nullptr } ;
+      SigHandler     m_sigbus { nullptr } ;
+      SigHandler     m_sigsegv { nullptr } ;
+      struct termios m_term_state ;
+      unsigned	     m_rows ;
+      unsigned	     m_columns ;
+      bool	     m_term_state_OK ;
    } ;
 
 #endif /* !UI_XTERM_H_INCLUDED */
