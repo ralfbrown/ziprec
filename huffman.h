@@ -89,6 +89,7 @@ typedef bool HuffmanTreeIterFn(HuffSymbol sym, VariableBits codestring, void* us
 class HuffmanTree
    {
    public:
+      HuffmanTree() : m_bits(0), m_prefix(0) {}
       HuffmanTree(unsigned bits, VariableBits prefix, HuffmanTree* parent = nullptr, unsigned parentloc = 0) ;
       ~HuffmanTree() ;
 

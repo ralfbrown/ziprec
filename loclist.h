@@ -5,9 +5,9 @@
 /*									*/
 /*  File: loclist.h - stream location references			*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 27jun2019							*/
+/*  LastEdit: 2019-07-26						*/
 /*									*/
-/*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
+/*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -83,16 +83,10 @@ enum SignatureType
 
 class LocationList
    {
-   private:
-      static Fr::SmallAlloc* allocator ;
-      LocationList *m_next ;
-      off_t m_offset ;
-      SignatureType m_sigtype ;
-
    public:
       void *operator new(size_t) { return allocator->allocate() ; }
       void operator delete(void *blk) { allocator->release(blk) ; }
-      LocationList(SignatureType st, off_t offset, LocationList *nxt = 0)
+      LocationList(SignatureType st, off_t offset, LocationList *nxt = nullptr)
 	 { m_offset = offset ; m_sigtype = st ; m_next = nxt ; }
       ~LocationList() { if (m_next) delete m_next ; m_next = 0 ; }
 
@@ -104,9 +98,16 @@ class LocationList
       off_t headerEndOffset(const char *buffer, bool zip64 = false) const ;
 
       // manipulators
+      static LocationList* push(SignatureType st, off_t offset, LocationList* nxt)
+	 { return new LocationList(st,offset,nxt) ; }
       void setNext(LocationList *nxt) { m_next = nxt ; }
       LocationList *reverse() ;
 
+   private:
+      static Fr::SmallAlloc* allocator ;
+      LocationList *m_next ;
+      off_t m_offset ;
+      SignatureType m_sigtype ;
    } ;
 
 #endif /* !__LOCLIST_H_INCLUDED */

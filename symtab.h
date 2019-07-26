@@ -5,9 +5,9 @@
 /*									*/
 /*  File: symtab.h - DEFLATE symbol tables				*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 28jun2019							*/
+/*  LastEdit: 2019-07-26						*/
 /*									*/
-/*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
+/*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -24,6 +24,7 @@
 /************************************************************************/
 
 #include "framepac/memory.h"
+#include "framepac/smartptr.h"
 #include "huffman.h"
 
 /************************************************************************/
@@ -31,14 +32,6 @@
 
 class HuffSymbolTable
    {
-   private:
-      static Fr::SmallAlloc* allocator ;
-      HuffmanLengthTable *m_lengthtable ;
-      HuffmanTree        *m_codetree ;
-      HuffmanTree        *m_distancetree ;
-      VariableBits	  m_eod ;
-      bool		  m_deflate64 ;
-
    public:
       void *operator new(size_t) { return allocator->allocate() ; }
       void operator delete(void *blk) { allocator->release(blk) ; }
@@ -69,6 +62,14 @@ class HuffSymbolTable
 
       // debugging support
       void dump() const ;
+
+   private:
+      static Fr::SmallAlloc* allocator ;
+      HuffmanLengthTable*    m_lengthtable ;
+      Fr::Owned<HuffmanTree> m_codetree ;
+      Fr::Owned<HuffmanTree> m_distancetree ;
+      VariableBits	     m_eod ;
+      bool		     m_deflate64 ;
    } ;
 
 /************************************************************************/

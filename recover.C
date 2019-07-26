@@ -4,9 +4,9 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-16						*/
+/*  LastEdit: 2019-07-26						*/
 /*									*/
-/*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
+/*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -88,8 +88,7 @@ using namespace Fr ;
 /*	Forward declarations						*/
 /************************************************************************/
 
-static char *get_gzip_filename_hint(const LocationList *prev,
-				    const char *buffer_start) ;
+static CharPtr get_gzip_filename_hint(const LocationList* prev, const char* buffer_start) ;
 
 /************************************************************************/
 /*	Type definitions						*/
@@ -242,11 +241,10 @@ static bool is_stdin(const char *filename)
 
 //----------------------------------------------------------------------
 
-static char *extract_local_header_filename(const LocationList *loc,
-					   const char *buffer_start)
+static CharPtr extract_local_header_filename(const LocationList *loc, const char *buffer_start)
 {
    if (!loc)
-      return 0 ;
+      return nullptr ;
    // the filename is stored at offset 30 from the start of the local file
    //   header, and the length is stored (in little-endian format) in the
    //   two bytes at offset 26
@@ -256,12 +254,12 @@ static char *extract_local_header_filename(const LocationList *loc,
    for (size_t i = 0 ; i < len ; i++)
       {
       if (buffer_start[loc->offset() + 30 + i] < ' ')
-	 return 0 ;
+	 return nullptr ;
       }
-   char *name = new char[len+1] ;
+   CharPtr name(len+1) ;
    if (name)
       {
-      memcpy(name,buffer_start + loc->offset() + 30,len) ;
+      std::copy_n(buffer_start + loc->offset() + 30, len, name.begin()) ;
       name[len] = '\0' ;
       }
    return name ;
@@ -269,8 +267,7 @@ static char *extract_local_header_filename(const LocationList *loc,
 
 //----------------------------------------------------------------------
 
-static uint32_t extract_local_header_original_size(const LocationList *loc,
-						   const char *buffer_start)
+static uint32_t extract_local_header_original_size(const LocationList* loc, const char* buffer_start)
 {
    if (!loc)
       return 0 ;
@@ -285,19 +282,18 @@ static uint32_t extract_local_header_original_size(const LocationList *loc,
 
 //----------------------------------------------------------------------
 
-static char *extract_central_dir_filename(const LocationList *loc,
-					  const char *buffer_start)
+static CharPtr extract_central_dir_filename(const LocationList* loc, const char* buffer_start)
 {
    if (!loc)
-      return 0 ;
+      return nullptr ;
    // the filename is stored at offset 46 from the start of the central dir
    //   entry, and the length is stored (in little-endian format) in the
    //   two bytes at offset 28
    unsigned len = get_word(buffer_start + loc->offset() + 28) ;
-   char *name = new char[len+1] ;
+   CharPtr name(len+1) ;
    if (name)
       {
-      memcpy(name,buffer_start + loc->offset() + 46,len) ;
+      std::copy_n(buffer_start + loc->offset() + 46, len, name.begin()) ;
       name[len] = '\0' ;
       }
    return name ;
@@ -305,8 +301,7 @@ static char *extract_central_dir_filename(const LocationList *loc,
 
 //----------------------------------------------------------------------
 
-static uint32_t extract_central_dir_local_offset(const LocationList *loc,
-						 const char *buffer_start)
+static uint32_t extract_central_dir_local_offset(const LocationList* loc, const char* buffer_start)
 {
    if (!loc)
       return 0 ;
@@ -318,8 +313,7 @@ static uint32_t extract_central_dir_local_offset(const LocationList *loc,
 
 //----------------------------------------------------------------------
 
-static uint32_t extract_central_dir_original_size(const LocationList *loc,
-						  const char *buffer_start)
+static uint32_t extract_central_dir_original_size(const LocationList* loc, const char* buffer_start)
 {
    if (!loc)
       return 0 ;
@@ -334,8 +328,7 @@ static uint32_t extract_central_dir_original_size(const LocationList *loc,
 
 //----------------------------------------------------------------------
 
-static uint32_t extract_central_dir_end_cdir_offset(const LocationList *loc,
-						    const char *buffer_start)
+static uint32_t extract_central_dir_end_cdir_offset(const LocationList* loc, const char* buffer_start)
 {
    if (!loc)
       return 0 ;
@@ -594,19 +587,15 @@ static void dump_signature_list(const char *start,
 	 if (locations->signatureType() == ST_LocalFileHeader)
 	    {
 	    // print the filename stored in the local header
-	    char *name = extract_local_header_filename(locations,start) ;
-	    fprintf(stdout, "\tfilename = '%s'\n",name) ;
-	    delete [] name ;
+	    auto name = extract_local_header_filename(locations,start) ;
+	    fprintf(stdout, "\tfilename = '%s'\n",*name) ;
 	    }
 	 else if (locations->signatureType() == ST_CentralDirEntry)
 	    {
 	    // print the filename stored in the central directory entry
-	    char *name = extract_central_dir_filename(locations,start) ;
-	    uint32_t offset
-	       = extract_central_dir_local_offset(locations,start) ;
-	    fprintf(stdout, "\tfilename = '%s', local header at %lu\n",name,
-		    (unsigned long)offset) ;
-	    delete [] name ;
+	    auto name = extract_central_dir_filename(locations,start) ;
+	    uint32_t offset = extract_central_dir_local_offset(locations,start) ;
+	    fprintf(stdout, "\tfilename = '%s', local header at %lu\n",*name,(unsigned long)offset) ;
 	    // remember the start of the central directory
 	    if (dir_offset == 0)
 	       dir_offset = locations->offset() ;
@@ -624,11 +613,10 @@ static void dump_signature_list(const char *start,
 	    }
 	 else if (locations->signatureType() == ST_gzipHeader)
 	    {
-	    char *name = get_gzip_filename_hint(locations,start) ;
+	    auto name = get_gzip_filename_hint(locations,start) ;
 	    if (name)
 	       {
-	       fprintf(stdout,"\tfilename = '%s'\n",name) ;
-	       delete [] name ;
+	       fprintf(stdout,"\tfilename = '%s'\n",*name) ;
 	       }
 	    }
 	 }
@@ -864,7 +852,7 @@ static LocationList *add_PNG_chunk_end(const char *bufpos,
    uint32_t chunk_len = chklen->load() ;
    if (bufpos + chunk_len < buffer_end)
       {
-      return new LocationList(ST_PNGChunkEnd,offset+chunk_len,locations) ;
+      return LocationList::push(ST_PNGChunkEnd,offset+chunk_len,locations) ;
       }
    return locations ;
 }
@@ -882,14 +870,12 @@ static LocationList *scan_for_gzip_signatures(const char *buffer_start,
       {
       if (is_gzip_header(buffer_start,bufpos))
 	 {
-	 locations = new LocationList(ST_gzipHeader,bufpos - buffer_start,
-				      locations) ;
+	 locations = LocationList::push(ST_gzipHeader,bufpos - buffer_start, locations) ;
 	 }
       }
    // finally, add a dummy header record for the end of the file
-   size_t eof_offset = (buffer_end - buffer_start >= 8
-			? buffer_end - buffer_start - 8 : 0) ;
-   locations = new LocationList(ST_gzipEOF,eof_offset,locations) ;
+   size_t eof_offset = (buffer_end - buffer_start >= 8 ? buffer_end - buffer_start - 8 : 0) ;
+   locations = LocationList::push(ST_gzipEOF,eof_offset,locations) ;
    locations = locations->reverse() ;
    return locations ;
 }
@@ -911,7 +897,7 @@ static LocationList *scan_for_zlib_signatures(const ZipRecParameters &params,
       {
       if (valid_zlib_stream(bufpos,allow_fixedHuff))
 	 {
-	 locations = new LocationList(ST_ZlibHeader,bufpos - buffer_start,
+	 locations = LocationList::push(ST_ZlibHeader,bufpos - buffer_start,
 				      locations) ;
 	 INCR_STAT(zlib_file_header) ;
 	 if (verbosity >= VERBOSITY_SCAN)
@@ -926,7 +912,7 @@ static LocationList *scan_for_zlib_signatures(const ZipRecParameters &params,
    // finally, add a dummy header record for the end of the file
    size_t eof_offset = (buffer_end - buffer_start >= 4
 			? buffer_end - buffer_start - 4 : 0) ;
-   locations = new LocationList(ST_ZlibEOF,eof_offset,locations) ;
+   locations = LocationList::push(ST_ZlibEOF,eof_offset,locations) ;
    locations = locations->reverse() ;
    return locations ;
 }
@@ -940,7 +926,7 @@ static LocationList *check_ZIP_header(const char *bufpos,
    if (bufpos[2] == 0x01 && bufpos[3] == 0x02 && bufpos[4] >= bufpos[6])
       {
       // central directory entry
-      locations = new LocationList(ST_CentralDirEntry,offset,
+      locations = LocationList::push(ST_CentralDirEntry,offset,
 				   locations) ;
       INCR_STAT(central_dir_entry) ;
       }
@@ -948,7 +934,7 @@ static LocationList *check_ZIP_header(const char *bufpos,
 	    (get_word(bufpos + 26) > 0))
       {
       // local file header; check that filename length is nonzero
-      locations = new LocationList(ST_LocalFileHeader,offset,
+      locations = LocationList::push(ST_LocalFileHeader,offset,
 				   locations) ;
       INCR_STAT(local_file_header) ;
       }
@@ -957,7 +943,7 @@ static LocationList *check_ZIP_header(const char *bufpos,
       if (bufpos[3] == 0x05)
 	 {
 	 // central directory digital signature
-	 locations = new LocationList(ST_CentralDirSignature,offset,
+	 locations = LocationList::push(ST_CentralDirSignature,offset,
 				      locations) ;
 	 }
       else if (bufpos[3] == 0x06 && bufpos[5] < 0x40 &&
@@ -972,7 +958,7 @@ static LocationList *check_ZIP_header(const char *bufpos,
 	 uint16_t dir_disk = get_word(bufpos + 6) ;
 	 if (dir_disk <= this_disk)
 	    {
-	    locations = new LocationList(ST_EndOfCentralDir,offset,
+	    locations = LocationList::push(ST_EndOfCentralDir,offset,
 					 locations) ;
 	    INCR_STAT(end_of_central_dir) ;
 	    }
@@ -988,7 +974,7 @@ static LocationList *check_ZIP_header(const char *bufpos,
 	 //   bytes or span more than 16M parts :-)
 	 // additionally, the start of the central directory can't
 	 //   be on a disk greater than the total number of disks
-	 locations = new LocationList(ST_EndOfCentralDir64,offset,
+	 locations = LocationList::push(ST_EndOfCentralDir64,offset,
 				      locations) ;
 	 INCR_STAT(end_of_central_dir) ;
 	 }
@@ -997,7 +983,7 @@ static LocationList *check_ZIP_header(const char *bufpos,
 	 // Zip64 end of central directory locator; we assume
 	 //  that the archive doesn't span more than 16M parts
 	 //  :-) to reduce false positives
-	 locations = new LocationList(ST_EndOfCentralDirLocator,offset,
+	 locations = LocationList::push(ST_EndOfCentralDirLocator,offset,
 				      locations) ;
 	 }
       else if (bufpos[3] == 0x08 && bufpos[7] == 0)
@@ -1005,7 +991,7 @@ static LocationList *check_ZIP_header(const char *bufpos,
 	 // extra data record; we'll assume that there will
 	 //   never be more than 16MB in the extra field to reduce
 	 //   false positives
-	 locations = new LocationList(ST_ExtraData,offset,
+	 locations = LocationList::push(ST_ExtraData,offset,
 				      locations) ;
 	 }
       }
@@ -1021,14 +1007,14 @@ static LocationList *check_ZIP_header(const char *bufpos,
 	  locations->signatureType() == ST_EndOfCentralDir64 ||
 	  locations->signatureType() == ST_EndOfCentralDirLocator)
 	 {
-	 locations = new LocationList(ST_SplitArchiveIndicator,offset,
+	 locations = LocationList::push(ST_SplitArchiveIndicator,offset,
 				      locations) ;
 	 }
       else
 	 {
 	 //FIXME: check that compressed-size field is <= uncomp size
 	 //  (difficulty: may be either 4 or 8 byte fields!)
-	 locations = new LocationList(ST_DataDescriptor,offset,
+	 locations = LocationList::push(ST_DataDescriptor,offset,
 				      locations) ;
 	 }
       }
@@ -1036,7 +1022,7 @@ static LocationList *check_ZIP_header(const char *bufpos,
       {
       // flag: archive created as split/spanned archive, but only
       //   required a single segment (only valid at offset 0 in file)
-      locations = new LocationList(ST_SplitArchiveSingleSegment,offset,
+      locations = LocationList::push(ST_SplitArchiveSingleSegment,offset,
 				   locations) ;
       }
    else
@@ -1122,7 +1108,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	       if (version < 0x0410 && bufpos[23] == 0)
 		  {
 		  // WavPack record header
-		  locations = new LocationList(ST_WavPackRecordHeader,offset,
+		  locations = LocationList::push(ST_WavPackRecordHeader,offset,
 					       locations) ;
 		  }
 	       }
@@ -1133,7 +1119,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 		(bufpos[3] >= '1' && bufpos[3] <= '9'))
 	       {
 	       // BZIP2 stream header (BZh1 through BZh9)
-	       locations = new LocationList(ST_BZIP2StreamHeader,offset,
+	       locations = LocationList::push(ST_BZIP2StreamHeader,offset,
 					    locations) ;
 	       }
 	    else if (bufpos[1] == 'L' && bufpos[2] == 'Z' && bufpos[3] == 0x01)
@@ -1142,7 +1128,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	       // check for a sane filename length (<512)
 	       if ((unsigned char)bufpos[5] < 2)
 		  {
-		  locations = new LocationList(ST_ALZipFileHeader,offset,
+		  locations = LocationList::push(ST_ALZipFileHeader,offset,
 					       locations) ;
 		  INCR_STAT(ALZip_file_header) ;
 		  }
@@ -1153,7 +1139,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 		bufpos[3] == 0x26 && bufpos[4] == 0x53 && bufpos[5] == 0x59)
 	       {
 	       // BZIP2 record header
-	       locations = new LocationList(ST_BZIP2BlockHeader,offset,
+	       locations = LocationList::push(ST_BZIP2BlockHeader,offset,
 					    locations);
 	       }
 	    break ;
@@ -1163,7 +1149,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 		(uint8_t)bufpos[5] == 0x90)
 	       {
 	       // BZIP2 record header
-	       locations = new LocationList(ST_BZIP2EndOfStream,offset,
+	       locations = LocationList::push(ST_BZIP2EndOfStream,offset,
 					    locations);
 	       }
 	    break ;
@@ -1174,7 +1160,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	       {
 	       // this is the start of a Zlib stream; skip the two-byte
 	       //   Zlib header to work on the raw Deflate stream
-	       locations = new LocationList(ST_PDF_FlateHeader,offset + 23,
+	       locations = LocationList::push(ST_PDF_FlateHeader,offset + 23,
 					    locations) ;
 	       INCR_STAT(FlateDecode_file_header) ;
 	       }
@@ -1189,7 +1175,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	       unsigned adj = 4 ;
 	       if (bufpos[-1] == '\n')	// "endstream" may or may not have a
 		  adj++ ;		//   leading newline
-	       locations = new LocationList(ST_PDF_FlateEnd,offset-adj,
+	       locations = LocationList::push(ST_PDF_FlateEnd,offset-adj,
 					    locations) ;
 	       }
 	    break ;
@@ -1202,7 +1188,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	       if (bufpos[0] == 'i' &&
 		   valid_PNG_iTXt_chunk(bufpos,buffer_end,ofs))
 		  {
-		  locations = new LocationList(ST_PNG_iTXt,offset+ofs,
+		  locations = LocationList::push(ST_PNG_iTXt,offset+ofs,
 					       locations) ;
 		  locations = add_PNG_chunk_end(bufpos,buffer_end,offset,
 						locations) ;
@@ -1210,7 +1196,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	       else if (bufpos[0] == 'z' &&
 			valid_PNG_zTXt_chunk(bufpos,buffer_end,ofs))
 		  {
-		  locations = new LocationList(ST_PNG_zTXt,offset+ofs,
+		  locations = LocationList::push(ST_PNG_zTXt,offset+ofs,
 					       locations) ;
 		  locations = add_PNG_chunk_end(bufpos,buffer_end,offset,
 						locations) ;
@@ -1223,7 +1209,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 		buffer_end - buffer_start >= 512 * 1024 * 1024)
 	       {
 	       // if scanning disk images, include gzip streams
-	       locations = new LocationList(ST_gzipHeader,
+	       locations = LocationList::push(ST_gzipHeader,
 					    bufpos - buffer_start,
 					    locations) ;
 	       INCR_STAT(gzip_file_header) ;
@@ -1234,7 +1220,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	    if (bufpos[1] == 'L' && bufpos[2] == 'Z' && bufpos[1] == 0x01)
 	       {
 	       // ALZip magic number ("ALZ\001")
-	       locations = new LocationList(ST_ALZipArchiveHeader,offset,
+	       locations = LocationList::push(ST_ALZipArchiveHeader,offset,
 					    locations) ;
 	       }
 	    break ;
@@ -1249,14 +1235,14 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	       if (bufpos[12] == 0x43 && bufpos[13] == 0x4C &&
 		   bufpos[14] == 0x5A &&
 		   (bufpos[15] == 2 || bufpos[15] == 3))
-		  locations = new LocationList(ST_ALZipEOF,offset,locations) ;
+		  locations = LocationList::push(ST_ALZipEOF,offset,locations) ;
 	       }
 #if 0 //!!!
 	    else if (bufpos[1] == 'K')
 	       {
 	       // possible MS-ZIP block, but we need more info to avoid false
 	       //   positives
-	       locations = new LocationList(ST_MSZIPSignature,offset,locations) ;
+	       locations = LocationList::push(ST_MSZIPSignature,offset,locations) ;
 	       }
 #endif /* 0 */
 	    break ;
@@ -1266,14 +1252,14 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 		bufpos[6] == '\x27' && bufpos[7] == '\xD1' &&
 		bufpos[9] == 0 && bufpos[8] < 5 && // compression method valid?
 		get_word(bufpos+10) >= 14) // offset >= min header length?
-	       locations = new LocationList(ST_KWAJSignature,offset,locations);
+	       locations = LocationList::push(ST_KWAJSignature,offset,locations);
 	    break ;
 	 case 'L':  // LZIP signature?
 	    if (bufpos[1] == 'Z' && bufpos[2] == 'I' && bufpos[3] == 'P')
 	       {
 	       if (bufpos[4] <= 1) // version number, only 0 & 1 are valid
 		  {
-		  locations = new LocationList(ST_LzipSignature,offset,locations) ;
+		  locations = LocationList::push(ST_LzipSignature,offset,locations) ;
 		  INCR_STAT(lzip_marker) ;
 		  }
 	       }
@@ -1286,7 +1272,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 		// no reserved flag bits set
 		(bufpos[31] == 0))
 	       {
-	       locations = new LocationList(ST_CabinetSignature,offset,locations) ;
+	       locations = LocationList::push(ST_CabinetSignature,offset,locations) ;
 	       INCR_STAT(cabinet_marker) ;
 	       }
 	    break ;
@@ -1294,7 +1280,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	    if (bufpos[1] == 0x61 && bufpos[2] == 0x72 && bufpos[3] == 0x21 &&
 		bufpos[4] == 0x1A && bufpos[5] == 0x07 && bufpos[6] == 0x00)
 	       {
-	       locations = new LocationList(ST_RARMarker,offset,locations) ;
+	       locations = LocationList::push(ST_RARMarker,offset,locations) ;
 	       INCR_STAT(rar_marker) ;
 	       }
 	    break ;
@@ -1304,12 +1290,12 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	       if (bufpos[2] == 'D' && bufpos[3] == 'D' &&
 		   bufpos[4] == '\x88' && bufpos[5] == '\xF0' &&
 		   bufpos[6] == 0x27 && bufpos[7] == '3' && bufpos[8] == 'A')
-		  locations = new LocationList(ST_SZDDSignature,offset,
+		  locations = LocationList::push(ST_SZDDSignature,offset,
 					       locations) ;
 	       else if (bufpos[2] == ' ' && bufpos[3] == '\x88' &&
 			bufpos[4] == '\xF0' && bufpos[5] == '\x27' &&
 			bufpos[6] == '3' && bufpos[7] == '\xD1')
-		  locations = new LocationList(ST_SZDDAltSignature,offset,
+		  locations = LocationList::push(ST_SZDDAltSignature,offset,
 					       locations) ;
 	       }
 	    break ;
@@ -1318,7 +1304,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	    if (offset >= 2 && valid_RAR_file_header(bufpos-2,
 						     buffer_end - bufpos + 2))
 	       {
-	       locations = new LocationList(ST_RARFileHeader,offset-2,
+	       locations = LocationList::push(ST_RARFileHeader,offset-2,
 					    locations) ;
 	       INCR_STAT(rar_file_header) ;
 	       }
@@ -1331,7 +1317,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	       if (bufpos[2] == '\xBC' && bufpos[3] == '\xAF' &&
 		   bufpos[4] == 0x27 && bufpos[5] == 0x1C)
 		  {
-		  locations = new LocationList(ST_7zipSignature,offset,
+		  locations = LocationList::push(ST_7zipSignature,offset,
 					       locations) ;
 		  INCR_STAT(SevenZip_signature) ;
 		  }
@@ -1339,7 +1325,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 			bufpos[4] == 0x00 &&
 			offset > 0 && bufpos[-1] == '\xFD')
 		  {
-		  locations = new LocationList(ST_XzStreamSignature,offset-1,
+		  locations = LocationList::push(ST_XzStreamSignature,offset-1,
 					       locations) ;
 		  INCR_STAT(Xz_signature) ;
 		  }
@@ -1365,7 +1351,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 		(bufpos[-3] & 0xC0) == 0 && // could this be a type0 packet?
 		(bufpos[2] & 0x06) != 6)    // following packet valid?
 	       {
-	       locations = new LocationList(ST_DeflateSyncMark,offset-2,
+	       locations = LocationList::push(ST_DeflateSyncMark,offset-2,
 					    locations) ;
 	       INCR_STAT(Deflate_syncmarker) ;
 	       }
@@ -1379,7 +1365,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
       // if we haven't seen a central directory entry, add a marker for the
       //   end of the file
       off_t eof_offset = buffer_end - buffer_start ;
-      locations = new LocationList(ST_zipEOF,eof_offset,locations) ;
+      locations = LocationList::push(ST_zipEOF,eof_offset,locations) ;
       }
    locations = locations->reverse() ;
    return locations ;
@@ -1668,22 +1654,20 @@ static int32_t central_dir_offset(const LocationList *localheader,
 				  const char *buffer_start)
 {
    const LocationList *dir ;
-   char *localname = extract_local_header_filename(localheader,buffer_start) ;
+   auto localname = extract_local_header_filename(localheader,buffer_start) ;
    if (!localname)
       return INT_MAX ;
    for (dir = central_dir ; dir ; dir = dir->next())
       {
       if (dir->signatureType() != ST_CentralDirEntry)
 	 continue ;
-      char *centralname = extract_central_dir_filename(dir,buffer_start) ;
+      auto centralname = extract_central_dir_filename(dir,buffer_start) ;
       if (!centralname)
 	 continue ;
       bool same_name = strcmp(localname,centralname) == 0 ;
-      delete [] centralname ;
       if (same_name)
 	 break ;
       }
-   delete [] localname ;
    if (dir)
       {
       int32_t offset = (extract_central_dir_local_offset(dir,buffer_start)
@@ -1750,22 +1734,20 @@ static void check_central_dir_offsets(const LocationList *locations,
 
 //----------------------------------------------------------------------
 
-static char *check_central_dir(const LocationList *locations,
-			       const LocationList *local_entry,
-			       const char *buffer_start,
-			       uint32_t &original_size_hint)
+static CharPtr check_central_dir(const LocationList* locations, const LocationList* local_entry,
+			         const char* buffer_start, uint32_t& original_size_hint)
 {
    original_size_hint = 0 ;
    // skip up to the central directory
    const LocationList *central_dir = find_central_dir(locations) ;
    if (!central_dir)
-      return 0 ;
+      return nullptr ;
    // scan the central directory entries in the location list, looking
    //   for the entry corresponding to the given local entry
    // if the local entry is 0, find the central directory entry immediately
    //   preceding the one corresponding to the first local file entry
    //   which is actually present in the location list
-   char *hint = 0 ;
+   CharPtr hint ;
    if (local_entry)
       {
 //FIXME: not actually used yet
@@ -1775,22 +1757,19 @@ static char *check_central_dir(const LocationList *locations,
       const LocationList *first_local = locations ;
       while (first_local && first_local->signatureType() != ST_LocalFileHeader)
 	 first_local = first_local->next() ;
-      char *localname
-	 = extract_local_header_filename(first_local,buffer_start) ;
+      auto localname = extract_local_header_filename(first_local,buffer_start) ;
       if (localname)
 	 {
 	 const LocationList *prev = central_dir ;
 	 for (const LocationList *dir = central_dir->next() ; dir ; dir = dir->next())
 	    {
-	    char *dirname = extract_central_dir_filename(dir,buffer_start) ;
+	    auto dirname = extract_central_dir_filename(dir,buffer_start) ;
 	    if (dirname && strcmp(dirname,localname) == 0)
 	       {
 	       hint = extract_central_dir_filename(prev,buffer_start) ;
-	       original_size_hint
-		  = extract_central_dir_original_size(prev, buffer_start) ;
+	       original_size_hint = extract_central_dir_original_size(prev, buffer_start) ;
 	       break ;
 	       }
-	    delete [] dirname ;
 	    prev = dir ;
 	    }
 	 }
@@ -1799,15 +1778,12 @@ static char *check_central_dir(const LocationList *locations,
 	 // we didn't have any local file headers at all, so check whether
 	 //   the central directory has only a single entry -- if so, that
 	 //   entry has the filename we want
-	 if (!central_dir->next() ||
-	     central_dir->next()->signatureType() == ST_EndOfCentralDir)
+	 if (!central_dir->next() || central_dir->next()->signatureType() == ST_EndOfCentralDir)
 	    {
 	    hint = extract_central_dir_filename(central_dir,buffer_start) ;
-	    original_size_hint
-	       = extract_central_dir_original_size(central_dir,buffer_start) ;
+	    original_size_hint = extract_central_dir_original_size(central_dir,buffer_start) ;
 	    }
 	 }
-      delete [] localname ;
       }
    return hint ;
 }
@@ -1824,10 +1800,9 @@ static uint32_t get_gzip_original_size(const LocationList *gzip_eof,
 
 //----------------------------------------------------------------------
 
-static char *get_gzip_filename_hint(const LocationList *prev,
-				    const char *buffer_start)
+static CharPtr get_gzip_filename_hint(const LocationList* prev, const char* buffer_start)
 {
-   char *filename_hint = 0 ;
+   CharPtr filename_hint ;
    if (prev && prev->signatureType() == ST_gzipHeader)
       {
       const char *header = buffer_start + prev->offset() ;
@@ -1842,10 +1817,10 @@ static char *get_gzip_filename_hint(const LocationList *prev,
 	 // limit the filename to the maximum length supported by the OS
 	 if (namelen > PATH_MAX)
 	    namelen = PATH_MAX ;
-	 filename_hint = new char[namelen+1] ;
+	 filename_hint.allocate(namelen+1) ;
 	 if (filename_hint)
 	    {
-	    strncpy(filename_hint,header,namelen+1) ;
+	    strncpy(filename_hint.begin(),header,namelen+1) ;
 	    filename_hint[namelen] = '\0' ;
 	    }
 	 }
@@ -1855,30 +1830,25 @@ static char *get_gzip_filename_hint(const LocationList *prev,
 
 //----------------------------------------------------------------------
 
-static char *get_ZIP_filename_hint(const LocationList *prev,
-				   const char *buffer_start,
-				   const LocationList *locations,
-				   uint32_t &original_size_hint)
+static CharPtr get_ZIP_filename_hint(const LocationList* prev, const char* buffer_start,
+				     const LocationList* locations, uint32_t& original_size_hint)
 {
-   char *filename_hint = 0 ;
+   CharPtr filename_hint ;
    if (prev && prev->signatureType() == ST_LocalFileHeader)
       {
       filename_hint = extract_local_header_filename(prev, buffer_start) ;
-      original_size_hint
-	 = extract_local_header_original_size(prev, buffer_start) ;
+      original_size_hint = extract_local_header_original_size(prev, buffer_start) ;
       }
    else
       {
-      filename_hint = check_central_dir(locations,0,buffer_start,
-					original_size_hint) ;
+      filename_hint = check_central_dir(locations,0,buffer_start,original_size_hint) ;
       }
    return filename_hint ;
 }
 
 //----------------------------------------------------------------------
 
-static uint32_t get_ALZip_original_size(const LocationList *prev,
-					const char *buffer_start)
+static uint32_t get_ALZip_original_size(const LocationList* prev, const char* buffer_start)
 {
    uint32_t size = 0 ;
    if (prev && prev->signatureType() == ST_ALZipFileHeader)
@@ -1900,10 +1870,9 @@ static uint32_t get_ALZip_original_size(const LocationList *prev,
 
 //----------------------------------------------------------------------
 
-static char *get_ALZip_filename_hint(const LocationList *prev,
-				     const char *buffer_start)
+static CharPtr get_ALZip_filename_hint(const LocationList* prev, const char* buffer_start)
 {
-   char *filename_hint = 0 ;
+   CharPtr filename_hint ;
    if (prev && prev->signatureType() == ST_ALZipFileHeader)
       {
       const char *header = buffer_start + prev->offset() ;
@@ -1915,10 +1884,10 @@ static char *get_ALZip_filename_hint(const LocationList *prev,
 	 header += 6 ; // fixed-size optional fields are present
 	 header += 2 * bytes_per_field ;
 	 }
-      filename_hint = new char[namelen+1] ;
+      filename_hint.allocate(namelen+1) ;
       if (filename_hint)
 	 {
-	 memcpy(filename_hint,header,namelen) ;
+	 std::copy_n(header,namelen,filename_hint.begin()) ;
 	 filename_hint[namelen] = '\0' ;
 	 }
       }
@@ -1928,19 +1897,18 @@ static char *get_ALZip_filename_hint(const LocationList *prev,
 //----------------------------------------------------------------------
 
 #if 0
-static char *get_RAR_filename_hint(const LocationList *prev,
-				   const char *buffer_start)
+static CharPtr get_RAR_filename_hint(const LocationList* prev, const char* buffer_start)
 {
-   char *filename_hint = 0 ;
+   CharPtr filename_hint ;
    if (prev && prev->signatureType() == ST_RARFileHeader)
       {
       const char *header = buffer_start + prev->offset() ;
       unsigned namelen = get_word(header+26) ;
-      filename_hint = new char[namelen+1] ;
+      filename_hint.allocate(namelen+1) ;
       if (filename_hint)
 	 {
 	 unsigned headerpos = (header[4] & 0x1) ? 40 : 32 ;
-	 memcpy(filename_hint,header+headerpos,namelen) ;
+	 std::copy_n(header+headerpos,namelen,filename_hint.begin()) ;
 	 filename_hint[namelen] = '\0' ;
 	 }
       }
@@ -1950,12 +1918,9 @@ static char *get_RAR_filename_hint(const LocationList *prev,
 
 //----------------------------------------------------------------------
 
-static bool recover_ZIP_span(const LocationList *locations,
-			     const LocationList *prev,
-			     const LocationList *curr,
-			     const ZipRecParameters &params,
-			     const FileInformation *fileinfo,
-			     bool deflate64, bool known_start = true)
+static bool recover_ZIP_span(const LocationList* locations, const LocationList* prev,
+			     const LocationList* curr, const ZipRecParameters& params,
+			     const FileInformation* fileinfo, bool deflate64, bool known_start = true)
 {
    uint32_t original_size_hint ;
    bool known_end = false ;
@@ -1965,22 +1930,14 @@ static bool recover_ZIP_span(const LocationList *locations,
        sig == ST_CentralDirSignature || sig == ST_EndOfCentralDir ||
        sig == ST_EndOfCentralDir64 || sig == ST_EndOfCentralDirLocator)
       known_end = true ;
-   char *filename_hint = get_ZIP_filename_hint(prev,fileinfo->bufferStart(),
-					       locations,original_size_hint) ;
-   bool success = recover_stream(prev,curr,params,fileinfo,
-				 filename_hint, original_size_hint,
-				 known_start,deflate64,
-				 known_end) ;
-   delete [] filename_hint ;
-   return success ;
+   auto filename_hint = get_ZIP_filename_hint(prev,fileinfo->bufferStart(), locations,original_size_hint) ;
+   return recover_stream(prev,curr,params,fileinfo,filename_hint, original_size_hint,known_start,deflate64,known_end) ;
 }
 
 //----------------------------------------------------------------------
 
-static bool recover_gzip_span(const LocationList *prev,
-			      const LocationList *curr,
-			      const ZipRecParameters &params,
-			      const FileInformation *fileinfo,
+static bool recover_gzip_span(const LocationList* prev, const LocationList* curr,
+			      const ZipRecParameters& params, const FileInformation* fileinfo,
 			      bool known_start)
 {
    uint32_t original_size_hint = 0 ;
@@ -1991,44 +1948,32 @@ static bool recover_gzip_span(const LocationList *prev,
       known_end = true ;
       original_size_hint = get_gzip_original_size(curr,buffer_start) ;
       }
-   char *filename_hint = get_gzip_filename_hint(prev,buffer_start) ;
-   bool success = recover_stream(prev,curr,params,fileinfo,
-				 filename_hint, original_size_hint,
-				 known_start,false,known_end) ;
-   delete [] filename_hint ;
-   return success ;
+   auto filename_hint = get_gzip_filename_hint(prev,buffer_start) ;
+   return recover_stream(prev,curr,params,fileinfo, filename_hint, original_size_hint,known_start,false,known_end) ;
 }
 
 //----------------------------------------------------------------------
 
-static bool recover_ALZip_span(const LocationList *prev,
-			       const LocationList *curr,
-			       const ZipRecParameters &params,
-			       const FileInformation *fileinfo,
+static bool recover_ALZip_span(const LocationList* prev, const LocationList* curr,
+			       const ZipRecParameters& params, const FileInformation* fileinfo,
 			       bool deflate64, bool known_start = true)
 {
    const char *buffer_start = fileinfo->bufferStart() ;
    uint32_t original_size_hint = get_ALZip_original_size(prev,buffer_start) ; ;
    bool known_end = false ;
    if (curr && 
-       (curr->signatureType() == ST_ALZipFileHeader ||
-	curr->signatureType() == ST_ALZipEOF))
+       (curr->signatureType() == ST_ALZipFileHeader || curr->signatureType() == ST_ALZipEOF))
       {
       known_end = true ;
       }
-   char *filename_hint = get_ALZip_filename_hint(prev,buffer_start) ;
-   bool success = recover_stream(prev,curr,params,fileinfo,filename_hint,
-				 original_size_hint,known_start,deflate64,
-				 known_end) ;
-   delete [] filename_hint ;
-   return success ;
+   auto filename_hint = get_ALZip_filename_hint(prev,buffer_start) ;
+   return recover_stream(prev,curr,params,fileinfo,filename_hint, original_size_hint,known_start,deflate64,known_end) ;
 }
 
 //----------------------------------------------------------------------
 
-static bool recover_RAR_file(const LocationList *locations,
-			     const ZipRecParameters &params,
-			     const FileInformation *fileinfo)
+static bool recover_RAR_file(const LocationList* locations, const ZipRecParameters& params,
+			     const FileInformation* fileinfo)
 {
    // for now, we just create a new file containing just the one member,
    //   still compressed
@@ -2036,18 +1981,16 @@ static bool recover_RAR_file(const LocationList *locations,
    if (locations->next() && locations->next()->offset() < end_offset)
       end_offset = locations->next()->offset() ;
    const LocationList end_sig(ST_RARFileHeader,end_offset) ;
-   bool success = extract_stream(locations,&end_sig,params,fileinfo,"rar",true,
-				 "Rar!\x1A\x07\x00\xCF\x90\x73\0\0\x0D\0\0\0\0\0\0\0",20) ;
-   return success ;
+   return extract_stream(locations,&end_sig,params,fileinfo,"rar",true,
+      			 "Rar!\x1A\x07\x00\xCF\x90\x73\0\0\x0D\0\0\0\0\0\0\0",20) ;
 }
 
 //----------------------------------------------------------------------
 
-static bool recover_files(const LocationList *locations,
-			  const ZipRecParameters &params,
-			  const FileInformation *fileinfo)
+static bool recover_files(const LocationList* locations, const ZipRecParameters& params,
+			  const FileInformation* fileinfo)
 {
-   const LocationList *prev = 0 ;
+   const LocationList *prev = nullptr ;
    bool success = false ;
    bool deflate64 = false ;
    for (const LocationList *curr = locations ; curr ; curr = curr->next())
@@ -2278,7 +2221,7 @@ static LocationList *split_on_central_dir(LocationList *signatures,
 	    sigsize += get_word(header + 20) ;
 	 LocationList *split = signatures->next() ;
 	 signatures->setNext(0) ;
-	 return new LocationList(ST_zipStartOfFile,
+	 return LocationList::push(ST_zipStartOfFile,
 				 signatures->offset() + sigsize,
 				 split) ;
 	 }
@@ -2290,11 +2233,10 @@ static LocationList *split_on_central_dir(LocationList *signatures,
 
 //----------------------------------------------------------------------
 
-static char *insert_filename(const char *dirname, unsigned seqnum,
-			     const char *filename)
+static CharPtr insert_filename(const char* dirname, unsigned seqnum, const char* filename)
 {
    if (!dirname)
-      return 0 ;
+      return nullptr ;
    if (!*dirname)
       dirname = "." ;
    unsigned dirlen = strlen(dirname) ;
@@ -2312,42 +2254,42 @@ static char *insert_filename(const char *dirname, unsigned seqnum,
       }
    unsigned filelen = filename ? strlen(filename) : 0 ;
    const char *marker = strchr(dirname,'%') ;
-   char *result ;
+   CharPtr result ;
    if (marker && filelen > 0)
       {
       // strip off extension, if present
       const char *dot = strrchr(filename,'.') ;
       if (dot)
 	 filelen = dot - filename ;
-      result = new char[dirlen + filelen + 12] ;
+      result.allocate(dirlen + filelen + 12) ;
       if (result)
 	 {
 	 unsigned len1 = marker - dirname ;
 	 unsigned len2 = dirlen - len1 ; // include terminating NUL
-	 memcpy(result,dirname,len1) ;
-	 memcpy(result + len1, filename, filelen) ;
+	 std::copy_n(dirname,len1,result.begin()) ;
+	 std::copy_n(filename,filelen,result.at(len1)) ;
 	 if (seqnum || using_stdin)
 	    {
 	    if (using_stdin)
 	       {
-	       sprintf(result + len1 + filelen,"%04u%c",seqnum,'\0') ;
+	       sprintf(result.at(len1 + filelen),"%04u%c",seqnum,'\0') ;
 	       }
 	    else
 	       {
 	       result[len1 + filelen] = '-' ;
 	       filelen++ ;
-	       sprintf(result + len1 + filelen,"%u%c",seqnum,'\0') ;
+	       sprintf(result.at(len1 + filelen),"%u%c",seqnum,'\0') ;
 	       }
-	    filelen += strlen(result + len1 + filelen) ;
+	    filelen += strlen(result.at(len1 + filelen)) ;
 	    }
-	 memcpy(result + len1 + filelen, dirname + len1 + 1, len2) ;
+	 std::copy_n(dirname + len1 + 1, len2, result.at(len1+filelen)) ;
 	 }
       }
    else
       {
-      result = new char[dirlen + 1] ;
+      result.allocate(dirlen + 1) ;
       if (result)
-	 memcpy(result,dirname,dirlen + 1) ;
+	 std::copy_n(dirname,dirlen+1,result.begin()) ;
       }
    return result ;
 }
@@ -2398,14 +2340,12 @@ bool process_file_data(const ZipRecParameters &params,
       const char *input_file = fileinfo->inputFile() ;
       while (signatures)
 	 {
-	 LocationList *central = split_on_central_dir(signatures,
-						      buffer_start) ;
+	 LocationList *central = split_on_central_dir(signatures,buffer_start) ;
 	 if (central)
 	    multiples = true ;
 	 if (multiples)
 	    seqnum++ ;
-	 char *output_dir = insert_filename(fileinfo->outputDirectory(),seqnum,
-					    input_file) ;
+	 auto output_dir = insert_filename(fileinfo->outputDirectory(),seqnum, input_file) ;
 	 if ((params.write_format == WFMT_Listing && !params.perform_reconstruction) ||
 	    Fr::create_path(output_dir))
 	    {
@@ -2424,7 +2364,6 @@ bool process_file_data(const ZipRecParameters &params,
 		    fileinfo->outputDirectory()) ;
 	    success = false ;
 	    }
-	 delete [] output_dir ;
 	 delete signatures ;
 	 signatures = central ;
 	 }
@@ -2432,9 +2371,8 @@ bool process_file_data(const ZipRecParameters &params,
    else if (file_format == FF_RawDeflate)
       {
       recovery_name_base = "rawdeflate" ;
-      LocationList *curr = new LocationList(ST_ZlibEOF,params.scan_range_end,0) ;
-      LocationList *prev
-	 = new LocationList(ST_RawDeflateStart,params.scan_range_start,curr) ;
+      auto curr = LocationList::push(ST_ZlibEOF,params.scan_range_end,nullptr) ;
+      auto prev = LocationList::push(ST_RawDeflateStart,params.scan_range_start,curr) ;
       if (recover_stream(prev,curr,params,fileinfo,0,0,true,false,true))
 	 success = true ;
       recovery_name_base = 0 ;

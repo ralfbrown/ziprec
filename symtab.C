@@ -5,9 +5,9 @@
 /*									*/
 /*  File: symtab.h - DEFLATE symbol tables				*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 27jun2019							*/
+/*  LastEdit: 2019-07-26						*/
 /*									*/
-/*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
+/*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -27,6 +27,8 @@
 #include "symtab.h"
 #include "global.h"
 
+using namespace Fr ;
+
 /************************************************************************/
 /*	Manifest constants						*/
 /************************************************************************/
@@ -35,7 +37,7 @@
 /*	Global variables for this module				*/
 /************************************************************************/
 
-static HuffSymbolTable *default_symtable = 0 ;
+static Owned<HuffSymbolTable> default_symtable { nullptr } ;
 
 static bool suppress_trace = false ;
 
@@ -88,9 +90,7 @@ Fr::SmallAlloc* HuffSymbolTable::allocator = Fr::SmallAlloc::create(sizeof(HuffS
 
 HuffSymbolTable::HuffSymbolTable(bool deflate64)
 {
-   m_lengthtable = 0 ;
-   m_codetree = 0 ;
-   m_distancetree = 0 ;
+   m_lengthtable = nullptr ;
    m_deflate64 = deflate64 ;
    return ;
 }
@@ -99,9 +99,7 @@ HuffSymbolTable::HuffSymbolTable(bool deflate64)
 
 HuffSymbolTable::~HuffSymbolTable()
 {
-   m_lengthtable = 0 ;
-   delete m_codetree ;		m_codetree = 0 ;
-   delete m_distancetree ;	m_distancetree = 0 ;
+   m_lengthtable = nullptr ;
    return ;
 }
 
@@ -264,7 +262,7 @@ bool HuffSymbolTable::buildHuffmanTree(bool build_distance_tree)
       return false ;
       }
    VariableBits prefix ;
-   HuffmanTree *tree_root = new HuffmanTree(length,prefix) ;
+   Owned<HuffmanTree> tree_root(length,prefix) ;
    HuffmanLocation table_loc(m_lengthtable,length) ;
    HuffmanLocation tree_loc(tree_root) ;
    bool more_table = true ;
@@ -307,13 +305,8 @@ bool HuffSymbolTable::buildHuffmanTree(bool build_distance_tree)
 	 fprintf(stderr,"Huffman tree: too many values (%u extra) in length table!\n",
 		 excess) ;
 	 }
-      delete tree_root ;
       return false ;
       }
-   if (build_distance_tree)
-      m_distancetree = tree_root ;
-   else
-      m_codetree = tree_root ;
    if (verbosity >= VERBOSITY_TREE)
       {
       if (suppress_trace)
@@ -321,6 +314,10 @@ bool HuffSymbolTable::buildHuffmanTree(bool build_distance_tree)
       else
 	 tree_root->dump() ;
       }
+   if (build_distance_tree)
+      m_distancetree = tree_root ;
+   else
+      m_codetree = tree_root ;
    return true ;
 }
 
@@ -362,7 +359,7 @@ HuffSymbolTable *build_default_symtable(bool deflate64)
 {
    if (!default_symtable)
       {
-      default_symtable = new HuffSymbolTable(deflate64) ;
+      default_symtable.reinit(deflate64) ;
       if (default_symtable)
 	 default_symtable->makeDefaultTrees() ;
       }
@@ -373,9 +370,7 @@ HuffSymbolTable *build_default_symtable(bool deflate64)
 
 void clear_default_symbol_table()
 {
-   if (default_symtable)
-      delete default_symtable ;
-   default_symtable = 0 ;
+   default_symtable = nullptr ;
    return ;
 }
 
@@ -508,13 +503,10 @@ bool valid_symbol_table_header(BitPointer &pos, bool deflate64)
       }
    // convert the bit-length codes into a Huffman tree, then use that tree
    //   to decode the bit lengths of the elements of the literal-codes tree
-   HuffSymbolTable *bit_tab = new HuffSymbolTable(deflate64) ;
-   if (!bit_tab)
-      return false ;
-   bit_tab->setLengthTable(&bit_lengths) ;
-   if (!bit_tab->buildHuffmanTree())
+   HuffSymbolTable bit_tab(deflate64) ;
+   bit_tab.setLengthTable(&bit_lengths) ;
+   if (!bit_tab.buildHuffmanTree())
       {
-      delete bit_tab ;
       return false ;
       }
    // decode the bit lengths for the literal codes, then the bit lengths for
@@ -523,17 +515,14 @@ bool valid_symbol_table_header(BitPointer &pos, bool deflate64)
    HuffmanLengthTable dist_lengths ;
    BitPointer str_end(pos) ;
    str_end.advance(4000) ; // allow up to 500 bytes for trees
-   bool success = decode_bit_lengths(num_lit_codes, lit_lengths,
-				     num_dist_codes, dist_lengths, bit_tab,
+   bool success = decode_bit_lengths(num_lit_codes, lit_lengths, num_dist_codes, dist_lengths, &bit_tab,
 				     pos, str_end) ;
-   delete bit_tab ;
    return success ;
 }
 
 //----------------------------------------------------------------------
 
-HuffSymbolTable *build_symbol_table(BitPointer &pos, const BitPointer &str_end,
-				bool deflate64)
+HuffSymbolTable* build_symbol_table(BitPointer& pos, const BitPointer& str_end, bool deflate64)
 {
    // blocks with dynamic Huffman tables start with five bits each to
    //   identify the number of literal codes and distance codes, four bits
@@ -541,12 +530,12 @@ HuffSymbolTable *build_symbol_table(BitPointer &pos, const BitPointer &str_end,
    //   each bit-length code
    unsigned num_lit_codes = pos.nextBits(5) + 257 ;
    if (num_lit_codes > 286 && !deflate64)
-      return 0 ; // invalid data!
+      return nullptr ; // invalid data!
    unsigned num_dist_codes = pos.nextBits(5) + 1 ;
    if (num_dist_codes > 30 && !deflate64)
-      return 0 ; // invalid data!
+      return nullptr ; // invalid data!
    if (num_lit_codes == 257 && num_dist_codes > 1)
-      return 0 ; // can't have distance codes if no length literals!
+      return nullptr ; // can't have distance codes if no length literals!
    INCR_STAT(sane_dynhuff_packet) ;
    unsigned num_len_codes = pos.nextBits(4) + 4 ;
    HuffmanLengthTable bit_lengths ;
@@ -568,7 +557,7 @@ HuffSymbolTable *build_symbol_table(BitPointer &pos, const BitPointer &str_end,
 	 {
 	 if (verbosity >= VERBOSITY_TREE)
 	    fprintf(stderr,"Huffman-tree data extended past end of packet\n") ;
-	 return 0 ; // invalid data!
+	 return nullptr ; // invalid data!
 	 }
       }
    for (size_t i = 0 ; i < lengthof(lengths) ; i++)
@@ -577,43 +566,35 @@ HuffSymbolTable *build_symbol_table(BitPointer &pos, const BitPointer &str_end,
       }
    // convert the bit-length codes into a Huffman tree, then use that tree
    //   to decode the bit lengths of the elements of the literal-codes tree
-   auto bit_tab = new HuffSymbolTable(false) ;
-   if (!bit_tab)
-      return 0 ;
-   bit_tab->setLengthTable(&bit_lengths) ;
-   if (!bit_tab->buildHuffmanTree())
+   HuffSymbolTable bit_tab(false) ;
+   bit_tab.setLengthTable(&bit_lengths) ;
+   if (!bit_tab.buildHuffmanTree())
       {
       INCR_STAT(invalid_bitlength_tree) ;
-      delete bit_tab ;
-      return 0 ;
+      return nullptr ;
       }
    // decode the bit lengths for the literal codes, then the bit lengths for
    //   the distance codes
    HuffmanLengthTable lit_lengths ;
    HuffmanLengthTable dist_lengths ;
-   if (!decode_bit_lengths(num_lit_codes, lit_lengths,
-			   num_dist_codes, dist_lengths, bit_tab,
-			   pos, str_end))
+   if (!decode_bit_lengths(num_lit_codes, lit_lengths, num_dist_codes, dist_lengths, &bit_tab, pos, str_end))
       {
       INCR_STAT(invalid_bit_lengths) ;
       if (verbosity >= VERBOSITY_TREE)
 	 cerr << " :: decode_bit_lengths failed!"<<endl;
-      delete bit_tab ;
-      return 0 ; // invalid Huffman table
+      return nullptr ; // invalid Huffman table
       }
-   delete bit_tab ;
    // now convert the two sets of bit lengths into Huffman trees for literal
    //   and distance codes
    auto symtab = new HuffSymbolTable(deflate64) ;
-   if (!symtab)
+   if (symtab)
       {
-      return 0 ;
+      symtab->setLengthTable(&lit_lengths) ;
+      symtab->buildHuffmanTree() ;
+      symtab->setLengthTable(&dist_lengths) ;
+      symtab->buildHuffmanTree(true) ;
+      symtab->setLengthTable(0) ; // don't leave dangling pointer
       }
-   symtab->setLengthTable(&lit_lengths) ;
-   symtab->buildHuffmanTree() ;
-   symtab->setLengthTable(&dist_lengths) ;
-   symtab->buildHuffmanTree(true) ;
-   symtab->setLengthTable(0) ; // don't leave dangling pointer
    return symtab ;
 }
 

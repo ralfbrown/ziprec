@@ -677,8 +677,8 @@ static void augment_file_models(DecodeBuffer &decode_buffer,
 				bool &file_uses_CR)
 {
    START_TIME(timer) ;
-   delete ngrams_forward ; ngrams_forward = 0 ;
-   delete ngrams_reverse ; ngrams_reverse = 0 ;
+   delete ngrams_forward ; ngrams_forward = nullptr ;
+   delete ngrams_reverse ; ngrams_reverse = nullptr ;
    size_t crlf_count = 0 ;
    size_t cr_count = 0 ;
    size_t nl_count = 0 ;
@@ -686,7 +686,7 @@ static void augment_file_models(DecodeBuffer &decode_buffer,
    size_t num_bytes = decode_buffer.loadedBytes() ;
    if (use_local_models)
       {
-      NybbleTrie *ngrams_left = new NybbleTrie ;
+      Owned<NybbleTrie> ngrams_left ;
       LocalAlloc <uint8_t> chars(max_ngram_len+1) ;
       for (size_t offset = 0 ; offset < num_bytes ; offset++)
 	 {
@@ -714,13 +714,12 @@ static void augment_file_models(DecodeBuffer &decode_buffer,
       nl_count = ngrams_left->find((uint8_t*)"\n",1) ;
       uint64_t total_tokens = ngrams_left->totalTokens() ;
       ngrams_forward = new LangIDPackedTrie(ngrams_left,1,false) ;
-      delete ngrams_left ;
-      NybbleTrie *ngrams_right = new NybbleTrie ;
+      ngrams_left = nullptr ;
+      Owned<NybbleTrie> ngrams_right ;
       uint8_t keybuf[max_ngram_len+1] ;
       ngrams_forward->enumerate(keybuf,max_ngram_len,reverse_ngram,ngrams_right) ;
       ngrams_right->addTokenCount(total_tokens) ;
       ngrams_reverse = new LangIDPackedTrie(ngrams_right,1,false) ;
-      delete ngrams_right ;
       }
    else
       {
@@ -1060,8 +1059,8 @@ static bool can_infer_replacements(DecodeBuffer &decode_buffer,
    unsigned highest_wild = wildcard_counts->highestUsed() ;
    if (highest_wild < numrepl)
       numrepl = highest_wild ;
-   LanguageScores *conf_scores = new LanguageScores(numrepl) ;
    size_t num_replaced = 0 ;
+   Owned<LanguageScores> conf_scores(numrepl) ;
    if (conf_scores)
       {
       for (size_t i = 1 ; i < numrepl ; i++)
@@ -1089,7 +1088,6 @@ static bool can_infer_replacements(DecodeBuffer &decode_buffer,
 	       num_replaced++ ;
 	    }
 	 }
-      delete conf_scores ;
       }
    if (num_replaced && verbosity > VERBOSITY_PACKETS)
       {
@@ -1151,11 +1149,11 @@ bool infer_replacements(DecodeBuffer &decode_buffer,
    size_t num_wildcards = decode_buffer.referenceWindow() ;
    if (decode_buffer.numReplacements() > num_wildcards)
       num_wildcards = decode_buffer.numReplacements() ;
-   auto allowed_wildcards = new WildcardCollection(num_wildcards,true) ;
-   auto scores = new ScoreCollection(num_wildcards) ;
-   auto context_counts = new WildcardCounts(num_wildcards) ;
-   auto active_wildcards = new WildcardList ;
-   auto wildcard_index = new WildcardIndex(decode_buffer.fileBuffer(),decode_buffer.loadedBytes(),num_wildcards) ;
+   Owned<WildcardCollection> allowed_wildcards(num_wildcards,true) ;
+   Owned<ScoreCollection> scores(num_wildcards) ;
+   Owned<WildcardCounts> context_counts(num_wildcards) ;
+   Owned<WildcardList> active_wildcards ;
+   Owned<WildcardIndex> wildcard_index(decode_buffer.fileBuffer(),decode_buffer.loadedBytes(),num_wildcards) ;
    bool success = false ;
    if (!allowed_wildcards || !scores || !context_counts || !active_wildcards)
       {
@@ -1172,60 +1170,43 @@ bool infer_replacements(DecodeBuffer &decode_buffer,
       else if (!strstr(encoding,"16"))
 	 allowed_wildcards->removeFromAll(file_uses_CR ? '\n' : '\r') ;
       clear_unused_wildcards(decode_buffer,allowed_wildcards) ;
-      apply_unambiguous_wildcards(decode_buffer,allowed_wildcards,
-				  active_wildcards) ;
+      apply_unambiguous_wildcards(decode_buffer,allowed_wildcards,active_wildcards) ;
       active_wildcards->clear() ;
-      collect_ngram_scores(decode_buffer,allowed_wildcards,
-			   allowed_wildcards,langmodel,scores,
-			   context_counts) ;
+      collect_ngram_scores(decode_buffer,allowed_wildcards,allowed_wildcards,langmodel,scores,context_counts) ;
       if (do_remove_unsupported)
 	 {
-	 WildcardCollection *context_wildcards
-	    = new WildcardCollection(allowed_wildcards) ;
+	 WildcardCollection context_wildcards(allowed_wildcards) ;
 //FIXME: can we get any traction from remove_unsupp_wc() ?
-	 if (remove_unsupported_wildcards(decode_buffer,context_wildcards,
-					  context_counts,scores))
+	 if (remove_unsupported_wildcards(decode_buffer,&context_wildcards,context_counts,scores))
 	    {
-	    collect_ngram_scores(decode_buffer,allowed_wildcards,
-				 context_wildcards,langmodel,scores,
-				 context_counts) ;
+	    collect_ngram_scores(decode_buffer,allowed_wildcards,&context_wildcards,langmodel,scores,context_counts) ;
 	    }
-	 delete context_wildcards ;
 	 }
       PROGRESS("   -> inferring replacements") ;
       PROGRESS1("\n") ;
       size_t steps = 0 ;
-      while (can_infer_replacements(decode_buffer,scores,active_wildcards,
-				    context_counts,iteration))
+      while (can_infer_replacements(decode_buffer,scores,active_wildcards,context_counts,iteration))
 	 {
 	 success = true ;
 	 if (update_local_models && (steps == 2 || steps == 5))
 	    {
-	    augment_file_models(decode_buffer,MAX_LOCAL_NGRAM_LEN,
-				(3*DBYTE_CONFIDENCE_LEVELS/4),
-				ngram_counts_forward, ngram_counts_reverse,
-				file_uses_CRLF, file_uses_CR) ;
-	    langmodel.setFileModels(ngram_counts_forward,
-				    ngram_counts_reverse) ;
+	    augment_file_models(decode_buffer,MAX_LOCAL_NGRAM_LEN, (3*DBYTE_CONFIDENCE_LEVELS/4),
+				ngram_counts_forward, ngram_counts_reverse, file_uses_CRLF, file_uses_CR) ;
+	    langmodel.setFileModels(ngram_counts_forward, ngram_counts_reverse) ;
 	    }
-	 update_ngram_scores(decode_buffer,allowed_wildcards,
-			     active_wildcards,langmodel,scores,
+	 update_ngram_scores(decode_buffer,allowed_wildcards, active_wildcards,langmodel,scores,
 			     wildcard_index,context_counts) ;
 	 if (aggressive_inference && (steps % 50) == 20)
 	    {
-	    infer_most_likely(decode_buffer,scores,active_wildcards,
-			      mle_ratio_cutoff_incremental,iteration) ;
+	    infer_most_likely(decode_buffer,scores,active_wildcards, mle_ratio_cutoff_incremental,iteration) ;
 	    }
-	 if (++steps % 100 == 0 &&
-	     verbosity >= VERBOSITY_PROGRESS &&
-	     verbosity < VERBOSITY_PACKETS)
+	 if (++steps % 100 == 0 && verbosity >= VERBOSITY_PROGRESS && verbosity < VERBOSITY_PACKETS)
 	    {
 	    fputc('.',stderr) ;
 	    fflush(stderr) ;
 	    }
 	 }
-      if (verbosity >= VERBOSITY_PROGRESS &&
-	  verbosity < VERBOSITY_PACKETS)
+      if (verbosity >= VERBOSITY_PROGRESS && verbosity < VERBOSITY_PACKETS)
 	 fputc('\n',stderr) ;
 
       // at this point, we may still have useable information in the scores,
@@ -1233,15 +1214,10 @@ bool infer_replacements(DecodeBuffer &decode_buffer,
       //   if above our threshold
       if (last_iteration)
 	 {
-	 infer_most_likely(decode_buffer,scores,active_wildcards,
-			   mle_ratio_cutoff,iteration) ;
+	 infer_most_likely(decode_buffer,scores,active_wildcards, mle_ratio_cutoff,iteration) ;
 	 }
       }
    langmodel.deleteFileModels() ;
-   delete active_wildcards ;
-   delete context_counts ;
-   delete allowed_wildcards ;
-   delete scores ;
    return success ;
 }
 
