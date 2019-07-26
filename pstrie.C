@@ -960,9 +960,8 @@ Owned<LangIDPackedTrie> LangIDPackedTrie::load(Fr::CFile& f, const char* filenam
 {
    if (!f)
       return nullptr ;
-   // std::reference_wrapper is an ugly hack to keep the templated Owned ctor from trying to copy-construct
-   //    a CFile from f....
-   Owned<LangIDPackedTrie> trie(std::reference_wrapper<CFile>(f),filename) ;
+   // std::ref is needed to keep the templated Owned ctor from trying to copy-construct a CFile from f....
+   Owned<LangIDPackedTrie> trie(std::ref(f),filename) ;
    if (!trie || !trie->good())
       {
       return nullptr ;
