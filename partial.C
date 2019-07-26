@@ -5,9 +5,9 @@
 /*									*/
 /*  File: partial.C - reconstruction of partial DEFLATE packet		*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 28jun2019							*/
+/*  LastEdit: 2019-07-26						*/
 /*									*/
-/*  (c) Copyright 2012,2013,2019 Ralf Brown/CMU				*/
+/*  (c) Copyright 2012,2013,2019 Carnegie Mellon University		*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -23,6 +23,7 @@
 /*                                                                      */
 /************************************************************************/
 
+#include <algorithm>
 #include <climits>
 #include <iomanip>
 #include "bits.h"
@@ -34,6 +35,7 @@
 #include "framepac/config.h"
 #include "framepac/memory.h"
 #include "framepac/priqueue.h"
+#include "framepac/smartptr.h"
 #include "framepac/texttransforms.h"
 #include "framepac/timer.h"
 
@@ -307,22 +309,22 @@ class PartialHuffmanTree : public PartialHuffmanTreeBase
 
 class TreeDirectory
    {
-   private:
-      HuffmanTreeHypothesis **m_entries ;
-      unsigned		      m_size ;
    public:
       TreeDirectory(unsigned size)
-	 { m_entries = NewC<HuffmanTreeHypothesis*>(size) ; m_size = size ; }
-      ~TreeDirectory() { Free(m_entries) ; m_entries = 0 ; m_size = 0 ; }
+	 { m_entries = new HuffmanTreeHypothesis*[size] ; std::fill_n(m_entries.begin(),size,nullptr) ; m_size = size ; }
+      ~TreeDirectory() { m_size = 0 ; }
 
       // accessors
-      unsigned itemIndex(const HuffmanTreeHypothesis *hyp) const
-	 { return hyp->hashCode() % m_size ; }
+      unsigned itemIndex(const HuffmanTreeHypothesis *hyp) const { return hyp->hashCode() % m_size ; }
       HuffmanTreeHypothesis *findDuplicate(const HuffmanTreeHypothesis *) const ;
 
       // modifiers
       bool insert(HuffmanTreeHypothesis *hyp) ;
       bool remove(HuffmanTreeHypothesis *hyp) ;
+
+   private:
+      Fr::NewPtr<HuffmanTreeHypothesis*> m_entries ;
+      unsigned		                 m_size ;
    } ;
 
 //----------------------------------------------------------------------
@@ -497,23 +499,8 @@ class SearchTrie
 
 class HuffmanSearchQueue
    {
-   private:
-      Fr::BoundedPriorityQueue *m_queue ;
-      HuffmanHypothesis  **m_stacks ;
-      HypothesisDirectory *m_directory ;
-      uint64_t		   m_additions ;
-      uint64_t		   m_dups_skipped ;
-      size_t		   m_numstacks ;
-      size_t		   m_queuesize ;
-      size_t		   m_maxqueue ;
-      size_t		   m_shiftcount ;
-      HuffmanSearchMode    m_searchmode ;
-      bool		   m_implicitshift ;
-   protected:
-      void clearStack(unsigned which) ;
    public:
-      HuffmanSearchQueue(size_t qsize, unsigned num_stacks = 0,
-			 bool allow_impl_shift = false) ;
+      HuffmanSearchQueue(size_t qsize, unsigned num_stacks = 0, bool allow_impl_shift = false) ;
       ~HuffmanSearchQueue() ;
 
       // accessors
@@ -534,11 +521,26 @@ class HuffmanSearchQueue
       bool shift() ; // shift stacks down to eliminate leading empty stacks
       void shift(size_t count) ;  // shift stacks by specified amount
       bool conditionalShift()
-	 { return (m_numstacks>0 && m_stacks[0] == 0) ? shift() : more() ; }
+	 { return (m_numstacks>0 && m_stacks[0] == nullptr) ? shift() : more() ; }
       bool trim(size_t size, bool permanent = false) ;
       bool push(HuffmanHypothesis *hyp) ;
       HuffmanHypothesis *pop() ;
       HuffmanHypothesis *popAll() ;
+   protected:
+      void clearStack(unsigned which) ;
+
+   private:
+      Fr::BoundedPriorityQueue *m_queue ;
+      Fr::NewPtr<HuffmanHypothesis*> m_stacks ;
+      HypothesisDirectory *m_directory ;
+      uint64_t		   m_additions ;
+      uint64_t		   m_dups_skipped ;
+      size_t		   m_numstacks ;
+      size_t		   m_queuesize ;
+      size_t		   m_maxqueue ;
+      size_t		   m_shiftcount ;
+      HuffmanSearchMode    m_searchmode ;
+      bool		   m_implicitshift ;
   } ;
 
 /************************************************************************/
@@ -926,7 +928,6 @@ HuffmanSearchQueue::HuffmanSearchQueue(size_t qsize, unsigned max_stacks,
    m_dups_skipped = 0 ;
    m_queue = 0 ;
    m_numstacks = 0 ;
-   m_stacks = 0 ;
    m_queuesize = 0 ;
    m_maxqueue = qsize ;
    m_shiftcount = 0 ;
@@ -949,9 +950,10 @@ HuffmanSearchQueue::HuffmanSearchQueue(size_t qsize, unsigned max_stacks,
       // use a series of stacks for a pure breadth-first search, where
       //   the index of the stack is how many additional bits are covered
       //   relative to the current stack[0] from which we are popping
-      m_stacks = NewC<HuffmanHypothesis*>(max_stacks+1) ;
+      m_stacks = new HuffmanHypothesis*[max_stacks+1] ;
       if (m_stacks)
 	 {
+	 std::fill_n(m_stacks.begin(),max_stacks+1,nullptr) ;
 	 m_numstacks = max_stacks ;
 	 if (m_searchmode == SMODE_NOSEARCH)
 	    m_searchmode = SMODE_BREADTHFIRST ;
@@ -982,9 +984,8 @@ HuffmanSearchQueue::~HuffmanSearchQueue()
       }
    m_queuesize = 0 ;
    m_numstacks = 0 ;
-   Free(m_stacks) ;	m_stacks = 0 ;
-   delete m_queue ; 	m_queue = 0 ;
-   delete m_directory ; m_directory = 0 ;
+   delete m_queue ; 	m_queue = nullptr ;
+   delete m_directory ; m_directory = nullptr ;
    return ;
 }
 
@@ -1000,7 +1001,7 @@ bool HuffmanSearchQueue::more() const
 void HuffmanSearchQueue::clearStack(unsigned which)
 {
    HuffmanHypothesis *stack = m_stacks[which] ;
-   m_stacks[which] = 0 ;
+   m_stacks[which] = nullptr ;
    while (stack)
       {
       HuffmanHypothesis *next = stack->next() ;
@@ -1031,7 +1032,7 @@ void HuffmanSearchQueue::shift(size_t count)
    // clear the vacated stacks
    for (size_t i = m_numstacks - to_clear ; i <= m_numstacks ; i++)
       {
-      m_stacks[i] = 0 ;
+      m_stacks[i] = nullptr ;
       }
    m_shiftcount += count ;
    return ;
@@ -1051,7 +1052,7 @@ bool HuffmanSearchQueue::shift()
       {
       unsigned shiftcount = 1 ;
       // scan for a non-empty stack
-      while (shiftcount <= m_numstacks && m_stacks[shiftcount] == 0)
+      while (shiftcount <= m_numstacks && m_stacks[shiftcount] == nullptr)
 	 {
 	 shiftcount++ ;
 	 }
@@ -1330,7 +1331,6 @@ void HuffmanTreeHypothesis::initializeCodeAllocators()
    unsigned increment = CODE_HYP_BUCKET_SIZE * sizeof(CodeHypothesis) ;
    for (unsigned i = 1 ; i <= CODE_HYP_BUCKETS ; i++)
       {
-//      auto desc = aprintf("CodeHyp-%u",i) ;
       code_allocators[i] = Fr::SmallAlloc::create(i*increment) ;
       code_alloc_used[i] = 0 ;
       }
@@ -1399,9 +1399,8 @@ HuffmanTreeHypothesis::HuffmanTreeHypothesis(const HuffmanTreeHypothesis *orig)
 
 //----------------------------------------------------------------------
 
-HuffmanTreeHypothesis::HuffmanTreeHypothesis(
-   const HuffmanTreeHypothesis *orig,
-   CodeHypothesis *codes, unsigned num_codes)
+HuffmanTreeHypothesis::HuffmanTreeHypothesis(const HuffmanTreeHypothesis *orig, CodeHypothesis *codes,
+   					     unsigned num_codes)
 {
    assert(orig != 0) ;
    m_next = 0 ;
@@ -1446,8 +1445,7 @@ HuffmanTreeHypothesis::~HuffmanTreeHypothesis()
 CodeHypothesis *HuffmanTreeHypothesis::newCodeBuffer(unsigned num_codes)
 {
    // figure out which allocator to use
-   unsigned bucket
-      = (num_codes + CODE_HYP_BUCKET_SIZE - 1) / CODE_HYP_BUCKET_SIZE ;
+   unsigned bucket = (num_codes + CODE_HYP_BUCKET_SIZE - 1) / CODE_HYP_BUCKET_SIZE ;
    CodeHypothesis *codes ;
    if (code_allocators[bucket])
       {
@@ -1457,7 +1455,7 @@ CodeHypothesis *HuffmanTreeHypothesis::newCodeBuffer(unsigned num_codes)
    else
       {
       // just in case we get a weird size, we'll fall back to regular malloc()
-      codes = New<CodeHypothesis>(num_codes) ;
+      codes = new CodeHypothesis[num_codes] ;
       }
    return codes ;
 }
@@ -1475,8 +1473,7 @@ void HuffmanTreeHypothesis::allocateCodeBuffer()
 void HuffmanTreeHypothesis::releaseCodeBuffer()
 {
    // figure out which allocator to use
-   unsigned bucket
-      = (symbolCount() + CODE_HYP_BUCKET_SIZE - 1) / CODE_HYP_BUCKET_SIZE ;
+   unsigned bucket = (symbolCount() + CODE_HYP_BUCKET_SIZE - 1) / CODE_HYP_BUCKET_SIZE ;
    if (code_allocators[bucket])
       {
       code_allocators[bucket]->release(m_codes) ;
@@ -1490,9 +1487,9 @@ void HuffmanTreeHypothesis::releaseCodeBuffer()
    else
       {
       // just in case we get a weird size, we'll fall back to regular malloc()
-      Free(m_codes) ;
+      delete[] m_codes ;
       }
-   m_codes = 0 ;
+   m_codes = nullptr ;
    return ;
 }
 

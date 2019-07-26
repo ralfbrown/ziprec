@@ -286,24 +286,6 @@ class HuffmanTreeHypothesis
 
 class HuffmanHypothesis : public Fr::Object
    {
-   private:
-//      static Fr::Allocator   allocator ;
-      HuffmanTreeHypothesis *m_litcodes ;
-      HuffmanTreeHypothesis *m_distcodes ;
-
-      HuffmanHypothesis     *m_next ;
-      HuffmanHypothesis	    *m_dirnext ;
-      HuffmanHypothesis	    *m_dirprev ;
-      size_t		     m_bitcount ;
-      HuffmanCode	     m_lastliteral ;
-      unsigned short	     m_lastlitlength ;
-      unsigned short	     m_lastlitcount ;
-      BitPointer	     m_startpos ;
-      bool		     m_in_backref ;
-#ifdef TRACE_GENERATIONS
-      unsigned		     m_generation ;
-#endif
-
    protected:
       HuffmanHypothesis(const HuffmanHypothesis *,
 			const BitPointer &pos,
@@ -378,6 +360,24 @@ class HuffmanHypothesis : public Fr::Object
 #else
 	 { return 0 ; }
 #endif /* TRACE_GENERATIONS */
+
+   private:
+//      static Fr::Allocator   allocator ;
+      HuffmanTreeHypothesis *m_litcodes ;
+      HuffmanTreeHypothesis *m_distcodes ;
+
+      HuffmanHypothesis     *m_next ;
+      HuffmanHypothesis	    *m_dirnext ;
+      HuffmanHypothesis	    *m_dirprev ;
+      size_t		     m_bitcount ;
+      HuffmanCode	     m_lastliteral ;
+      unsigned short	     m_lastlitlength ;
+      unsigned short	     m_lastlitcount ;
+      BitPointer	     m_startpos ;
+      bool		     m_in_backref ;
+#ifdef TRACE_GENERATIONS
+      unsigned		     m_generation ;
+#endif
    } ;
 
 

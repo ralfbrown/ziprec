@@ -5,7 +5,7 @@
 /*									*/
 /*  File: reconstruct.C - Lempel-Ziv stream reconstruction		*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-16						*/
+/*  LastEdit: 2019-07-26						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -34,6 +34,7 @@
 #include "framepac/config.h"
 #include "framepac/memory.h"
 #include "framepac/message.h"
+#include "framepac/smartptr.h"
 #include "framepac/texttransforms.h"
 #include "framepac/timer.h"
 
@@ -74,14 +75,6 @@ using namespace Fr ;
 
 class Score
    {
-   private:
-      ZRScore m_scores[256] ;
-      ZRScore m_highest ;
-      ZRScore m_second ;
-      unsigned m_highindex ;
-      bool   m_dirty ;
-   protected:
-      void findTopScores() ;
    public:
       Score() { clear() ; }
       ~Score() {}
@@ -104,15 +97,22 @@ class Score
 	 { m_scores[byte] = (ZRScore)val ; markDirty() ; }
       void incr(uint8_t byte, double inc)
 	 { m_scores[byte] += (ZRScore)inc ; markDirty() ; }
+
+   protected:
+      void findTopScores() ;
+
+   private:
+      ZRScore m_scores[256] ;
+      ZRScore m_highest ;
+      ZRScore m_second ;
+      unsigned m_highindex ;
+      bool   m_dirty ;
    } ;
 
 //----------------------------------------------------------------------
 
 class ScoreCollection
    {
-   private:
-      Score   *m_scores ;
-      unsigned m_numscores ;
    public:
       ScoreCollection(unsigned max_ref) ;
       ~ScoreCollection() ;
@@ -123,14 +123,10 @@ class ScoreCollection
 	 { return (wild < numScores()) ? &m_scores[wild] : &m_scores[0] ; }
       const Score *scoreArray(unsigned wild) const
 	 { return (wild < numScores()) ? &m_scores[wild] : &m_scores[0] ; }
-      double score(unsigned wild, uint8_t byte) const
-	 { return m_scores[wild].score(byte) ; }
-      double highest(unsigned wild)
-	 { return m_scores[wild].highest() ; }
-      double second(unsigned wild) const
-	 { return m_scores[wild].second() ; }
-      unsigned indexOfHighest(unsigned wild)
-	 { return m_scores[wild].indexOfHighest() ; }
+      double score(unsigned wild, uint8_t byte) const { return m_scores[wild].score(byte) ; }
+      double highest(unsigned wild) { return m_scores[wild].highest() ; }
+      double second(unsigned wild) const { return m_scores[wild].second() ; }
+      unsigned indexOfHighest(unsigned wild) { return m_scores[wild].indexOfHighest() ; }
 
       // modifiers
       void incr(unsigned wild, uint8_t byte, double inc)
@@ -138,23 +134,19 @@ class ScoreCollection
       void clear(unsigned wild)
 	 { if (wild < numScores()) m_scores[wild].clear() ; }
       void clearAll() ;
+
+   private:
+      NewPtr<Score> m_scores ;
+      unsigned      m_numscores ;
    } ;
 
 //----------------------------------------------------------------------
 
 class WildcardList
    {
-   private:
-      size_t   m_count ;
-      size_t   m_maxwild ;
-      unsigned *m_wildcards ;
    public:
-      WildcardList()
-	 { 
-	    m_wildcards = 0 ;
-	    clear() ; 
-	 }
-      ~WildcardList() { clear() ; }
+      WildcardList() = default ;
+      ~WildcardList() = default ;
 
       // accessors
       size_t size() const { return m_count ; }
@@ -171,6 +163,11 @@ class WildcardList
 	       return ;
 	    m_wildcards[m_count++] = wildcard ;
 	 }
+
+   private:
+      NewPtr<unsigned> m_wildcards ;
+      unsigned         m_count { 0 } ;
+      unsigned         m_maxwild { 0 } ;
    } ;
 
 /************************************************************************/
@@ -248,10 +245,7 @@ static double replacement_confidence(unsigned wildcard,
 
 void Score::clear()
 {
-   for (size_t i = 0 ; i < lengthof(m_scores) ; i++)
-      {
-      m_scores[i] = 0.0 ;
-      }
+   std::fill_n(m_scores,lengthof(m_scores),0.0) ;
    m_highest = 0.0 ;
    m_second = 0.0 ;
    m_highindex = 0 ;
@@ -291,8 +285,8 @@ void Score::findTopScores()
 /************************************************************************/
 
 ScoreCollection::ScoreCollection(unsigned max_ref)
+   : m_scores(max_ref)
 {
-   m_scores = New<Score>(max_ref) ;
    if (m_scores)
       {
       m_numscores = max_ref ;
@@ -307,8 +301,6 @@ ScoreCollection::ScoreCollection(unsigned max_ref)
 
 ScoreCollection::~ScoreCollection()
 { 
-   Free(m_scores) ; 
-   m_scores = 0 ;
    m_numscores = 0 ;
    return ;
 }
@@ -330,8 +322,7 @@ void ScoreCollection::clearAll()
 
 void WildcardList::clear()
 {
-   Free(m_wildcards) ;
-   m_wildcards = 0 ;
+   m_wildcards = nullptr ;
    m_maxwild = 0 ;
    m_count = 0 ;
    return ;
@@ -342,11 +333,9 @@ void WildcardList::clear()
 bool WildcardList::expand()
 {
    size_t new_size = m_maxwild ? 2 * m_maxwild : 1024 ;
-   unsigned *new_wild = NewR<unsigned>(m_wildcards,new_size) ;
-   if (new_wild)
+   if (m_wildcards.reallocate(m_maxwild,new_size))
       {
       m_maxwild = new_size ;
-      m_wildcards = new_wild ;
       return true ;
       }
    return false ;
@@ -1162,15 +1151,11 @@ bool infer_replacements(DecodeBuffer &decode_buffer,
    size_t num_wildcards = decode_buffer.referenceWindow() ;
    if (decode_buffer.numReplacements() > num_wildcards)
       num_wildcards = decode_buffer.numReplacements() ;
-   WildcardCollection *allowed_wildcards
-      = new WildcardCollection(num_wildcards,true) ;
-   ScoreCollection *scores = new ScoreCollection(num_wildcards) ;
-   WildcardCounts *context_counts = new WildcardCounts(num_wildcards) ;
-   WildcardList *active_wildcards = new WildcardList ;
-   WildcardIndex *wildcard_index
-      = new WildcardIndex(decode_buffer.fileBuffer(),
-			  decode_buffer.loadedBytes(),
-			  num_wildcards) ;
+   auto allowed_wildcards = new WildcardCollection(num_wildcards,true) ;
+   auto scores = new ScoreCollection(num_wildcards) ;
+   auto context_counts = new WildcardCounts(num_wildcards) ;
+   auto active_wildcards = new WildcardList ;
+   auto wildcard_index = new WildcardIndex(decode_buffer.fileBuffer(),decode_buffer.loadedBytes(),num_wildcards) ;
    bool success = false ;
    if (!allowed_wildcards || !scores || !context_counts || !active_wildcards)
       {

@@ -38,7 +38,6 @@ DeflatePacketDesc::DeflatePacketDesc(const BitPointer *stream_start,
    : m_stream_start(stream_start), m_packet_header(packet_start),
      m_packet_body(packet_start), m_packet_end(packet_end)
 {
-   m_stream_data = 0 ;
    clearCorruption() ;
    m_last = last ;
    m_uncomp_offset = 0 ;
@@ -53,8 +52,7 @@ DeflatePacketDesc::DeflatePacketDesc(const BitPointer *stream_start,
 
 DeflatePacketDesc::~DeflatePacketDesc()
 {
-   Free(m_stream_data) ;
-   m_stream_data = 0 ;
+   m_stream_data = nullptr ;
 
    return ;
 }
@@ -178,7 +176,7 @@ bool DeflatePacketDesc::cacheStreamData()
 //FIXME
 
       }
-   return m_stream_data != 0 ;
+   return m_stream_data != nullptr ;
 }
 
 //----------------------------------------------------------------------

@@ -5,9 +5,9 @@
 /*									*/
 /*  File: inflate.C - DEFLATE decompression				*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-16						*/
+/*  LastEdit: 2019-07-26						*/
 /*									*/
-/*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
+/*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -140,11 +140,10 @@ const char *recovery_name_base = 0 ;
 /*	Helper functions						*/
 /************************************************************************/
 
-static CFile open_output_file(char *&filename, char *default_filename,
-			      const char *filename_hint, bool using_stdin,
+static CFile open_output_file(CharPtr& filename, char *default_filename, const char *filename_hint, bool using_stdin,
 			      const ZipRecParameters &params)
 {
-   const char* outname = (params.write_format != WFMT_Listing) ? filename : NULL_DEVICE ;
+   const char* outname = (params.write_format != WFMT_Listing) ? *filename : NULL_DEVICE ;
    auto opts = CFile::binary | (params.force_overwrite ? CFile::fail_if_exists : CFile::default_options) ;
    COutputFile outfp(outname, opts, using_stdin ? nullptr : CFile::askOverwrite) ;
    // the given hinted filename may not be valid on this OS or the
@@ -152,7 +151,6 @@ static CFile open_output_file(char *&filename, char *default_filename,
    //   default name if the open failed
    if (!outfp && filename_hint)
       {
-      Free(filename) ;
       filename = default_filename ;
       return COutputFile(filename, opts, using_stdin ? nullptr : CFile::askOverwrite) ;
       }
@@ -1888,21 +1886,16 @@ static bool reconstruct_stream(const char *reconst_filename,
 
 //----------------------------------------------------------------------
 
-static void generate_output_filenames(const ZipRecParameters &params,
-				      const char *output_directory,
-				      const char *filename_hint,
-				      off_t start_offset,
-				      char *&filename,
-				      CharPtr& default_filename,
-				      CharPtr& reconst_filename)
+static void generate_output_filenames(const ZipRecParameters &params, const char *output_directory,
+				      const char *filename_hint, off_t start_offset,
+				      CharPtr& filename, CharPtr& default_filename, CharPtr& reconst_filename)
 {
    if (!output_directory || !*output_directory)
       output_directory = "" ;
    const char *extension = "dat" ;
    if (params.write_format == WFMT_HTML)
       extension = "htm" ;
-   const char *name_base
-      = recovery_name_base ? recovery_name_base : "recovered" ;
+   const char *name_base = recovery_name_base ? recovery_name_base : "recovered" ;
    default_filename = aprintf("%s/%s-%8.08lX.%s%c",
 				 output_directory,name_base,
 				 (unsigned long)start_offset,extension,'\0') ;
@@ -1935,20 +1928,20 @@ static void generate_output_filenames(const ZipRecParameters &params,
 	    }
 	 }
       unsigned dir_len = strlen(output_directory) ;
-      filename = New<char>(dir_len + strlen(filename_hint) + 8) ;
+      filename = new char[dir_len + strlen(filename_hint) + 8] ;
       if (filename)
 	 {
 	 if (strcmp(output_directory,".") != 0 &&
 	     strcmp(output_directory,"") != 0)
 	    {
-	    strcpy(filename,output_directory) ;
-	    strcat(filename,"/") ;
+	    strcpy(*filename,output_directory) ;
+	    strcat(*filename,"/") ;
 	    }
 	 else
 	    filename[0] = '\0' ;
-	 strcat(filename,filename_hint) ;
+	 strcat(*filename,filename_hint) ;
 	 if (params.write_format == WFMT_HTML)
-	    strcat(filename,".htm") ;
+	    strcat(*filename,".htm") ;
 	 }
       }
    else
@@ -1992,12 +1985,11 @@ bool recover_stream(const LocationList *start_sig,
 	 fprintf(stdout," (filename '%s')",filename_hint) ;
       fprintf(stdout,"\n") ;
       }
-   char *filename ;
+   CharPtr filename ;
    CharPtr default_filename ;
    CharPtr reconst_filename ;
    const char *output_directory = fileinfo->outputDirectory() ;
-   generate_output_filenames(params,output_directory,filename_hint,
-			     start_offset,filename,default_filename,
+   generate_output_filenames(params,output_directory,filename_hint,start_offset,filename,default_filename,
 			     reconst_filename) ;
    bool success = false ;
    bool is_uncompressed
@@ -2033,14 +2025,11 @@ bool recover_stream(const LocationList *start_sig,
       if (/*known_start &&*/ params.test_mode)
 	 {
 	 reference_filename
-	    = decompress_reference(buffer_start + start_offset,
-				   buffer_start + end_offset,
+	    = decompress_reference(buffer_start + start_offset, buffer_start + end_offset,
 				   params, filename, deflate64) ;
 	 }
-      success = reconstruct_stream(reconst_filename, filename,
-				   reference_filename, params, fileinfo,
-				   start_offset, end_offset, known_start,
-				   deflate64, known_end) ;
+      success = reconstruct_stream(reconst_filename, filename, reference_filename, params, fileinfo,
+				   start_offset, end_offset, known_start, deflate64, known_end) ;
       if (reference_filename)
 	 {
 	 unlink(reference_filename); 
@@ -2066,14 +2055,12 @@ bool recover_stream(const LocationList *start_sig,
 				  deflate64, known_end) ;
 	 }
       else
-	 fprintf(stderr,"unable to open '%s' for writing\n",filename) ;
+	 fprintf(stderr,"unable to open '%s' for writing\n",*filename) ;
       if (reference_filename)
 	 {
 	 unlink(reference_filename) ;
 	 }
       }
-   if (filename != default_filename)
-      Free(filename) ;
    clear_default_symbol_table() ;
    return success ;
 }

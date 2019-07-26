@@ -23,6 +23,7 @@
 /*                                                                      */
 /************************************************************************/
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -61,8 +62,8 @@ typedef unsigned char uchar ;
 /*	Global variables						*/
 /************************************************************************/
 
-static size_t *ngram_counts = nullptr ;
-static uint16_t *trigram_counts = nullptr ;
+static NewPtr<size_t> ngram_counts ;
+static NewPtr<uint16_t> trigram_counts ;
 static bool store_unfiltered_counts = false ;
 
 static WordList *frequencies = nullptr ;
@@ -202,9 +203,12 @@ static bool count_trigrams(CFile& fp)
 static bool count_trigrams(const char *filename)
 {
    if (!trigram_counts)
-      trigram_counts = NewC<uint16_t>(256*256*256) ;
-   if (!trigram_counts)
-      return false ;
+      {
+      trigram_counts = new uint16_t[256*256*256] ;
+      if (!trigram_counts)
+	 return false ;
+      std::fill_n(trigram_counts.begin(),256*256*256,0) ;
+      }
    if (filename && *filename)
       {
       CInputFile fp(filename) ;
@@ -578,7 +582,8 @@ int main(int argc, char **argv)
    frequencies = sort_words(frequencies,compare_frequencies) ;
    if (filter_thresh < 1)
       filter_thresh = DEFAULT_FILTER_THRESHOLD ;
-   ngram_counts = NewC<size_t>(max_ngram+1) ;
+   ngram_counts = new size_t[max_ngram+1] ;
+   std::fill_n(ngram_counts.begin(),max_ngram+1,0) ;
    if (forward && store_unfiltered_counts)
       {
       uint8_t keybuf[max_ngram+1] ;
@@ -612,8 +617,7 @@ int main(int argc, char **argv)
       fprintf(stderr,"Error writing language data to file '%s'\n",outfile) ;
       return 1 ;
       }
-   fprintf(stdout,"Built language model from %ld bytes of text\n",
-	   total_bytes) ;
+   fprintf(stdout,"Built language model from %ld bytes of text\n", total_bytes) ;
    uint32_t count = count_words(frequencies) ;
    fprintf(stdout,"Processed %lu unique words\n",(unsigned long)count) ;
    if (frequencies)
@@ -624,14 +628,12 @@ int main(int argc, char **argv)
    if (words)
       {
       words->eraseList() ;
-      words = 0 ;
+      words = nullptr ;
       }
-   Free(ngram_counts) ;
-   Free(trigram_counts) ;
-   trigram_counts = 0 ;
+   ngram_counts = nullptr ;
+   trigram_counts = nullptr ;
    delete forward_ngrams ;
    delete reverse_ngrams ;
-//   FrMemoryStats() ;
    return 0 ;
 }
 

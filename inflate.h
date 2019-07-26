@@ -28,6 +28,7 @@
 
 #include "huffman.h"
 #include "framepac/file.h"
+#include "framepac/smartptr.h"
 
 /************************************************************************/
 /*	Manifest Constants						*/
@@ -148,7 +149,7 @@ class DeflatePacketDesc
 
    private:
       DeflatePacketDesc *m_next ;
-      uint8_t	       *m_stream_data ;
+      Fr::NewPtr<uint8_t> m_stream_data ;
       BitPointer	m_stream_start ;
       BitPointer 	m_packet_header ;
       BitPointer 	m_packet_body ;

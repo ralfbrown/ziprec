@@ -798,8 +798,7 @@ static char *try_loading(const LocationSpec *locations,
 
 //----------------------------------------------------------------------
 
-bool load_reconstruction_data_by_lang(DecodeBuffer &decode_buffer,
-				      const LanguageIdentifier *langid,
+bool load_reconstruction_data_by_lang(DecodeBuffer &decode_buffer, const LanguageIdentifier *langid,
 				      const char *&encoding)
 {
    // score N sections of the file, and report on the most frequent one
@@ -810,20 +809,16 @@ bool load_reconstruction_data_by_lang(DecodeBuffer &decode_buffer,
       encoding = langid->languageEncoding(langnum) ;
       if (verbosity > 0)
 	 {
-	 cerr << "detected language '" << langname << "' in " << encoding
-	      << endl ;
+	 cerr << "detected language '" << langname << "' in " << encoding << endl ;
 	 }
       const char *alt_enc = strcmp(encoding,"ASCII") == 0 ? "utf8" : encoding ;
-      char *langdata = try_loading(model_locations,
-				   langid->databaseLocation(),
-				   langname, encoding, alt_enc) ;
+      CharPtr langdata = try_loading(model_locations, langid->databaseLocation(), langname, encoding, alt_enc) ;
       bool success = false ;
       if (langdata)
 	 {
 	 success = true ;
 	 cerr << "; loaded language data from " << langdata << endl ;
 	 }
-      Free(langdata) ;
       return success ;
       }
    return true ;

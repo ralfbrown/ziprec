@@ -5,7 +5,7 @@
 /*									*/
 /*  File: pstrie.C - packed simple Word-frequency trie			*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-16						*/
+/*  LastEdit: 2019-07-26						*/
 /*									*/
 /*  (c) Copyright 2012,2013,2015,2019 Ralf Brown/CMU			*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -570,8 +570,8 @@ LangIDPackedTrie::LangIDPackedTrie(const NybbleTrie *trie, uint32_t min_freq,
       {
       m_size = trie->numFullByteNodes(min_freq) ;
       m_numterminals = trie->numTerminalNodes(min_freq) ;
-      m_nodes = Fr::New<PackedSimpleTrieNode>(m_size) ;
-      m_terminals = Fr::New<PackedTrieTerminalNode>(m_numterminals) ;
+      m_nodes = new PackedSimpleTrieNode[m_size] ;
+      m_terminals = new PackedTrieTerminalNode[m_numterminals] ;
       if (m_nodes && m_terminals)
 	 {
 	 PackedSimpleTrieNode *proot = &m_nodes[PTRIE_ROOT_INDEX] ;
@@ -592,8 +592,8 @@ LangIDPackedTrie::LangIDPackedTrie(const NybbleTrie *trie, uint32_t min_freq,
 	 }
       else
 	 {
-	 Fr::Free(m_nodes) ;
-	 Fr::Free(m_terminals) ;
+	 delete[] m_nodes ;
+	 delete[] m_terminals ;
 	 m_nodes = nullptr ; 
 	 m_terminals = nullptr ;
 	 m_size = 0 ;
@@ -624,7 +624,7 @@ LangIDPackedTrie::LangIDPackedTrie(Fr::CFile& f, const char *filename)
 	 {
 	 // unable to memory-map the file, so read its contents into buffers
 	 //   and point our variables at the buffers
-	 char *nodebuffer = Fr::New<char>((m_size * sizeof(PackedSimpleTrieNode)) + (m_numterminals * sizeof(PackedTrieTerminalNode))) ;
+	 char *nodebuffer = new char[(m_size * sizeof(PackedSimpleTrieNode)) + (m_numterminals * sizeof(PackedTrieTerminalNode))] ;
 	 m_nodes = (PackedSimpleTrieNode*)nodebuffer ;
 	 m_terminals = (PackedTrieTerminalNode*)(m_nodes + m_size) ;
 	 m_terminals_contiguous = true ;
@@ -632,8 +632,8 @@ LangIDPackedTrie::LangIDPackedTrie(Fr::CFile& f, const char *filename)
 	     f.read(m_nodes,m_size,sizeof(PackedSimpleTrieNode)) != m_size ||
 	     f.read(m_terminals,m_numterminals,sizeof(PackedTrieTerminalNode)) != m_numterminals)
 	    {
-	    Fr::Free(m_nodes) ;  m_nodes = 0 ;
-	    m_terminals = 0 ;
+	    delete[] m_nodes ;  m_nodes = nullptr ;
+	    m_terminals = nullptr ;
 	    m_size = 0 ; 
 	    m_numterminals = 0 ;
 	    }
@@ -653,9 +653,9 @@ LangIDPackedTrie::~LangIDPackedTrie()
       }
    else
       {
-      Fr::Free(m_nodes) ;
+      delete[] m_nodes ;
       if (!m_terminals_contiguous)
-	 Fr::Free(m_terminals) ;
+	 delete[] m_terminals ;
       }
    init() ;				// clear all of the fields
    return ;

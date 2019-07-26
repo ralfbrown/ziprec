@@ -4,9 +4,9 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 27jun2019							*/
+/*  LastEdit: 2019-07-26						*/
 /*									*/
-/*  (c) Copyright 2011,2013,2019 Ralf Brown/CMU				*/
+/*  (c) Copyright 2011,2013,2019 Carnegie Mellon University		*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -29,6 +29,7 @@
 #include "recover.h"
 #include "global.h"
 #include "framepac/init.h"
+#include "framepac/smartptr.h"
 #include "framepac/texttransforms.h"
 
 using namespace Fr ;
@@ -50,7 +51,7 @@ using namespace Fr ;
 static __thread bool thread_initialized = false ;
 
 //static unsigned sequence_number = 0 ;
-static char *output_dir = 0 ; 
+static CharPtr output_dir ; 
 
 static FrThreadKey scanner_key ;
 
@@ -190,7 +191,7 @@ static void process_buffer(const sbuf_t scanbuf, feature_recorder *fr)
 
 static void cleanup()
 {
-   Free(output_dir) ;
+   output_dir = nullptr ;
    return ;
 }
 
