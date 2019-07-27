@@ -183,7 +183,7 @@ static const char *signature_types[] =
       "Xz signature",
       "Lzip signature",
       "MS Cabinet signature",
-      0
+      nullptr
    } ;
 
 static uint32_t rar_CRC_table[256] ;
@@ -236,7 +236,7 @@ static uint32_t get_dword(const uint8_t *w)
 
 static bool is_stdin(const char *filename)
 {
-   return filename != 0 && strcmp(filename,"-") == 0 ;
+   return filename != nullptr && strcmp(filename,"-") == 0 ;
 }
 
 //----------------------------------------------------------------------
@@ -538,7 +538,7 @@ static bool extract_stream(const LocationList* start_sig, const LocationList* en
    if (params.write_format == WFMT_Listing)
       {
       CFile out(stdout) ;
-      DecodedByte::writeHeader(params.write_format,out,0,0,params.test_mode) ;
+      DecodedByte::writeHeader(params.write_format,out,nullptr,0,params.test_mode) ;
       DecodedByte::addCounts(0,count,count) ;
       DecodedByte::writeFooter(params.write_format,out,filename,params.test_mode) ;
       DecodedByte::clearCounts() ;
@@ -1367,7 +1367,7 @@ static void remove_location(LocationList *&locations,
    if (loc == locations)
       {
       locations = locations->next() ;
-      loc->setNext(0) ;
+      loc->setNext(nullptr) ;
       delete loc ;
       }
    else if (locations)
@@ -1378,7 +1378,7 @@ static void remove_location(LocationList *&locations,
 	 if (l == loc)
 	    {
 	    prev->setNext(l->next()) ;
-	    loc->setNext(0) ;
+	    loc->setNext(nullptr) ;
 	    delete loc ;
 	    return ;
 	    }
@@ -1829,7 +1829,7 @@ static CharPtr get_ZIP_filename_hint(const LocationList* prev, const char* buffe
       }
    else
       {
-      filename_hint = check_central_dir(locations,0,buffer_start,original_size_hint) ;
+      filename_hint = check_central_dir(locations,nullptr,buffer_start,original_size_hint) ;
       }
    return filename_hint ;
 }
@@ -2014,7 +2014,7 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 		curr->signatureType() == ST_ZlibHeader)
 	       known_end = true ;
 	    recovery_name_base = "zlibdata" ;
-	    if (recover_stream(prev,curr,params,fileinfo,0,0,true,false,known_end))
+	    if (recover_stream(prev,curr,params,fileinfo,nullptr,0,true,false,known_end))
 	       recovered = true ;
 	    recovery_name_base = nullptr ;
 	    }
@@ -2034,7 +2034,7 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 	    //   position up to the current one; if the current position
 	    //   is the matching end marker, we have a known end of the stream
 	    recovery_name_base = "pdfdata" ;
-	    if (recover_stream(prev,curr,params,fileinfo,0,0,true,false,
+	    if (recover_stream(prev,curr,params,fileinfo,nullptr,0,true,false,
 			       curr->signatureType() == ST_PDF_FlateEnd))
 	       success = true ;
 	    recovery_name_base = nullptr ;
@@ -2084,7 +2084,7 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 	 else if (sig == ST_DeflateSyncMark)
 	    {
 	    recovery_name_base = "rawdeflate" ;
-	    if (recover_stream(prev,curr,params,fileinfo,0,0,true,false,false))
+	    if (recover_stream(prev,curr,params,fileinfo,nullptr,0,true,false,false))
 	       recovered = true ;
 	    recovery_name_base = nullptr ;
 	    }
@@ -2092,7 +2092,7 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 		  (sig == ST_PNG_iTXt || sig == ST_PNG_zTXt))
 	    {
 	    recovery_name_base = "pngtext" ;
-	    if (recover_stream(prev,curr,params,fileinfo,0,0,true,false,true))
+	    if (recover_stream(prev,curr,params,fileinfo,nullptr,0,true,false,true))
 	       recovered = true ;
 	    recovery_name_base = nullptr ;
 	    }
@@ -2121,7 +2121,7 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 	 //   like the end marker, so try recovering a Deflate stream ending
 	 //   at that point
 	 recovery_name_base = "pdfdata" ;
-	 if (recover_stream(prev,curr,params,fileinfo,0,0,false,false,true))
+	 if (recover_stream(prev,curr,params,fileinfo,nullptr,0,false,false,true))
 	    success = true ;
 	 recovery_name_base = nullptr ;
 	 }
@@ -2140,7 +2140,7 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 	 //   directory entry immediately follows the compressed data
 	 //   for the last file in the archive
 	 if (recover_ZIP_span(locations,prev,curr,params,fileinfo,
-			      deflate64,prev != 0))
+			      deflate64,prev != nullptr))
 	    success = true ;
          // since no more files will follow once we've reached the
          //   central directory, we can stop now
@@ -2171,7 +2171,7 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
       else if (curr->signatureType() == ST_ZlibEOF)
 	 {
 	 recovery_name_base = "zlibdata" ;
-	 if (recover_stream(prev,curr,params,fileinfo,0,0,prev != 0,false))
+	 if (recover_stream(prev,curr,params,fileinfo,nullptr,0,prev != nullptr,false))
 	    success = true ;
 	 recovery_name_base = nullptr ;
 	 }
@@ -2195,8 +2195,7 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 
 //----------------------------------------------------------------------
 
-static LocationList *split_on_central_dir(LocationList *signatures,
-					  const char *buffer_start)
+static LocationList* split_on_central_dir(LocationList* signatures, const char* buffer_start)
 {
    while (signatures)
       {
@@ -2208,15 +2207,13 @@ static LocationList *split_on_central_dir(LocationList *signatures,
 	 if (signatures->signatureType() == ST_EndOfCentralDir)
 	    sigsize += get_word(header + 20) ;
 	 LocationList *split = signatures->next() ;
-	 signatures->setNext(0) ;
-	 return LocationList::push(ST_zipStartOfFile,
-				 signatures->offset() + sigsize,
-				 split) ;
+	 signatures->setNext(nullptr) ;
+	 return LocationList::push(ST_zipStartOfFile, signatures->offset() + sigsize, split) ;
 	 }
       signatures = signatures->next() ;
       }
    // no end-of-central directory record found, so no split
-   return 0 ;
+   return nullptr ;
 }
 
 //----------------------------------------------------------------------
@@ -2360,7 +2357,7 @@ bool process_file_data(const ZipRecParameters &params,
       recovery_name_base = "rawdeflate" ;
       auto curr = LocationList::push(ST_ZlibEOF,params.scan_range_end,nullptr) ;
       auto prev = LocationList::push(ST_RawDeflateStart,params.scan_range_start,curr) ;
-      if (recover_stream(prev,curr,params,fileinfo,0,0,true,false,true))
+      if (recover_stream(prev,curr,params,fileinfo,nullptr,0,true,false,true))
 	 success = true ;
       recovery_name_base = nullptr ;
       }

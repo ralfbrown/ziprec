@@ -654,12 +654,12 @@ static void apply_unambiguous_wildcards(DecodeBuffer &decode_buffer,
 
 static bool reverse_ngram(const uint8_t* key, unsigned keylen, uint32_t frequency, void* user_data)
 {
-   NybbleTrie *reverse = (NybbleTrie*)user_data ;
-   uint8_t reversed_key[keylen] ;
+   LocalAlloc<uint8_t> reversed_key(keylen) ;
    for (size_t i = 0 ; i < keylen ; i++)
       {
       reversed_key[i] = key[keylen-i-1] ;
       }
+   auto reverse = reinterpret_cast<NybbleTrie*>(user_data) ;
    reverse->insert(reversed_key,keylen,frequency,false) ;
    return true ;
 }
@@ -714,7 +714,7 @@ static void augment_file_models(DecodeBuffer &decode_buffer,
       ngrams_forward = new LangIDPackedTrie(ngrams_left,1,false) ;
       ngrams_left = nullptr ;
       Owned<NybbleTrie> ngrams_right ;
-      uint8_t keybuf[max_ngram_len+1] ;
+      LocalAlloc<uint8_t> keybuf(max_ngram_len+1) ;
       ngrams_forward->enumerate(keybuf,max_ngram_len,reverse_ngram,ngrams_right) ;
       ngrams_right->addTokenCount(total_tokens) ;
       ngrams_reverse = new LangIDPackedTrie(ngrams_right,1,false) ;

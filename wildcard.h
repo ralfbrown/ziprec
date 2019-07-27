@@ -99,15 +99,11 @@ class WildcardCollection
       // accessors
       unsigned numSets() const { return m_numsets ; }
       const WildcardSet *set(unsigned wildcard) const
-	 { return (wildcard < m_numsets) ? &m_wildcards[wildcard] : 0 ; }
-      WildcardSet *set(unsigned wildcard)
-	 { return (wildcard < m_numsets) ? &m_wildcards[wildcard] : 0 ; }
-      unsigned setSize(unsigned wildcard) const
-	 { return m_wildcards[wildcard].setSize() ; }
-      uint8_t firstMember(unsigned wildcard) const
-	 { return m_wildcards[wildcard].firstMember() ; }
-      bool contains(unsigned wildcard, uint8_t value) const
-	 { return m_wildcards[wildcard].contains(value) ; }
+	 { return (wildcard < m_numsets) ? &m_wildcards[wildcard] : nullptr ; }
+      WildcardSet *set(unsigned wildcard) { return (wildcard < m_numsets) ? &m_wildcards[wildcard] : nullptr ; }
+      unsigned setSize(unsigned wildcard) const { return m_wildcards[wildcard].setSize() ; }
+      uint8_t firstMember(unsigned wildcard) const { return m_wildcards[wildcard].firstMember() ; }
+      bool contains(unsigned wildcard, uint8_t value) const { return m_wildcards[wildcard].contains(value) ; }
       bool couldBe(class DecodedByte db, const bool *charset) const ;
       bool mustBe(class DecodedByte db, const bool *charset) const ;
 

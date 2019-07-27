@@ -198,7 +198,7 @@ class HuffmanTreeHypothesis
 	 { return (code << (MAX_BITLENGTH - length)) ; }
 
       // accessors
-      bool good() const { return m_codes != 0 ; }
+      bool good() const { return m_codes != nullptr ; }
       HuffmanTreeHypothesis *next() const { return m_next ; }
       HuffmanTreeHypothesis *prev() const { return m_prev ; }
       const HuffmanTreeHypothesis *parent() const { return m_parent ; }

@@ -98,9 +98,9 @@ void HuffmanLengthTable::addSymbol(HuffSymbol symbol, unsigned length)
 
 //----------------------------------------------------------------------
 
-bool HuffmanLengthTable::advanceLocation(HuffmanLocation *loc) const
+bool HuffmanLengthTable::advanceLocation(HuffmanLocation* loc) const
 {
-   assert(loc != 0) ;
+   assert(loc != nullptr) ;
    unsigned len = loc->level() ;
    assert(len < MAX_HUFFMAN_LENGTH) ;
    if (loc->offset() >= count(len))
@@ -245,14 +245,14 @@ bool HuffmanTree::addSymbol(HuffSymbol symbol, unsigned offset)
 
 //----------------------------------------------------------------------
 
-bool HuffmanTree::advanceLocation(HuffmanLocation *loc) const
+bool HuffmanTree::advanceLocation(HuffmanLocation* loc) const
 {
-   assert(loc != 0) ;
+   assert(loc != nullptr) ;
    if (loc->offset() >= childCount())
       {
       // we've hit the end of the current node, so look upwards in the
       //   tree until we reach a node that hasn't yet exhausted its children
-      HuffmanTree *tree = parent() ;
+      HuffmanTree* tree = parent() ;
       if (!tree)
 	 return false ;
       unsigned parentloc = parentLocation() ;
@@ -320,8 +320,8 @@ void HuffmanTree::dump() const
 
 HuffmanLocation::HuffmanLocation()
 {
-   newLevel(0,0,0) ;
-   newTable(0) ;
+   newLevel(0,0,nullptr) ;
+   newTable(nullptr) ;
    return ;
 }
 
@@ -331,7 +331,7 @@ HuffmanLocation::HuffmanLocation(HuffmanLengthTable *table,
 				 unsigned length)
 {
    newTable(table) ;
-   newLevel(length,0,0) ;
+   newLevel(length,0,nullptr) ;
    return ;
 }
 
@@ -339,11 +339,11 @@ HuffmanLocation::HuffmanLocation(HuffmanLengthTable *table,
 
 HuffmanLocation::HuffmanLocation(HuffmanTree *tree)
 {
-   newTable(0) ;
+   newTable(nullptr) ;
    if (tree)
       newLevel(tree->prefixLength(),0,tree) ;
    else
-      newLevel(0,0,0) ;
+      newLevel(0,0,nullptr) ;
    return ;
 }
 
@@ -381,7 +381,7 @@ bool HuffmanLocation::advance()
 
 bool HuffmanLocation::addSymbol(HuffSymbol sym, unsigned length)
 {
-   assert(m_tree != 0) ;
+   assert(m_tree != nullptr) ;
    unsigned codelen = m_tree->codeLength() ;
    if (length < codelen)
       {

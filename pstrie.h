@@ -58,17 +58,13 @@ class PackedSimpleTrieNode ;
 
 class PackedTrieMatch
    {
-   private:
-      const PackedSimpleTrieNode *m_node ;
-      uint8_t			 *m_key ;
-      unsigned			  m_keylen ;
    public:
-      PackedTrieMatch() { m_node = 0 ; m_key = 0 ; m_keylen = 0 ; }
+      PackedTrieMatch() { m_node = nullptr ; m_key = nullptr ; m_keylen = 0 ; }
       ~PackedTrieMatch() {}
 
       // accessors
-      const PackedSimpleTrieNode *node() const { return m_node ; }
-      const uint8_t *key() const { return m_key ; }
+      const PackedSimpleTrieNode* node() const { return m_node ; }
+      const uint8_t* key() const { return m_key ; }
       unsigned keyLength() const { return m_keylen ; }
 
       // modifiers
@@ -80,6 +76,11 @@ class PackedTrieMatch
 	       { m_keylen = std::min(len,m_keylen) ; std::copy(newkey,newkey+len,m_key) ;
 	       }
 	 }
+
+   private:
+      const PackedSimpleTrieNode* m_node ;
+      uint8_t*			  m_key ;
+      unsigned			  m_keylen ;
    } ;
 
 //----------------------------------------------------------------------
@@ -168,7 +169,7 @@ class LangIDPackedTrie
 
       // accessors
       bool good() const
-	 { return (m_nodes != 0) && m_size > 0 ; }
+	 { return m_nodes && m_size > 0 ; }
       bool terminalNode(const Node *n) const
          { return (n < m_nodes) || (n >= m_nodes + m_size) ; }
       uint32_t size() const { return m_size ; }

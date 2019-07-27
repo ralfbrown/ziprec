@@ -359,7 +359,7 @@ class HuffmanInfo : public Object
 	 : m_startpos(pos)
 	 { m_bitcount = 0 ;
 	   clearLastLiteral() ;
-	   setNext(0) ;}
+	   setNext(nullptr) ;}
       HuffmanInfo(const HuffmanInfo*, const BitPointer& pos, size_t extension_len) ;
       ~HuffmanInfo() {}
 
@@ -472,7 +472,7 @@ class SearchTrie
       ~SearchTrie() ;
 
       // accessors
-      bool nonEmpty() const { return m_trie != 0 ; }
+      bool nonEmpty() const { return m_trie != nullptr ; }
       size_t size() const { return m_size ; }
       HuffmanHypothesis *find(uint32_t hashcode) const ;
       bool isDuplicate(const HuffmanHypothesis *) const ;
@@ -487,7 +487,7 @@ class SearchTrie
 
    private:
       static SmallAlloc* allocator ;
-      SearchTrieNode *m_trie ;
+      SearchTrieNode* m_trie ;
       size_t	      m_size ;
    } ;
 
@@ -544,7 +544,7 @@ class HuffmanSearchQueue
 /************************************************************************/
 
 SmallAlloc* HuffmanTreeHypothesis::allocator = SmallAlloc::create(sizeof(HuffmanTreeHypothesis)) ;
-SmallAlloc* HuffmanTreeHypothesis::code_allocators[] = { 0 } ;
+SmallAlloc* HuffmanTreeHypothesis::code_allocators[] = { nullptr } ;
 size_t HuffmanTreeHypothesis::code_alloc_used[] = { 0 } ;
 
 //Fr::Allocator HuffmanHypothesis::allocator("HuffmanHyp",
@@ -728,7 +728,7 @@ HuffmanHypothesis *SearchTrie::find(uint32_t hashcode) const
       unsigned index = (hashcode >> (i * BITS_PER_LEVEL)) & TRIE_MASK ;
       node = node->child(index) ;
       }
-   return node ? node->leaf(hashcode & TRIE_MASK) : 0 ;
+   return node ? node->leaf(hashcode & TRIE_MASK) : nullptr ;
 }
 
 //----------------------------------------------------------------------
@@ -838,7 +838,7 @@ bool SearchTrie::remove(HuffmanHypothesis *hyp)
 	    prev->setNext(cand->next()) ;
 	 else
 	    node->setLeaf(index,cand->next()) ;
-	 cand->setNext(0) ;
+	 cand->setNext(nullptr) ;
 	 delete cand ;
 	 m_size-- ;
 	 if (!node->leaf(index) && !node->hasDescendants())
@@ -858,7 +858,7 @@ bool SearchTrie::remove(HuffmanHypothesis *hyp)
 		     }
 		  else
 		     {
-		     path[i+1]->setChild(path_index[i+1],0) ;
+		     path[i+1]->setChild(path_index[i+1],nullptr) ;
 		     delete path[i] ;
 		     }
 		  }
@@ -1060,7 +1060,7 @@ bool HuffmanSearchQueue::shift()
 
 bool HuffmanSearchQueue::duplicate(const HuffmanHypothesis *hyp) const
 {
-   return (directory() && directory()->findDuplicate(hyp) != 0) ;
+   return (directory() && directory()->findDuplicate(hyp) != nullptr) ;
 }
 
 //----------------------------------------------------------------------
@@ -1210,8 +1210,7 @@ HuffmanHypothesis *HuffmanSearchQueue::popAll()
 /*	Methods for class TreeDirectory					*/
 /************************************************************************/
 
-HuffmanTreeHypothesis *
-TreeDirectory::findDuplicate(const HuffmanTreeHypothesis *hyp) const
+HuffmanTreeHypothesis* TreeDirectory::findDuplicate(const HuffmanTreeHypothesis* hyp) const
 {
    unsigned bucket = itemIndex(hyp) ;
    for (HuffmanTreeHypothesis *dup = m_entries[bucket] ; dup ; dup = dup->next())
@@ -1220,7 +1219,7 @@ TreeDirectory::findDuplicate(const HuffmanTreeHypothesis *hyp) const
 	 return dup ;
       }
    // if we get here, there is no duplicate in the directory
-   return 0 ;
+   return nullptr ;
 }
 
 //----------------------------------------------------------------------
@@ -1229,7 +1228,7 @@ bool TreeDirectory::insert(HuffmanTreeHypothesis *hyp)
 {
    unsigned bucket = itemIndex(hyp) ;
    HuffmanTreeHypothesis *next = m_entries[bucket] ;
-   hyp->setPrev(0) ;
+   hyp->setPrev(nullptr) ;
    hyp->setNext(next) ;
    m_entries[bucket] = hyp ;
    if (next)
@@ -1243,8 +1242,8 @@ bool TreeDirectory::remove(HuffmanTreeHypothesis *hyp)
 {
    HuffmanTreeHypothesis *next = hyp->next() ;
    HuffmanTreeHypothesis *prev = hyp->prev() ;
-   hyp->setNext(0) ;
-   hyp->setPrev(0) ;
+   hyp->setNext(nullptr) ;
+   hyp->setPrev(nullptr) ;
    if (next)
       next->setPrev(prev) ;
    if (prev)
@@ -1262,8 +1261,7 @@ bool TreeDirectory::remove(HuffmanTreeHypothesis *hyp)
 /*	Methods for class HypothesisDirectory				*/
 /************************************************************************/
 
-HuffmanHypothesis *
-HypothesisDirectory::findDuplicate(const HuffmanHypothesis *hyp) const
+HuffmanHypothesis* HypothesisDirectory::findDuplicate(const HuffmanHypothesis* hyp) const
 {
    unsigned bucket = itemIndex(hyp) ;
    size_t bitcount = hyp->bitCount() ;
@@ -1273,16 +1271,16 @@ HypothesisDirectory::findDuplicate(const HuffmanHypothesis *hyp) const
 	 return dup ;
       }
    // if we get here, there is no duplicate in the directory
-   return 0 ;
+   return nullptr ;
 }
 
 //----------------------------------------------------------------------
 
-bool HypothesisDirectory::insert(HuffmanHypothesis *hyp)
+bool HypothesisDirectory::insert(HuffmanHypothesis* hyp)
 {
    unsigned bucket = itemIndex(hyp) ;
-   hyp->setDirPrev(0) ;
-   HuffmanHypothesis *next = m_entries[bucket] ;
+   hyp->setDirPrev(nullptr) ;
+   auto next = m_entries[bucket] ;
    m_entries[bucket] = hyp ;
    hyp->setDirNext(next) ;
    if (next)
@@ -1292,12 +1290,12 @@ bool HypothesisDirectory::insert(HuffmanHypothesis *hyp)
 
 //----------------------------------------------------------------------
 
-bool HypothesisDirectory::remove(HuffmanHypothesis *hyp)
+bool HypothesisDirectory::remove(HuffmanHypothesis* hyp)
 {
-   HuffmanHypothesis *next = hyp->dirNext() ;
-   HuffmanHypothesis *prev = hyp->dirPrev() ;
-   hyp->setDirNext(0) ;
-   hyp->setDirPrev(0) ;
+   auto next = hyp->dirNext() ;
+   auto prev = hyp->dirPrev() ;
+   hyp->setDirNext(nullptr) ;
+   hyp->setDirPrev(nullptr) ;
    if (next)
       next->setDirPrev(prev) ;
    if (prev)
@@ -1364,7 +1362,7 @@ HuffmanTreeHypothesis::HuffmanTreeHypothesis(unsigned max_codes)
 
 HuffmanTreeHypothesis::HuffmanTreeHypothesis(const HuffmanTreeHypothesis *orig)
 {
-   assert(orig != 0) ;
+   assert(orig != nullptr) ;
    m_next = nullptr ;
    m_prev = nullptr ;
    m_parent = orig ;
@@ -1391,7 +1389,7 @@ HuffmanTreeHypothesis::HuffmanTreeHypothesis(const HuffmanTreeHypothesis *orig)
 HuffmanTreeHypothesis::HuffmanTreeHypothesis(const HuffmanTreeHypothesis *orig, CodeHypothesis *codes,
    					     unsigned num_codes)
 {
-   assert(orig != 0) ;
+   assert(orig != nullptr) ;
    m_next = nullptr ;
    m_prev = nullptr ;
    m_parent = orig ;
@@ -1595,7 +1593,7 @@ unsigned HuffmanTreeHypothesis::augmentTree(HuffmanCode code,
 					    CodeHypothesis *&augmented)
 const
 {
-   CodeHypothesis new_tree[maxCodes()+1] ;
+   LocalAlloc<CodeHypothesis> new_tree(maxCodes()+1) ;
    unsigned num_codes = symbolCount() ;
    unsigned prev_extra ;
    unsigned inspoint = findInsertionPoint(code,length,prev_extra) ;
@@ -1633,7 +1631,7 @@ const
       else
 	 {
 	 // copy the tree up to the insertion point
-	 std::copy_n(m_codes,inspoint,new_tree) ;
+	 std::copy_n(m_codes,inspoint,new_tree.begin()) ;
 	 // add in any codes that we now know for certain given the last
 	 //   code copied and the new one being inserted
 	 if (new_tree[inspoint-1].length() < length)
@@ -1746,7 +1744,7 @@ const
       augmented = newCodeBuffer(num_codes) ;
       if (augmented)
 	 {
-	 std::copy(new_tree,new_tree+num_codes,augmented) ;
+	 std::copy(new_tree.begin(),new_tree.begin()+num_codes,augmented) ;
 	 }
       else
 	 num_codes = 0 ;
@@ -2126,9 +2124,9 @@ HuffmanHypothesis::HuffmanHypothesis(const BitPointer& pos)
    m_litcodes = new HuffmanTreeHypothesis(LIT_SYMBOLS) ;
    m_distcodes = new HuffmanTreeHypothesis(DIST_SYMBOLS) ;
    clearLastLiteral() ;
-   setNext(0) ;
-   setDirNext(0) ;
-   setDirPrev(0) ;
+   setNext(nullptr) ;
+   setDirNext(nullptr) ;
+   setDirPrev(nullptr) ;
 #ifdef TRACE_GENERATIONS
    m_generation = 0 ;
 #endif /* TRACE_GENERATIONS */
@@ -2277,15 +2275,13 @@ HuffmanHypothesis::extend(const BitPointer &position,
       {
       if (is_distance)
 	 {
-	 if (length < m_distcodes->maxCodeLength()
-	     || length < NEEDED_DIST_BITS)
-	    return 0 ;
+	 if (length < m_distcodes->maxCodeLength() || length < NEEDED_DIST_BITS)
+	    return nullptr ;
 	 }
       else
 	 {
-	 if (length < m_litcodes->maxCodeLength()
-	     || length < NEEDED_LIT_BITS)
-	    return 0 ;
+	 if (length < m_litcodes->maxCodeLength() || length < NEEDED_LIT_BITS)
+	    return nullptr ;
 	 }
       }
    if (verbosity >= VERBOSITY_TREE)
@@ -2896,7 +2892,7 @@ HuffmanInfo::HuffmanInfo(const HuffmanInfo *orig, const BitPointer &pos,
      m_distcodes(orig->m_distcodes),
      m_startpos(pos)
 {
-   setNext(0) ;
+   setNext(nullptr) ;
    m_lastliteral = orig->lastLiteral() ;
    m_lastlitlength = orig->lastLiteralLength() ;
    m_lastlitcount = orig->lastLiteralRepeat() ;
@@ -2972,7 +2968,7 @@ HuffmanInfo *HuffmanInfo::extend(const BitPointer& position, HuffmanCode code,
 {
    if (code == all_ones[len] &&
        (len < m_litcodes.maxCodeLength() || len < NEEDED_LIT_BITS))
-      return 0 ;
+      return nullptr ;
    Owned<HuffmanInfo> new_info(this,position,len) ;
    if (new_info)
       {
@@ -2991,11 +2987,11 @@ HuffmanInfo *HuffmanInfo::extend(const BitPointer& position, HuffmanCode code,
 {
    if (code == all_ones[matchlen] && 
        (matchlen < m_litcodes.maxCodeLength() || matchlen < NEEDED_LIT_BITS))
-      return 0 ;
+      return nullptr ;
    size_t extension = matchlen + matchextra + distlen + distextra ;
    if (distcode == all_ones[distlen] &&
        (distlen < m_distcodes.maxCodeLength() || distlen < NEEDED_DIST_BITS))
-      return 0 ;
+      return nullptr ;
    Owned<HuffmanInfo> new_info(this,position,extension) ;
    if (new_info)
       {
@@ -3380,11 +3376,10 @@ cerr<<"stream length = "<<(8*(*str_end - *str_start))<<" bits (approx)"<<endl;
 
 //----------------------------------------------------------------------
 
-HuffmanHypothesis *search(const BitPointer* str_start, const BitPointer* str_end,
-			  const HuffSymbolTable* symtab)
+HuffmanHypothesis* search(const BitPointer* str_start, const BitPointer* str_end, const HuffSymbolTable* symtab)
 {
    if (!symtab)
-      return 0 ;
+      return nullptr ;
    HuffmanTreeHypothesis::initializeCodeAllocators() ;
    lit_tree_directory.reinit(LIT_TREE_DIR_SIZE) ;
    dist_tree_directory.reinit(DIST_TREE_DIR_SIZE) ;

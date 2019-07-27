@@ -79,8 +79,7 @@ const unsigned char *WordLengthModel::skipToDelim(const unsigned char *buf,
 
 //----------------------------------------------------------------------
 
-const unsigned char *WordLengthModel::skipToDelim8(const unsigned char *buf,
-						   size_t buflen)
+const unsigned char* WordLengthModel::skipToDelim8(const unsigned char* buf, size_t buflen)
 {
    if (buf)
       {
@@ -93,13 +92,12 @@ const unsigned char *WordLengthModel::skipToDelim8(const unsigned char *buf,
 	 buflen-- ;
 	 }
       }
-   return 0 ;
+   return nullptr ;
 }
 
 //----------------------------------------------------------------------
 
-const unsigned char *WordLengthModel::skipToDelim16(const unsigned char *buf,
-						    size_t buflen,
+const unsigned char* WordLengthModel::skipToDelim16(const unsigned char* buf, size_t buflen,
 						    bool big_endian)
 {
    if (buf)
@@ -113,7 +111,7 @@ const unsigned char *WordLengthModel::skipToDelim16(const unsigned char *buf,
 	 buflen -= 2 ;
 	 }
       }
-   return 0 ;
+   return nullptr ;
 }
 
 //----------------------------------------------------------------------
@@ -252,14 +250,12 @@ void WordLengthModel::addWords8(const unsigned char *buf, size_t buflen)
 
 //----------------------------------------------------------------------
 
-const unsigned char *WordLengthModel::addWords8(const unsigned char *buf,
-						size_t buflen,
-						size_t maxlen)
+const unsigned char* WordLengthModel::addWords8(const unsigned char* buf, size_t buflen, size_t maxlen)
 {
    if (maxlen < buflen)
       buflen = maxlen ;
    if (!buf || buflen == 0)
-      return 0 ;
+      return nullptr ;
    bool in_word = false ;
    size_t wordlen = 0 ;
    while (buflen)
@@ -324,8 +320,7 @@ void WordLengthModel::addWords16(const unsigned char *buf, size_t buflen,
 
 //----------------------------------------------------------------------
 
-const unsigned char *WordLengthModel::addWords16(const unsigned char *buf,
-						 size_t buflen,
+const unsigned char* WordLengthModel::addWords16(const unsigned char* buf, size_t buflen,
 						 size_t maxlen, bool big_endian)
 {
    buflen &= ~1 ; // drop any partial final codepoint
@@ -333,7 +328,7 @@ const unsigned char *WordLengthModel::addWords16(const unsigned char *buf,
    if (maxlen < buflen)
       buflen = maxlen ;
    if (!buf || buflen == 0)
-      return 0 ;
+      return nullptr ;
    bool in_word = false ;
    size_t wordlen = 0 ;
    while (buflen)

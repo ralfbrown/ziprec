@@ -238,7 +238,7 @@ void HuffSymbolTable::makeDefaultTrees()
    buildHuffmanTree() ;
    setLengthTable(&dist_lengths) ;
    buildHuffmanTree(true) ;
-   setLengthTable(0) ;
+   setLengthTable(nullptr) ;
    suppress_trace = false ;
    if (verbosity >= VERBOSITY_TREE)
       fprintf(stderr,"default symbol table built\n") ;
@@ -249,7 +249,7 @@ void HuffSymbolTable::makeDefaultTrees()
 
 bool HuffSymbolTable::buildHuffmanTree(bool build_distance_tree)
 {
-   assert(m_lengthtable != 0) ;
+   assert(m_lengthtable != nullptr) ;
    unsigned length = 1 ;
    for ( ;
 	 length < MAX_HUFFMAN_LENGTH && m_lengthtable->count(length) == 0 ;
@@ -591,7 +591,7 @@ HuffSymbolTable* build_symbol_table(BitPointer& pos, const BitPointer& str_end, 
       symtab->buildHuffmanTree() ;
       symtab->setLengthTable(&dist_lengths) ;
       symtab->buildHuffmanTree(true) ;
-      symtab->setLengthTable(0) ; // don't leave dangling pointer
+      symtab->setLengthTable(nullptr) ; // don't leave dangling pointer
       }
    return symtab ;
 }

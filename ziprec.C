@@ -222,7 +222,7 @@ static void parse_reconstruction_opts(const char* arg, LanguageIdentifier*& lang
       if (!*lang_db)
 	 lang_db = "languages.db" ;
       delete langid ;
-      langid = LanguageIdentifier::load(lang_db,0) ;
+      langid = LanguageIdentifier::load(lang_db,nullptr) ;
       if (langid)
 	 params.perform_reconstruction = true ;
       else

@@ -133,11 +133,11 @@ DecodeBuffer::DecodeBuffer(Fr::CFile& fp, WriteFormat format, unsigned char unkn
    // Note: we need to be able to deal with multiple ref-windows worth of
    //   replacements, but we won't know how many until later!
    clearReferenceWindow(true) ;
-   setReplacements(0,0) ;
-   m_outfp = 0 ;
+   setReplacements(nullptr,0) ;
+   m_outfp = nullptr ;
    m_numbytes = 0 ;
    m_loadedbytes = 0 ;
-   setOutputFile(fp,format,unknown_char,friendly_filename,0,test_mode) ;
+   setOutputFile(fp,format,unknown_char,friendly_filename,nullptr,test_mode) ;
    rewind() ;
    return ;
 }

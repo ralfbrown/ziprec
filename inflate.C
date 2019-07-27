@@ -404,7 +404,7 @@ static bool corrupted_language(DecodeBuffer &decode_buf, const LanguageIdentifie
       Owned<LanguageScores> scores(langid->numLanguages()) ;
       unsigned char text[LANGIDENT_WINDOW] ;
       decode_buf.copyBufferTail(text,sizeof(text)) ;
-      if (langid->identify(scores,(const char*)text,sizeof(text),(uint8_t*)0))
+      if (langid->identify(scores,(const char*)text,sizeof(text),(uint8_t*)nullptr))
 	 {
 	 if (prev_scores &&
 	     (scores->highestScore()
@@ -1292,7 +1292,7 @@ static DeflatePacketDesc* locate_packets(BitPointer str_start, BitPointer str_en
       //   packet to test multiple positions
       exact_bit = (ptype != PT_UNCOMP) || (packets == nullptr) ;
       // add the packet to the list of all packets found
-      DeflatePacketDesc *p = new DeflatePacketDesc(&str_start,&str_pos,&curr_end,packets==0,deflate64) ;
+      DeflatePacketDesc *p = new DeflatePacketDesc(&str_start,&str_pos,&curr_end,packets==nullptr,deflate64) ;
       p->setNext(packets) ;
       p->setPacketType(ptype) ;
       packets = p ;
@@ -1532,7 +1532,7 @@ static bool decompress_packet(DecodeBuffer *decode_buffer,
       packet_end.advanceBytes(packet->corruptionStart()) ;
       }
    HuffSymbolTable *symtab = nullptr ;
-   BitPointer corruption_loc((char*)0) ;
+   BitPointer corruption_loc((char*)nullptr) ;
    bool success = decompress_packet(decode_buffer,packet,packet_end,
 				    &symtab,corruption_loc) ;
    if (!success || packet->containsCorruption())
@@ -1659,7 +1659,7 @@ static bool recover_stream(const ZipRecParameters &params, const FileInformation
       }
    CpuTimer timer ;
    BitPointer packet_start(stream_end) ;
-   BitPointer last_packet_header(known_start ? stream_start : 0) ;
+   BitPointer last_packet_header(known_start ? stream_start : nullptr) ;
    DeflatePacketDesc *packet_list = nullptr ;
    // if we have a fragment with a known start (due to a header found
    //   via its signature), but without a known end (because there is

@@ -130,7 +130,7 @@ static LocationSpec model_locations[] =
       { "%s/null.lang",		1, 0, 0, 0 },
       { "models/null.lang",	0, 0, 0, 0 },
       { APPDIR "null.lang",	0, 0, 0, 0 },
-      { 0, 0, 0, 0, 0 } // sentinel to mark end of array
+      { nullptr, 0, 0, 0, 0 } // sentinel to mark end of array
    } ;
 
 /************************************************************************/
@@ -243,7 +243,7 @@ static void count_ambiguities(unsigned *ambiguities, size_t num_bytes,
 
 BidirModel::BidirModel(const LangIDPackedTrie *gleft, const LangIDPackedTrie *gright)
 { 
-   m_file_left = m_file_right = 0 ;
+   m_file_left = m_file_right = nullptr ;
    m_global_left = gleft ; m_global_right = gright ;
    setLengths() ;
    m_center_factor = ((m_global_right && center_match_reverse)
@@ -381,7 +381,7 @@ bool BidirModel::computeScores(bool reverse,
 	 key[i] = bytes[i].byteValue() ;
 	 if (bytes[i].isReconstructed())
 	    weight *= (bytes[i].confidence() / discount_factor) ;
-	 const WildcardSet *context = 0 ;
+	 const WildcardSet *context = nullptr ;
 	 if (!bytes[i].isLiteral())
 	    context = context_wildcards->set(bytes[i].originalLocation()) ;
 	 contexts[i] = context ;
@@ -751,7 +751,7 @@ static const char *select_var(unsigned which,
       case 4:
 	 return arg4 ;
       default:
-	 return 0 ;
+	 return nullptr ;
       }
 }
 

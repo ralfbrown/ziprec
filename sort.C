@@ -74,11 +74,11 @@ WordList *merge_lists(WordList *list1, WordList *list2, WordCompareFnPtr cmp)
 
 WordList *sort_words(WordList *words, WordCompareFnPtr cmp)
 {
-   if (words == 0 || !words->next())	// empty or singleton list?
+   if (!words || !words->next())	// empty or singleton list?
       return words ;			// if yes, it's already sorted
 #if 1
-   WordList *sublists[CHAR_BIT * sizeof(size_t)] ;
-   sublists[0] = 0 ;
+   WordList* sublists[CHAR_BIT * sizeof(size_t)] ;
+   sublists[0] = nullptr ;
    size_t maxbits = 0 ;
    // scan down the given list, creating sorted sublists in powers of two
    while (words)
@@ -86,7 +86,7 @@ WordList *sort_words(WordList *words, WordCompareFnPtr cmp)
       // chop the head node off the list
       WordList *sublist = words ;
       words = words->next() ;
-      sublist->setNext(0) ;
+      sublist->setNext(nullptr) ;
 
       // merge the head node with sucessively longer sublists until we
       //   reach a power of two for which there currently is no sublist
@@ -94,7 +94,7 @@ WordList *sort_words(WordList *words, WordCompareFnPtr cmp)
       for (i = 0 ; i <= maxbits && sublists[i] ; i++)
 	 {
 	 sublist = merge_lists(sublist,sublists[i],cmp) ;
-	 sublists[i] = 0 ;
+	 sublists[i] = nullptr ;
 	 }
       sublists[i] = sublist ;
       if (i > maxbits)
@@ -134,7 +134,7 @@ WordList *sort_words(WordList *words, WordCompareFnPtr cmp)
 WordList *merge_duplicates(WordList *words)
 {
    if (!words)
-      return 0 ;
+      return nullptr ;
    WordList *merged = words ;
    WordList *prev = merged ;
    WordList *next ;
@@ -147,7 +147,7 @@ WordList *merge_duplicates(WordList *words)
 	 prev->string()->setFrequency(prev->string()->frequency()
 				      + words->string()->frequency()) ;
 	 prev->setNext(next) ;
-	 words->setNext(0) ;
+	 words->setNext(nullptr) ;
 	 delete words ;
 	 }
       else

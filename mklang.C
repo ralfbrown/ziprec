@@ -135,7 +135,7 @@ static void merge_word_lists(WordList *&words1, WordList *&words2)
    words2 = merge_duplicates(words2) ;
    words1 = merge_lists(words1,words2,compare_words) ;
    words1 = merge_duplicates(words1) ;
-   words2 = 0 ;
+   words2 = nullptr ;
    return ;
 }
 
@@ -339,15 +339,14 @@ static bool count_ngrams(const uint8_t * /*key*/, unsigned keylen,
 
 //----------------------------------------------------------------------
 
-static bool reverse_ngram(const uint8_t *key, unsigned keylen,
-			  uint32_t frequency, void *user_data)
+static bool reverse_ngram(const uint8_t* key, unsigned keylen, uint32_t frequency, void* user_data)
 {
-   NybbleTrie *reverse = (NybbleTrie*)user_data ;
-   uint8_t reversed_key[keylen] ;
+   LocalAlloc<uint8_t> reversed_key(keylen) ;
    for (size_t i = 0 ; i < keylen ; i++)
       {
       reversed_key[i] = key[keylen-i-1] ;
       }
+   auto reverse = reinterpret_cast<NybbleTrie*>(user_data) ;
    reverse->insert(reversed_key,keylen,frequency,false) ;
    if (ngram_counts && !store_unfiltered_counts)
       ngram_counts[keylen]++ ;
@@ -584,7 +583,7 @@ int main(int argc, char **argv)
    std::fill_n(ngram_counts.begin(),max_ngram+1,0) ;
    if (forward && store_unfiltered_counts)
       {
-      uint8_t keybuf[max_ngram+1] ;
+      LocalAlloc<uint8_t> keybuf(max_ngram+1) ;
       unsigned min_freq = filter_thresh ;
       forward->enumerate(keybuf,max_ngram,count_ngrams,&min_freq) ;
       }
@@ -594,15 +593,15 @@ int main(int argc, char **argv)
       {
       if (!store_unfiltered_counts)
 	 {
-	 uint8_t keybuf[max_ngram+1] ;
-	 forward_ngrams->enumerate(keybuf,max_ngram,count_ngrams,0) ;
+	 LocalAlloc<uint8_t> keybuf(max_ngram+1) ;
+	 forward_ngrams->enumerate(keybuf,max_ngram,count_ngrams,nullptr) ;
 	 }
       }
    else
       {
       gc() ;
       Owned<NybbleTrie> reverse ;
-      uint8_t keybuf[max_ngram+1] ;
+      LocalAlloc<uint8_t> keybuf(max_ngram+1) ;
       forward_ngrams->enumerate(keybuf,max_ngram,reverse_ngram,reverse) ;
       reverse->addTokenCount(forward->totalTokens()) ;
       reverse_ngrams.reinit(reverse,filter_thresh) ;
