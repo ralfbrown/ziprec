@@ -490,8 +490,7 @@ bool valid_symbol_table_header(BitPointer &pos, bool deflate64)
    unsigned num_len_codes = pos.nextBits(4) + 4 ;
    HuffmanLengthTable bit_lengths ;
    unsigned lengths[NUM_BIT_LENGTHS] ;
-   for (size_t i = 0 ; i < lengthof(lengths) ; i++)
-      lengths[i] = 0 ;
+   std::fill_n(lengths,lengthof(lengths),0) ;
    for (size_t i = 0 ; i < num_len_codes ; i++)
       {
       unsigned len = pos.nextBits(3) ;
@@ -547,8 +546,7 @@ HuffSymbolTable* build_symbol_table(BitPointer& pos, const BitPointer& str_end, 
 	      num_lit_codes, num_dist_codes, num_len_codes) ;
 #endif /* !NDEBUG */
    unsigned lengths[19] ;
-   for (size_t i = 0 ; i < lengthof(lengths) ; i++)
-      lengths[i] = 0 ;
+   std::fill_n(lengths,lengthof(lengths),0) ;
    for (size_t i = 0 ; i < num_len_codes ; i++)
       {
       unsigned len = pos.nextBits(3) ;

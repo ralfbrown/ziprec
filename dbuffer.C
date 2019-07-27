@@ -192,12 +192,9 @@ void DecodeBuffer::rewindReferenceWindow()
 
 //----------------------------------------------------------------------
 
-static void compute_byte_weights(double *byte_weights,
-				 const DecodedByte *bytes,
-				 unsigned num_bytes)
+static void compute_byte_weights(double* byte_weights, const DecodedByte *bytes, unsigned num_bytes)
 {
-   for (size_t i = 0 ; i < 256 ; i++)
-      byte_weights[i] = 0 ;
+   std::fill_n(byte_weights,256,0.0) ;
    // weight by number of occurrences
    unsigned total_count = 0 ;
    for (size_t i = 0 ; i < num_bytes ; i++)
@@ -213,10 +210,7 @@ static void compute_byte_weights(double *byte_weights,
       double avg_count = total_count / 256 ;
       for (size_t i = 0 ; i < 256 ; i++)
 	 {
-	 if (byte_weights[i])
-	    byte_weights[i] = avg_count / byte_weights[i] ;
-	 else
-	    byte_weights[i] = 1.0 ;
+	 byte_weights[i] = byte_weights[i] ? avg_count / byte_weights[i] : 1.0 ;
 	 }
       }
    return ;
@@ -447,13 +441,7 @@ DecodedByte *DecodeBuffer::copyReplacements() const
    if (numReplacements() > 0 && replacements())
       {
       repl = new DecodedByte[numReplacements()] ;
-      if (repl)
-	 {
-	 for (size_t i = 0 ; i < numReplacements() ; i++)
-	    {
-	    repl[i] = replacements()[i] ;
-	    }
-	 }
+      std::copy_n(replacements(),numReplacements(),repl) ;
       }
    return repl ;
 }

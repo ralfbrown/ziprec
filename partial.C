@@ -1498,10 +1498,7 @@ void HuffmanTreeHypothesis::initLeftmost()
 
 void HuffmanTreeHypothesis::initRightmost()
 {
-   for (size_t i = 0 ; i <= MAX_BITLENGTH ; i++)
-      {
-      m_rightmost[i] = 0 ;
-      }
+   std::fill_n(m_rightmost,MAX_BITLENGTH+1,0) ;
    return ;
 }
 
@@ -1636,10 +1633,7 @@ const
       else
 	 {
 	 // copy the tree up to the insertion point
-	 for (size_t i = 0 ; i < inspoint ; i++)
-	    {
-	    new_tree[i] = m_codes[i] ;
-	    }
+	 std::copy_n(m_codes,inspoint,new_tree) ;
 	 // add in any codes that we now know for certain given the last
 	 //   code copied and the new one being inserted
 	 if (new_tree[inspoint-1].length() < length)

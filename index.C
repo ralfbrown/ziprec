@@ -58,10 +58,7 @@ WildcardIndex::WildcardIndex(const DecodedByte *bytes, size_t num_bytes,
       m_locations[i] = m_counts[i] ? new uint32_t[m_counts[i]] : nullptr ;
       }
    LocalAlloc<uint32_t,50000> in_use(indexSize()+1) ;
-   for (size_t i = 0 ; i <= indexSize() ; i++)
-      {
-      in_use[i] = 0 ;
-      }
+   std::fill_n(&in_use,indexSize()+1,0) ;
    for (size_t i = 0 ; i < num_bytes ; i++)
       {
       if (!bytes[i].isLiteral())

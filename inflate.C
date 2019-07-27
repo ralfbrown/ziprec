@@ -186,10 +186,7 @@ static void dump_stream(BitPointer currpos, const BitPointer &str_end)
 
 CheckPoints::CheckPoints(const BitPointer checkpoint, unsigned count)
 {
-   for (size_t i = 0 ; i < lengthof(m_checkpoints) ; i++)
-      {
-      m_checkpoints[i] = checkpoint ;
-      }
+   std::fill_n(m_checkpoints,lengthof(m_checkpoints),checkpoint) ;
    m_next = count ;
    m_active = 0 ;
    return ;

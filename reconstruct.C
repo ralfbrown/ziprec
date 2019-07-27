@@ -345,8 +345,7 @@ bool WildcardList::expand()
 /*	Character-encoding support					*/
 /************************************************************************/
 
-static void eliminate_invalid_UTF8(WildcardCollection *wildcards,
-				   DecodeBuffer &decode_buffer)
+static void eliminate_invalid_UTF8(WildcardCollection* wildcards, DecodeBuffer& decode_buffer)
 {
    DecodedByte *file_buffer = decode_buffer.fileBuffer() ;
    size_t num_bytes = decode_buffer.loadedBytes() ;
@@ -653,8 +652,7 @@ static void apply_unambiguous_wildcards(DecodeBuffer &decode_buffer,
 
 //----------------------------------------------------------------------
 
-static bool reverse_ngram(const uint8_t *key, unsigned keylen,
-			  uint32_t frequency, void *user_data)
+static bool reverse_ngram(const uint8_t* key, unsigned keylen, uint32_t frequency, void* user_data)
 {
    NybbleTrie *reverse = (NybbleTrie*)user_data ;
    uint8_t reversed_key[keylen] ;
