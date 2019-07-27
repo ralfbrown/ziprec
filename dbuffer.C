@@ -377,7 +377,7 @@ bool DecodeBuffer::finalizeDB()
 
    // optionally append the DEFLATE packet descriptors
    off_t packet_offset = outfp.tell() ;
-   DeflatePacketDesc *packet_list = 0 ; //FIXME
+   DeflatePacketDesc *packet_list = nullptr ; //FIXME
    uint32_t num_packets = packet_list->length() ;
    if (success && num_packets > 0)
       {
@@ -613,7 +613,7 @@ bool DecodeBuffer::openInputFile(CFile& fp, const char *filename)
 {
    if (!fp)
       {
-      m_infp = 0 ;
+      m_infp = nullptr ;
       m_backingfile = nullptr ;
       return true ;
       }

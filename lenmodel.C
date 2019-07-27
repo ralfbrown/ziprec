@@ -23,6 +23,7 @@
 /*                                                                      */
 /************************************************************************/
 
+#include <algorithm>
 #include <cmath>
 #include "lenmodel.h"
 
@@ -51,17 +52,10 @@ inline unsigned short get16(const unsigned char *buf, bool big_endian)
 /************************************************************************/
 
 WordLengthModel::WordLengthModel(WordLengthModelType t)
+   : m_type(t)
 {
-   for (size_t i = 0 ; i <= MAX_WORD_LENGTH ; i++)
-      {
-      m_counts[i] = 0 ;
-      m_delims[i] = 0 ;
-      }
-   m_totalcount = 0 ;
-   m_totaldelims = 0 ;
-   m_sum_of_lengths = 0 ;
-   m_sum_of_delims = 0 ;
-   m_type = t ;
+   std::fill_n(m_counts,MAX_WORD_LENGTH+1,0) ;
+   std::fill_n(m_delims,MAX_WORD_LENGTH+1,0) ;
    return ;
 }
 

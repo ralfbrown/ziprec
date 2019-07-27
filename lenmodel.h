@@ -45,15 +45,6 @@ enum WordLengthModelType
 
 class WordLengthModel
    {
-   private:
-      size_t	m_counts[MAX_WORD_LENGTH+1] ;
-      size_t	m_delims[MAX_WORD_LENGTH+1] ;
-      size_t	m_totalcount ;
-      size_t	m_totaldelims ;
-      size_t    m_sum_of_lengths ;
-      size_t	m_sum_of_delims ;
-      WordLengthModelType m_type ;
-
    public:
       WordLengthModel(WordLengthModelType t = WLMT_8bit) ;
       ~WordLengthModel() ;
@@ -101,6 +92,15 @@ class WordLengthModel
 				       bool big_endian) ;
       bool load(const char *filename) ;
       bool save(const char *filename) const ;
+
+   private:
+      size_t	m_counts[MAX_WORD_LENGTH+1] ;
+      size_t	m_delims[MAX_WORD_LENGTH+1] ;
+      size_t	m_totalcount { 0 } ;
+      size_t	m_totaldelims { 0 } ;
+      size_t    m_sum_of_lengths { 0 };
+      size_t	m_sum_of_delims { 0 } ;
+      WordLengthModelType m_type ;
    } ;
 
 // end of file lenmodel.h //

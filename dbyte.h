@@ -191,18 +191,18 @@ class DecodedByte
 
       // I/O
       bool read(Fr::CFile& infp) ;
-      bool write(Fr::CFile& outfp, WriteFormat, unsigned char unknown_char, DecodeBuffer *dbuf = 0) const ;
+      bool write(Fr::CFile& outfp, WriteFormat, unsigned char unknown_char, DecodeBuffer* dbuf = nullptr) const ;
       static bool writeHTMLHeader(Fr::CFile&, const char *encoding, bool test_mode) ;
       static bool writeDBHeader(Fr::CFile&, size_t ref_window) ;
-      static bool writeHeader(WriteFormat, Fr::CFile&, const char *encoding = 0,
+      static bool writeHeader(WriteFormat, Fr::CFile&, const char* encoding = nullptr,
 			      size_t reference_window = REFERENCE_WINDOW_DEFLATE,
-			      bool test_mode = false, DecodeBuffer *dbuf = 0) ;
+			      bool test_mode = false, DecodeBuffer* dbuf = nullptr) ;
       static bool writeBuffer(const DecodedByte *buf, size_t n_elem,
 	 		      Fr::CFile& outfp, WriteFormat fmt = WFMT_PlainText,
 			      unsigned char unknown_char = DEFAULT_UNKNOWN) ;
       static bool writeMessage(WriteFormat, Fr::CFile&, const char* msg) ;
       static bool writeFooter(WriteFormat, Fr::CFile&, const char* filename,
-			      bool test_mode = false, DecodeBuffer* dbuf = 0) ;
+			      bool test_mode = false, DecodeBuffer* dbuf = nullptr) ;
    } ;
 
 #endif /* !__DBYTE_H_INCLUDED */

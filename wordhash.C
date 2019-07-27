@@ -88,15 +88,14 @@ WordString::WordString(const WordString *orig)
 	 m_chars.allocate(m_length) ;
 	 if (m_chars)
 	    {
-	    for (size_t i = 0 ; i < m_length ; i++)
-	       m_chars[i] = orig->character(i) ;
+	    std::copy_n(orig->m_chars.begin(),m_length,m_chars.begin()) ;
 	    }
 	 else
 	    m_length = 0 ;
 	 }
       else
 	 {
-	 m_chars = 0 ;
+	 m_chars = nullptr ;
 	 m_length = 0 ;
 	 }
       }
@@ -107,8 +106,7 @@ WordString::WordString(const WordString *orig)
 
 //----------------------------------------------------------------------
 
-WordString::WordString(const WordString *first, WordCharacter separator,
-		       const WordString *second)
+WordString::WordString(const WordString *first, WordCharacter separator, const WordString *second)
 {
    if (first && second)
       {
@@ -121,15 +119,9 @@ WordString::WordString(const WordString *first, WordCharacter separator,
       m_chars.allocate(m_length) ;
       if (m_chars)
 	 {
-	 for (size_t i = 0 ; i < len1 ; i++)
-	    {
-	    m_chars[i] = first->character(i) ;
-	    }
+	 std::copy_n(first->m_chars.begin(),len1,m_chars.begin()) ;
 	 m_chars[len1++] = separator ;
-	 for (size_t i = 0 ; i < len2 ; i++)
-	    {
-	    m_chars[i+len1] = second->character(i); 
-	    }
+	 std::copy_n(second->m_chars.begin(),len2,m_chars.at(len1)) ;
 	 }
       else
 	 {
@@ -143,8 +135,7 @@ WordString::WordString(const WordString *first, WordCharacter separator,
 
 //----------------------------------------------------------------------
 
-WordString::WordString(const WordString *first, const WordString *second,
-		       const WordString *third)
+WordString::WordString(const WordString *first, const WordString *second, const WordString *third)
 {
    if (first && second && third)
       {
@@ -153,25 +144,14 @@ WordString::WordString(const WordString *first, const WordString *second,
       unsigned len3 = third->length() ;
       m_length = len1 + len2 + len3 ;
       m_frequency = (first->frequency()+third->frequency())/2 ;
-      m_wildcards = (first->hasWildcards() || second->hasWildcards() ||
-		     third->hasWildcards()) ;
-      m_userflag = (first->isFlagged() || second->isFlagged() ||
-		    third->isFlagged()) ;
+      m_wildcards = (first->hasWildcards() || second->hasWildcards() ||  third->hasWildcards()) ;
+      m_userflag = (first->isFlagged() || second->isFlagged() || third->isFlagged()) ;
       m_chars.allocate(m_length) ;
       if (m_chars)
 	 {
-	 for (size_t i = 0 ; i < len1 ; i++)
-	    {
-	    m_chars[i] = first->character(i) ;
-	    }
-	 for (size_t i = 0 ; i < len2 ; i++)
-	    {
-	    m_chars[len1+i] = second->character(i) ;
-	    }
-	 for (size_t i = 0 ; i < len3 ; i++)
-	    {
-	    m_chars[len1+len2+i] = third->character(i); 
-	    }
+	 std::copy_n(first->m_chars.begin(),len1,m_chars.begin()) ;
+	 std::copy_n(second->m_chars.begin(),len2,m_chars.at(len1)) ;
+	 std::copy_n(third->m_chars.begin(),len3,m_chars.at(len1+len2)) ;
 	 }
       else
 	 {
@@ -203,7 +183,7 @@ WordString::WordString(const WordString &orig)
       }
    else
       {
-      m_chars = 0 ;
+      m_chars = nullptr ;
       m_length = 0 ;
       }
    return ;
@@ -365,14 +345,7 @@ int WordString::compareText(const WordString *other) const
 
 bool WordString::operator == (const WordString &other) const
 {
-   if (other.length() != length())
-      return false ;
-   for (size_t i = 0 ; i < length() ; i++)
-      {
-      if (character(i) != other.character(i))
-	 return false ;
-      }
-   return true ;
+   return other.length() == length() && std::equal(m_chars.begin(),m_chars.begin()+length(),other.m_chars.begin()) ;
 }
 
 //----------------------------------------------------------------------
@@ -407,7 +380,7 @@ ostream &operator << (ostream &out, const WordString &ws)
 
 WordList::WordList(WordString *ws)
 {
-   m_next = 0 ;
+   m_next = nullptr ;
    m_string = ws ;
    return ;
 }
@@ -416,7 +389,7 @@ WordList::WordList(WordString *ws)
 
 WordList::WordList(const WordString *ws)
 {
-   m_next = 0 ;
+   m_next = nullptr ;
    m_string = (WordString*)ws ;
    return ;
 }
@@ -426,7 +399,7 @@ WordList::WordList(const WordString *ws)
 WordList::~WordList()
 {
    delete m_string ;
-   m_string = 0 ;
+   m_string = nullptr ;
    delete next() ;
    return ;
 }
@@ -452,7 +425,7 @@ WordList *WordList::nconc(WordList *other)
 WordList *WordList::reverse()
 {
    WordList *list = this ;
-   WordList *prev = 0 ;
+   WordList *prev = nullptr ;
    while (list)
       {
       WordList *nxt = list->next() ;
@@ -471,7 +444,7 @@ void WordList::eraseList()
    while (list)
       {
       WordList *nxt = list->next() ;
-      list->setNext(0) ;
+      list->setNext(nullptr) ;
       delete list ;
       list = nxt ;
       }

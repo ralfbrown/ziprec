@@ -88,7 +88,7 @@ class LocationList
       void operator delete(void *blk) { allocator->release(blk) ; }
       LocationList(SignatureType st, off_t offset, LocationList *nxt = nullptr)
 	 { m_offset = offset ; m_sigtype = st ; m_next = nxt ; }
-      ~LocationList() { if (m_next) delete m_next ; m_next = 0 ; }
+      ~LocationList() { if (m_next) delete m_next ; m_next = nullptr ; }
 
       // accessors
       const LocationList *next() const { return m_next ; }

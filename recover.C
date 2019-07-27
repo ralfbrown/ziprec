@@ -496,7 +496,7 @@ off_t LocationList::headerEndOffset(const char *buffer,
 LocationList *LocationList::reverse()
 {
    LocationList *loc = this ;
-   LocationList *prev = 0 ;
+   LocationList *prev = nullptr ;
    while (loc)
       {
       LocationList *nxt = loc->next() ;
@@ -510,35 +510,28 @@ LocationList *LocationList::reverse()
 /************************************************************************/
 /************************************************************************/
 
-static bool extract_stream(const LocationList *start_sig,
-			   const LocationList *end_sig,
-			   const ZipRecParameters &params,
-			   const FileInformation *fileinfo,
-			   const char *extension,
-			   bool include_header = false,
-			   const char *prefix = 0, unsigned prefix_len = 0)
+static bool extract_stream(const LocationList* start_sig, const LocationList* end_sig,
+			   const ZipRecParameters& params, const FileInformation* fileinfo,
+			   const char* extension, bool include_header = false,
+			   const char* prefix = nullptr, unsigned prefix_len = 0)
 {
    if (!end_sig)
       return false ;
    const char *buffer_start = fileinfo->bufferStart() ;
    const char *output_directory = fileinfo->outputDirectory() ;
-   off_t start_offset
-      = start_sig ? start_sig->headerEndOffset(buffer_start) : 0 ;
+   off_t start_offset = start_sig ? start_sig->headerEndOffset(buffer_start) : 0 ;
    off_t end_offset = end_sig->offset() ;
    if (start_offset >= end_offset)
       return false ;
    if (!output_directory || !*output_directory)
       output_directory = "" ;
-   auto filename = aprintf("%s/recovered-%8.08lX.%s",
-			   output_directory,(unsigned long)start_offset,
-			   extension) ;
+   auto filename = aprintf("%s/recovered-%8.08lX.%s",output_directory,(unsigned long)start_offset,extension) ;
    if (!filename)
       return false ;
    if (verbosity >= VERBOSITY_PROGRESS)
       {
       fprintf(stdout,"extracting span %lu to %lu (file '%s')\n",
-	      (unsigned long)start_offset,(unsigned long)end_offset,
-	      *filename) ;
+	      (unsigned long)start_offset,(unsigned long)end_offset,*filename) ;
       }
    bool success = false ;
    size_t count = end_offset - start_offset ;
@@ -863,7 +856,7 @@ static LocationList *scan_for_gzip_signatures(const char *buffer_start,
 					      const char *buffer_end,
 					      const ZipRecParameters &params)
 {
-   LocationList *locations = 0 ;
+   LocationList *locations = nullptr ;
    for (const char *bufpos = buffer_start + params.scan_range_start ;
 	bufpos + 4 < buffer_end ;
 	bufpos++)
@@ -876,8 +869,7 @@ static LocationList *scan_for_gzip_signatures(const char *buffer_start,
    // finally, add a dummy header record for the end of the file
    size_t eof_offset = (buffer_end - buffer_start >= 8 ? buffer_end - buffer_start - 8 : 0) ;
    locations = LocationList::push(ST_gzipEOF,eof_offset,locations) ;
-   locations = locations->reverse() ;
-   return locations ;
+   return locations->reverse() ;
 }
 
 //----------------------------------------------------------------------
@@ -890,31 +882,27 @@ static LocationList *scan_for_zlib_signatures(const ZipRecParameters &params,
    FileFormat format = fileinfo->format() ;
    bool allow_multiple = (format != FF_Zlib) ;
    bool allow_fixedHuff = (format == FF_ZlibAll) ;
-   LocationList *locations = 0 ;
+   LocationList *locations = nullptr ;
    for (const char *bufpos = buffer_start + params.scan_range_start ;
 	bufpos < buffer_end ;
 	bufpos++)
       {
       if (valid_zlib_stream(bufpos,allow_fixedHuff))
 	 {
-	 locations = LocationList::push(ST_ZlibHeader,bufpos - buffer_start,
-				      locations) ;
+	 locations = LocationList::push(ST_ZlibHeader,bufpos - buffer_start, locations) ;
 	 INCR_STAT(zlib_file_header) ;
 	 if (verbosity >= VERBOSITY_SCAN)
 	    {
-	    fprintf(stderr,"found probable zlib header at offset %lu\n",
-		    (unsigned long)(bufpos - buffer_start)) ;
+	    fprintf(stderr,"found probable zlib header at offset %lu\n", (unsigned long)(bufpos - buffer_start)) ;
 	    }
 	 if (!allow_multiple)
 	     break ;
 	 }
       }
    // finally, add a dummy header record for the end of the file
-   size_t eof_offset = (buffer_end - buffer_start >= 4
-			? buffer_end - buffer_start - 4 : 0) ;
+   size_t eof_offset = (buffer_end - buffer_start >= 4 ? buffer_end - buffer_start - 4 : 0) ;
    locations = LocationList::push(ST_ZlibEOF,eof_offset,locations) ;
-   locations = locations->reverse() ;
-   return locations ;
+   return locations->reverse() ;
 }
 
 //----------------------------------------------------------------------
@@ -1076,7 +1064,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 					     const char *buffer_end,
 					     const ZipRecParameters &params)
 {
-   LocationList *locations = 0 ;
+   LocationList *locations = nullptr ;
    bool have_central_dir = false ;
    for (const char *bufpos = buffer_start + params.scan_range_start ;
 	bufpos < buffer_end ;
@@ -1441,7 +1429,7 @@ static LocationList *filter_signatures(LocationList *locations,
    // (this function is a low priority at the moment because on average
    //  there will be one spurious signature per 512MB of compressed data)
    LocationList *next ;
-   LocationList *prev = 0 ;
+   LocationList *prev = nullptr ;
    for (LocationList *locs = locations ; locs ; locs = next)
       {
       next = locs->next() ;
@@ -2028,7 +2016,7 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 	    recovery_name_base = "zlibdata" ;
 	    if (recover_stream(prev,curr,params,fileinfo,0,0,true,false,known_end))
 	       recovered = true ;
-	    recovery_name_base = 0 ;
+	    recovery_name_base = nullptr ;
 	    }
 	 else if (sig == ST_gzipHeader)
 	    {
@@ -2038,7 +2026,7 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 	    recovery_name_base = "gzipdata" ;
 	    if (recover_gzip_span(prev,curr,params,fileinfo,true))
 	       recovered = true ;
-	    recovery_name_base = 0 ;
+	    recovery_name_base = nullptr ;
 	    }
 	 else if (sig == ST_PDF_FlateHeader)
 	    {
@@ -2049,7 +2037,7 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 	    if (recover_stream(prev,curr,params,fileinfo,0,0,true,false,
 			       curr->signatureType() == ST_PDF_FlateEnd))
 	       success = true ;
-	    recovery_name_base = 0 ;
+	    recovery_name_base = nullptr ;
 	    }
 	 else if (sig == ST_ALZipFileHeader)
 	    {
@@ -2091,14 +2079,14 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 	    recovery_name_base = "rardata" ;
 	    if (recover_RAR_file(prev,params,fileinfo))
 	       success = true ;
-	    recovery_name_base = 0 ;
+	    recovery_name_base = nullptr ;
 	    }
 	 else if (sig == ST_DeflateSyncMark)
 	    {
 	    recovery_name_base = "rawdeflate" ;
 	    if (recover_stream(prev,curr,params,fileinfo,0,0,true,false,false))
 	       recovered = true ;
-	    recovery_name_base = 0 ;
+	    recovery_name_base = nullptr ;
 	    }
 	 else if (curr->signatureType() == ST_PNGChunkEnd &&
 		  (sig == ST_PNG_iTXt || sig == ST_PNG_zTXt))
@@ -2106,7 +2094,7 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 	    recovery_name_base = "pngtext" ;
 	    if (recover_stream(prev,curr,params,fileinfo,0,0,true,false,true))
 	       recovered = true ;
-	    recovery_name_base = 0 ;
+	    recovery_name_base = nullptr ;
 	    }
 	 }
       if (recovered)
@@ -2135,7 +2123,7 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 	 recovery_name_base = "pdfdata" ;
 	 if (recover_stream(prev,curr,params,fileinfo,0,0,false,false,true))
 	    success = true ;
-	 recovery_name_base = 0 ;
+	 recovery_name_base = nullptr ;
 	 }
       else if (curr->signatureType() == ST_DataDescriptor)
 	 {
@@ -2178,14 +2166,14 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 	 recovery_name_base = "gzipdata" ;
 	 if (recover_gzip_span(prev,curr,params,fileinfo,false))
 	    success = true ;
-	 recovery_name_base = 0 ;
+	 recovery_name_base = nullptr ;
 	 }
       else if (curr->signatureType() == ST_ZlibEOF)
 	 {
 	 recovery_name_base = "zlibdata" ;
 	 if (recover_stream(prev,curr,params,fileinfo,0,0,prev != 0,false))
 	    success = true ;
-	 recovery_name_base = 0 ;
+	 recovery_name_base = nullptr ;
 	 }
       else if (curr->signatureType() == ST_ALZipFileHeader ||
 	       curr->signatureType() == ST_ALZipEOF)
@@ -2198,7 +2186,7 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 	 recovery_name_base = "rardata" ;
 	 if (recover_RAR_file(curr,params,fileinfo))
 	    success = true ;
-	 recovery_name_base = 0 ;
+	 recovery_name_base = nullptr ;
 	 }
       prev = curr ;
       }
@@ -2322,7 +2310,7 @@ bool process_file_data(const ZipRecParameters &params,
       signatures = scan_for_zlib_signatures(params, fileinfo) ;
       }
    else if (file_format == FF_RawDeflate)
-      signatures = 0 ;
+      signatures = nullptr ;
    else
       {
       signatures = scan_for_ZIP_signatures(buffer_start, buffer_end, params) ;
@@ -2360,8 +2348,7 @@ bool process_file_data(const ZipRecParameters &params,
 	    }
 	 else
 	    {
-	    fprintf(stderr,"Unable to create output directory '%s'\n",
-		    fileinfo->outputDirectory()) ;
+	    fprintf(stderr,"Unable to create output directory '%s'\n", fileinfo->outputDirectory()) ;
 	    success = false ;
 	    }
 	 delete signatures ;
@@ -2375,7 +2362,7 @@ bool process_file_data(const ZipRecParameters &params,
       auto prev = LocationList::push(ST_RawDeflateStart,params.scan_range_start,curr) ;
       if (recover_stream(prev,curr,params,fileinfo,0,0,true,false,true))
 	 success = true ;
-      recovery_name_base = 0 ;
+      recovery_name_base = nullptr ;
       }
    return success ;
 }

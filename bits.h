@@ -44,8 +44,7 @@ class VariableBits
 
    public:
       VariableBits() { m_length = 0 ; setValue(0) ; }
-      VariableBits(size_t length, size_t val = 0)
-	 { m_length = (uint8_t)length ; setValue(val) ; }
+      VariableBits(size_t length, size_t val = 0) { m_length = (uint8_t)length ; setValue(val) ; }
       ~VariableBits() {}
 
       // accessors
@@ -53,8 +52,7 @@ class VariableBits
       uint32_t value() const { return m_value ; }
 
       // modifiers
-      void setValue(size_t val)
-	 { m_value = (uint32_t)(val & mask(m_length)) ; }
+      void setValue(size_t val) { m_value = (uint32_t)(val & mask(m_length)) ; }
       void appendBit(unsigned bit)
 	 { 
 	 if (m_length < 32)
@@ -94,19 +92,12 @@ class VariableBits
 
 class BitPointer
    {
-   private:
-      const uint8_t *m_byteptr ;
-      uint8_t  m_bitnumber ;
    public:
-      BitPointer()
-	 { m_byteptr = 0 ; m_bitnumber = 0 ; }
-      BitPointer(const void *ptr)
-	 { m_byteptr = (const uint8_t*)ptr ; m_bitnumber = 0 ; }
-      BitPointer(const BitPointer &ptr)
-	 { m_byteptr = ptr.m_byteptr ; m_bitnumber = ptr.m_bitnumber ; }
-      BitPointer(const BitPointer *ptr)
-	 { m_byteptr = ptr->m_byteptr ; m_bitnumber = ptr->m_bitnumber ; }
-      ~BitPointer() { m_byteptr = 0 ; m_bitnumber = 0 ; }
+      BitPointer() { m_byteptr = nullptr ; m_bitnumber = 0 ; }
+      BitPointer(const void *ptr) { m_byteptr = (const uint8_t*)ptr ; m_bitnumber = 0 ; }
+      BitPointer(const BitPointer &ptr) { m_byteptr = ptr.m_byteptr ; m_bitnumber = ptr.m_bitnumber ; }
+      BitPointer(const BitPointer *ptr) { m_byteptr = ptr->m_byteptr ; m_bitnumber = ptr->m_bitnumber ; }
+      ~BitPointer() = default ;
 
       static void initBitReversal() ;
 
@@ -208,6 +199,10 @@ class BitPointer
       // arithmetic operators
       size_t operator - (const BitPointer &other) const
 	 { return m_byteptr - other.m_byteptr ; }
+
+   private:
+      const uint8_t *m_byteptr ;
+      uint8_t  m_bitnumber ;
    } ;
 
 /************************************************************************/

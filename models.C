@@ -174,10 +174,8 @@ void precompute_history_factors()
 
 //----------------------------------------------------------------------
 
-static void find_longest_ambiguities(unsigned *ambiguities, size_t num_bytes,
-				     size_t min_length, size_t max_length,
-				     const WildcardSet **allowed_wild,
-				     unsigned max_ambig)
+static void find_longest_ambiguities(unsigned* ambiguities, size_t num_bytes, size_t min_length, size_t max_length,
+				     const WildcardSet** allowed_wild, unsigned max_ambig)
 {
    //assert(min_length > 0) ;
    //assert(max_ambig < ULONG_MAX/256) ;
@@ -367,10 +365,7 @@ bool BidirModel::computeScores(bool reverse,
 	 key[i] = bytes[pos].byteValue() ;
 	 if (bytes[pos].isReconstructed())
 	    weight *= (bytes[pos].confidence() / discount_factor) ;
-	 const WildcardSet *context = 0 ;
-	 if (!bytes[pos].isLiteral())
-	    context = context_wildcards->set(bytes[pos].originalLocation()) ;
-	 contexts[i] = context ;
+	 contexts[i] = bytes[pos].isLiteral() ? nullptr : context_wildcards->set(bytes[pos].originalLocation()) ;
 	 }
       file_model = fileReverseModel() ;
       }
@@ -471,7 +466,7 @@ bool BidirModel::computeCenterScores(const DecodedByte *bytes,
    unsigned *ambiguities_rev = ambiguities + byte_count ;
    for (int i = start_offset ; i <= end_offset ; i++)
       {
-      const WildcardSet *context = 0 ;
+      const WildcardSet *context = nullptr ;
       if (bytes[i].isReference())
 	 context = context_wildcards->set(bytes[i].originalLocation()) ;
       contexts_rev[end_offset - i] = contexts[i-start_offset] = context ;

@@ -64,8 +64,6 @@ class WordCharacter : public DecodedByte
 
 class WordString
    {
-   private:
-      void initClear() ;
    public:
       WordString() ;
       WordString(const WordString *) ;
@@ -100,6 +98,9 @@ class WordString
       bool operator == (const WordString &other) const ;
 
    private:
+      void initClear() ;
+
+   private:
       Fr::NewPtr<WordCharacter> m_chars ;
       size_t	     m_frequency ;
       unsigned       m_length ;
@@ -111,11 +112,8 @@ class WordString
 
 class WordList
    {
-   private:
-      WordList   *m_next ;
-      WordString *m_string ;
    public:
-      WordList() { m_next = 0 ; m_string = 0 ; }
+      WordList() = default ;
       WordList(WordString *) ;
       WordList(const WordString *) ;
       ~WordList() ;
@@ -129,25 +127,28 @@ class WordList
       void setNext(WordList *nxt) { m_next = nxt ; }
       WordList *nconc(WordList *other) ;
       WordList *reverse() ;
-      void clearString() { m_string = 0 ; }
+      void clearString() { m_string = nullptr ; }
       void eraseList() ; // applies delete to each member of list
 
       void setAllFlags() const ;
       void clearAllFlags() const ;
+
+   private:
+      WordList*   m_next { nullptr } ;
+      WordString* m_string { nullptr } ;
    } ;
 
 //----------------------------------------------------------------------
 
 class WordHash
    {
-   private:
-      size_t        m_size ;		// allocated size
-      size_t        m_members ;		// current size
-
    public:
       WordHash() ;
       ~WordHash() ;
 
+   private:
+      size_t        m_size ;		// allocated size
+      size_t        m_members ;		// current size
    } ;
 
 /************************************************************************/

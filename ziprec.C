@@ -453,7 +453,7 @@ int main(int argc, char **argv)
    const char *output_directory = "." ;
    FileFormat file_format = FF_Default ;
    bool gzip_by_extension = false ;
-   LanguageIdentifier *langid = 0 ;
+   LanguageIdentifier *langid = nullptr ;
    Owned<WordLengthModel> lenmodel { nullptr } ;
    ZipRecParameters params ;
 
@@ -544,9 +544,7 @@ int main(int argc, char **argv)
 	 {
 	 format = FF_gzip ;
 	 }
-      NybbleTrie *wordmodel = 0 ;
-      if (params.use_word_model)
-	 wordmodel = global_word_frequencies ;
+      NybbleTrie *wordmodel = params.use_word_model ? global_word_frequencies : nullptr ;
       FileInformation fileinfo(input_file,langid,lenmodel,wordmodel,output_directory,format) ;
       if (!recover_file(params,&fileinfo))
 	 {

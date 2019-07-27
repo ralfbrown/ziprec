@@ -75,15 +75,13 @@ void DeflatePacketDesc::setUncompOffset(const DeflatePacketDesc *prev)
 {
    if (prev)
       {
-      if (prev->uncompressedSize() == (unsigned long)~0 ||
-	  prev->uncompressedOffset() == ~0)
+      if (prev->uncompressedSize() == (unsigned long)~0 || prev->uncompressedOffset() == ~0)
 	 {
 	 m_uncomp_offset = ~0 ;
 	 }
       else
 	 {
-	 m_uncomp_offset
-	    = prev->uncompressedOffset() + prev->uncompressedSize() ;
+	 m_uncomp_offset = prev->uncompressedOffset() + prev->uncompressedSize() ;
 	 }
       }
    else
@@ -158,11 +156,10 @@ void DeflatePacketDesc::missingStart()
 
 void DeflatePacketDesc::missingEnd()
 {
-   m_corruption_start
-      = packetEnd().bytePointer() - packetHeader().bytePointer() ;
+   m_corruption_start = packetEnd().bytePointer() - packetHeader().bytePointer() ;
    m_corruption_end = ~0 ;
    DeflatePacketDesc *n = next() ;
-   m_next = 0 ;
+   m_next = nullptr ;
    delete n ;
    return ;
 }

@@ -130,11 +130,11 @@ static const char *packet_type_names[] =
       "invalid"
    } ;
 
-//static DecodeBuffer *decode_buffer = 0 ;
+//static DecodeBuffer *decode_buffer = nullptr ;
 
 size_t max_packet_size = 2 * 1024 * 1024 ;
 
-const char *recovery_name_base = 0 ;
+const char *recovery_name_base = nullptr ;
 
 /************************************************************************/
 /*	Helper functions						*/
@@ -442,7 +442,7 @@ static bool check_compressed_stream(const HuffSymbolTable *symtab,
    const WordLengthModel *lenmodel = fileinfo->lengthmodel() ;
    const NybbleTrie *wordmodel = fileinfo->wordmodel() ;
    if (!detect_corruption_by_langmodel)
-      langid = 0 ;
+      langid = nullptr ;
    corruption_size = 0 ;
    bool correct = false ;
    BitPointer str_end_byte(str_end) ;
@@ -575,7 +575,7 @@ static bool check_compressed_packet(DeflatePacketDesc *packet,
    BitPointer header(packet->packetHeader()) ;
    const BitPointer &str_end = packet->packetEnd() ;
    uint32_t hdr = header.nextBits(PACKHDR_SIZE) ;
-   HuffSymbolTable *symtab = 0 ;
+   HuffSymbolTable *symtab = nullptr ;
    uncomp_size = 0 ;
    switch (PACKHDR_TYPE(hdr))
       {
@@ -811,9 +811,8 @@ static bool valid_packet(const BitPointer &pos,
 	 INCR_STAT(candidate_dynhuff_packet) ;
 	 BitPointer position(pos) ;
 	 position.advance(PACKHDR_SIZE) ;	// skip the packet header
-	 HuffSymbolTable *symtab = build_symbol_table(position,str_end,
-						  deflate64) ;
-	 bool valid = symtab != 0 ;
+	 HuffSymbolTable *symtab = build_symbol_table(position,str_end,deflate64) ;
+	 bool valid = symtab != nullptr ;
 	 if (valid)
 	    {
 	    INCR_STAT(valid_huffman_tree) ;
@@ -1111,8 +1110,8 @@ static bool decompress(BitPointer& str_pos, const BitPointer& str_end,
 
 static bool decompress(BitPointer& str_pos, const BitPointer str_start, const BitPointer& str_end,
 		       DecodeBuffer* decode_buffer, const char* type, const char* outfile,
-		       bool may_be_corrupt, bool start_of_stream, bool* hit_final_packet = 0,
-		       BitPointer* last_packet_header = 0)
+		       bool may_be_corrupt, bool start_of_stream, bool* hit_final_packet = nullptr,
+		       BitPointer* last_packet_header = nullptr)
 {
    if (verbosity >= VERBOSITY_PROGRESS)
       {
@@ -1227,9 +1226,9 @@ static bool decompress(BitPointer& str_pos, const BitPointer str_start, const Bi
 
 //----------------------------------------------------------------------
 
-static char *decompress_reference(const char* stream_start, const char* stream_end,
-				  const ZipRecParameters& params, const char* outfile_hint,
-				  bool deflate64 = true)
+static CharPtr decompress_reference(const char* stream_start, const char* stream_end,
+				    const ZipRecParameters& params, const char* outfile_hint,
+				    bool deflate64 = true)
 {
    BitPointer::initBitReversal() ;
    auto outfile = aprintf("%s.ref",outfile_hint) ;
@@ -1252,7 +1251,7 @@ static char *decompress_reference(const char* stream_start, const char* stream_e
       {
       outfile = nullptr ;
       }
-   return outfile.move() ;
+   return outfile ;
 }
 
 //----------------------------------------------------------------------
@@ -1285,7 +1284,7 @@ static DeflatePacketDesc* locate_packets(BitPointer str_start, BitPointer str_en
    while (str_pos > str_start)
       {
       str_pos.retreat(MINIMUM_PACKET_SIZE_BITS) ;
-      PacketType ptype = find_packet_start(str_pos,str_start,curr_end, base_offset,packets == 0,
+      PacketType ptype = find_packet_start(str_pos,str_start,curr_end, base_offset,packets == nullptr,
 					   exact_bit,deflate64) ;
       if (ptype == PT_INVALID)
 	 break ;
@@ -1294,7 +1293,7 @@ static DeflatePacketDesc* locate_packets(BitPointer str_start, BitPointer str_en
       //   also zero bits, so the actual packet boundary is ambiguous
       //   and we thus need to allow the EOD check on the preceding
       //   packet to test multiple positions
-      exact_bit = (ptype != PT_UNCOMP) || (packets == 0) ;
+      exact_bit = (ptype != PT_UNCOMP) || (packets == nullptr) ;
       // add the packet to the list of all packets found
       DeflatePacketDesc *p = new DeflatePacketDesc(&str_start,&str_pos,&curr_end,packets==0,deflate64) ;
       p->setNext(packets) ;
@@ -1364,14 +1363,13 @@ static bool locate_corrupt_segments(DeflatePacketDesc* packet_list, const FileIn
 {
    START_TIME(timer) ;
    bool corruption_found = false ;
-   DeflatePacketDesc *prev = 0 ;
+   DeflatePacketDesc *prev = nullptr ;
    CFile dummyfile ;
    DecodeBuffer decode_buf(dummyfile,WFMT_PlainText,'\x7F') ;
    for ( ; packet_list ; packet_list = packet_list->next())
       {
-      if (contains_corruption(packet_list,prev,decode_buf,fileinfo,
-			      corruption_found) ||
-	  packet_list->containsCorruption())
+      if (contains_corruption(packet_list,prev,decode_buf,fileinfo,corruption_found)
+	 || packet_list->containsCorruption())
 	 {
 	 corruption_found = true ;
 	 }
@@ -1389,7 +1387,7 @@ static bool decompress_packet(DecodeBuffer* decode_buffer, const DeflatePacketDe
 {
    BitPointer packet_start(packet->packetHeader()) ;
    uint32_t phdr = packet_start.nextBits(PACKHDR_SIZE) ;
-   HuffSymbolTable *symbol_table = 0 ;
+   HuffSymbolTable *symbol_table = nullptr ;
    const char *ptype = "" ;
    bool uncompressed = false ;
    switch (PACKHDR_TYPE(phdr))
@@ -1427,7 +1425,7 @@ static bool decompress_packet(DecodeBuffer* decode_buffer, const DeflatePacketDe
       if (success)
 	 {
 	 if (symtab)
-	    *symtab = 0 ;
+	    *symtab = nullptr ;
 	 }
       else
 	 corruption_loc = packet_start ;
@@ -1536,7 +1534,7 @@ static bool decompress_packet(DecodeBuffer *decode_buffer,
       packet_end.advanceToByte() ;
       packet_end.advanceBytes(packet->corruptionStart()) ;
       }
-   HuffSymbolTable *symtab = 0 ;
+   HuffSymbolTable *symtab = nullptr ;
    BitPointer corruption_loc((char*)0) ;
    bool success = decompress_packet(decode_buffer,packet,packet_end,
 				    &symtab,corruption_loc) ;
@@ -1549,7 +1547,7 @@ static bool decompress_packet(DecodeBuffer *decode_buffer,
    if (!success && !corruption_loc.bytePointer())
       {
       free_symbol_table(symtab) ;
-      symtab = 0 ;
+      symtab = nullptr ;
       }
    // if we have corruption in the middle of a packet, decompress the
    //   remainder using the symbol table built at the start of the packet
@@ -1665,7 +1663,7 @@ static bool recover_stream(const ZipRecParameters &params, const FileInformation
    CpuTimer timer ;
    BitPointer packet_start(stream_end) ;
    BitPointer last_packet_header(known_start ? stream_start : 0) ;
-   DeflatePacketDesc *packet_list = 0 ;
+   DeflatePacketDesc *packet_list = nullptr ;
    // if we have a fragment with a known start (due to a header found
    //   via its signature), but without a known end (because there is
    //   no end signature and we are processing a disk image), skip the
@@ -1673,12 +1671,11 @@ static bool recover_stream(const ZipRecParameters &params, const FileInformation
    //   until an error occurs
    if (known_end)
       {
-      packet_list = locate_packets(stream_start,stream_end,base_offset,
-				   deflate64) ;
+      packet_list = locate_packets(stream_start,stream_end,base_offset, deflate64) ;
       if (packet_list)
 	 packet_start = packet_list->packetHeader() ;
       }
-   bool success = (packet_list != 0) ;
+   bool success = (packet_list != nullptr) ;
    BitPointer str_start(stream_start) ;
    if (known_start && packet_start != stream_start)
       {
@@ -1707,8 +1704,7 @@ static bool recover_stream(const ZipRecParameters &params, const FileInformation
       // insert a deliberate corruption in the first packet
       if (params.test_mode_offset)
 	 {
-	 packet_list->updateCorruption(params.test_mode_offset,
-				       params.test_mode_offset + params.test_mode_skip) ;
+	 packet_list->updateCorruption(params.test_mode_offset, params.test_mode_offset + params.test_mode_skip) ;
 	 }
       else if (!packet_list->containsCorruption())
 	 {
@@ -1720,8 +1716,7 @@ static bool recover_stream(const ZipRecParameters &params, const FileInformation
    WriteFormat wf = params.write_format ;
    WriteFormat fmt = (wf == WFMT_Listing) ? WFMT_None : wf ;
    DecodeBuffer decode_buffer(outfp,fmt,DEFAULT_UNKNOWN,outfile,deflate64) ;
-   decompress_packets(params,&decode_buffer,packet_list,outfile,
-		      known_start,known_end) ;
+   decompress_packets(params,&decode_buffer,packet_list,outfile,known_start,known_end) ;
    ADD_TIME(timer,time_inflating) ;
    delete packet_list ;
    return success ;
@@ -1774,7 +1769,7 @@ static bool reconstruct_stream(const char *reconst_filename,
    //   and load the appropriate language model
    bool reconstruct = true ;
    const char *encoding = "ASCII" ;
-   const char *detected_encoding = 0 ;
+   const char *detected_encoding = nullptr ;
    const LanguageIdentifier *langid = fileinfo->langid() ;
    if (langid)
       {
@@ -1854,10 +1849,9 @@ static void generate_output_filenames(const ZipRecParameters &params, const char
    if (params.write_format == WFMT_HTML)
       extension = "htm" ;
    const char *name_base = recovery_name_base ? recovery_name_base : "recovered" ;
-   default_filename = aprintf("%s/%s-%8.08lX.%s%c",
-				 output_directory,name_base,
+   default_filename = aprintf("%s/%s-%8.08lX.%s%c", output_directory,name_base,
 				 (unsigned long)start_offset,extension,'\0') ;
-   reconst_filename = 0 ;
+   reconst_filename = nullptr ;
    if (params.perform_reconstruction)
       {
       reconst_filename = aprintf("%s/reconstruct-%8.08lX.dat%c",
@@ -1946,7 +1940,7 @@ bool recover_stream(const LocationList *start_sig,
    CharPtr filename ;
    CharPtr default_filename ;
    CharPtr reconst_filename ;
-   const char *output_directory = fileinfo->outputDirectory() ;
+   const char* output_directory = fileinfo->outputDirectory() ;
    generate_output_filenames(params,output_directory,filename_hint,start_offset,filename,default_filename,
 			     reconst_filename) ;
    bool success = false ;
@@ -1979,7 +1973,7 @@ bool recover_stream(const LocationList *start_sig,
       }
    else if (reconst_filename)
       {
-      char *reference_filename = 0 ;
+      CharPtr reference_filename ;
       if (/*known_start &&*/ params.test_mode)
 	 {
 	 reference_filename
@@ -1996,7 +1990,7 @@ bool recover_stream(const LocationList *start_sig,
       }
    else if (filename)
       {
-      char *reference_filename = 0 ;
+      CharPtr reference_filename ;
       if (known_start && params.test_mode && 0)
 	 {
 	 reference_filename = decompress_reference(buffer_start + start_offset,

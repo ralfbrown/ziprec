@@ -92,11 +92,8 @@ class WildcardCounts
 class DecodeBuffer
    {
    public: // methods
-      DecodeBuffer(Fr::CFile& fp, WriteFormat = WFMT_PlainText,
-		   unsigned char unk = DEFAULT_UNKNOWN,
-		   const char *friendly_filename = 0,
-		   bool deflate64 = true,
-		   bool test_mode = false) ;
+      DecodeBuffer(Fr::CFile& fp, WriteFormat = WFMT_PlainText, unsigned char unk = DEFAULT_UNKNOWN,
+		   const char *friendly_filename = nullptr, bool deflate64 = true, bool test_mode = false) ;
       ~DecodeBuffer() ;
 
       // accessors
@@ -119,10 +116,8 @@ class DecodeBuffer
       ContextFlags contextFlags(size_t which) const { return m_context_flags[which] ; }
       size_t numReplacements() const { return m_numreplacements ; }
       size_t highestReplacement() const { return m_highest_replaced ; }
-      size_t highestReplacement(unsigned num_discont,
-				unsigned max_backref) const ;
-      unsigned countReplacements(unsigned num_discont,
-				 unsigned max_backref = 0) const ;
+      size_t highestReplacement(unsigned num_discont, unsigned max_backref) const ;
+      unsigned countReplacements(unsigned num_discont, unsigned max_backref = 0) const ;
       size_t totalBytes() const { return m_numbytes ; }
       size_t loadedBytes() const { return m_loadedbytes ; }
       size_t firstRealByte() const { return loadedBytes() - totalBytes() ; }
@@ -137,9 +132,8 @@ class DecodeBuffer
       void rewindInput() ;
       unsigned char setUnknownChar(unsigned char unk) ;
       bool openInputFile(Fr::CFile& fp, const char *filename) ;
-      bool setOutputFile(Fr::CFile& fp, WriteFormat fmt, unsigned char unk = '?',
-			 const char *friendlyfile = 0,
-			 const char *encoding_name = 0, bool test_mode = false) ;
+      bool setOutputFile(Fr::CFile& fp, WriteFormat fmt, unsigned char unk = '?', const char* friendlyfile = nullptr,
+			 const char* encoding_name = nullptr, bool test_mode = false) ;
       DecodedByte *loadBytes(bool sentinel = false, bool include_wild = true) ;
       void clearLoadedBytes() ;
       void clearContextFlags() ;
@@ -173,8 +167,7 @@ class DecodeBuffer
 
       // I/O
       bool finalize() ;
-      bool convert(size_t offset, size_t length, unsigned char unk,
-		   char *result, bool *literals = 0) ;
+      bool convert(size_t offset, size_t length, unsigned char unk, char *result, bool *literals = nullptr) ;
       bool writeReplacements(size_t num_discontinuities, unsigned max_backref, Fr::CFile& reffp) ;
       void compareToReference(DecodedByte db, Fr::CFile& reffp, bool replaced) ;
 

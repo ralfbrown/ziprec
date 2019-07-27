@@ -51,35 +51,15 @@ typedef float ZRScore ; // save memory
 class BidirModel
    {
    public:
-      LangIDPackedTrie	*m_file_left ;
-      LangIDPackedTrie	*m_file_right ;
-      const LangIDPackedTrie	*m_global_left ;
-      const LangIDPackedTrie	*m_global_right ;
-      double		 m_center_factor ;
-      size_t		 m_forward_len ;
-      size_t		 m_reverse_len ;
-   protected:
-      void setLengths() ;
-      static bool computeScore(const LangIDPackedTrie *trie,
-			       uint8_t *key, size_t num_bytes,
-			       const WildcardSet **context_wildcards,
-			       ZRScore *scores, double weight) ;
-      static bool computeCenterScore(const LangIDPackedTrie *trie,
-				     uint8_t *key, size_t num_bytes,
-				     size_t center_byte,
-				     const WildcardSet **context_wildcards,
-				     ZRScore *scores, double weight) ;
-
-   public:
       BidirModel(const LangIDPackedTrie *gleft, const LangIDPackedTrie *gright) ;
-      ~BidirModel() {}
+      ~BidirModel() = default ;
 
       // modifiers
       void setFileModels(LangIDPackedTrie *left, LangIDPackedTrie *right)
 	 { m_file_left = left ; m_file_right = right ; setLengths() ; }
       void deleteFileModels()
-	 { delete m_file_left ; m_file_left = 0 ;
-	   delete m_file_right ; m_file_right = 0 ;
+	 { delete m_file_left ; m_file_left = nullptr ;
+	   delete m_file_right ; m_file_right = nullptr ;
 	   setLengths() ; }
 
       // accessors
@@ -91,16 +71,32 @@ class BidirModel
       size_t longestReverseNgram() const { return m_reverse_len ; }
       double centerMatchFactor() const { return m_center_factor ; }
 
-      bool computeScores(bool reverse,
-			 const DecodedByte *bytes, size_t max_bytes,
+      bool computeScores(bool reverse, const DecodedByte *bytes, size_t max_bytes,
 			 const WildcardCollection *context_wildcards,
 			 ZRScore *scores, double weight,
 			 ContextFlags &context_flags)
 	 const ;
-      bool computeCenterScores(const DecodedByte *bytes, size_t left_size,
-			       size_t right_size,
+      bool computeCenterScores(const DecodedByte *bytes, size_t left_size, size_t right_size,
 			       const WildcardCollection *context_wildcards,
 			       ZRScore *scores, double weight) const ;
+
+   protected:
+      void setLengths() ;
+      static bool computeScore(const LangIDPackedTrie *trie, uint8_t *key, size_t num_bytes,
+			       const WildcardSet **context_wildcards,
+			       ZRScore *scores, double weight) ;
+      static bool computeCenterScore(const LangIDPackedTrie *trie, uint8_t *key, size_t num_bytes,
+				     size_t center_byte, const WildcardSet **context_wildcards,
+				     ZRScore *scores, double weight) ;
+
+   public:
+      LangIDPackedTrie	*m_file_left ;
+      LangIDPackedTrie	*m_file_right ;
+      const LangIDPackedTrie	*m_global_left ;
+      const LangIDPackedTrie	*m_global_right ;
+      double		 m_center_factor ;
+      size_t		 m_forward_len ;
+      size_t		 m_reverse_len ;
    } ;
 
 /************************************************************************/

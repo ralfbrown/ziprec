@@ -790,8 +790,8 @@ static bool collect_ngram_counts(DecodeBuffer &decode_buffer,
       }
    if (!use_local_models)
       {
-      delete ngrams_left ; ngrams_left = 0 ;
-      delete ngrams_right ; ngrams_right = 0 ;
+      delete ngrams_left ; ngrams_left = nullptr ;
+      delete ngrams_right ; ngrams_right = nullptr ;
       }
    return true ;
 }

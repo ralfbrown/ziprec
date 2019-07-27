@@ -49,9 +49,9 @@ static void usage(const char *argv0)
 
 int main(int argc, char **argv)
 {
-   const char *argv0 = argv[0] ;
-   const char *cfgfile = 0 ;
-   const char *iface_type = 0 ;
+   const char* argv0 = argv[0] ;
+   const char* cfgfile = nullptr ;
+   const char* iface_type = nullptr ;
 
    while (argc > 1 && argv[1][0] == '-' && argv[1][1] != '\0')
       {

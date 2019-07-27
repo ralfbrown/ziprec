@@ -333,7 +333,7 @@ ZiprecUserInterface *ZiprecUserInterface::instantiate()
 
 
       }
-   ZiprecUserInterface *ui = 0 ;
+   ZiprecUserInterface *ui = nullptr ;
    switch (interface_type)
       {
       case 0:

@@ -115,11 +115,9 @@ void print_partial_packet_statistics() ;
 
 class HuffmanChildInfo
    {
-   private:
-      uint16_t m_info ;
    public:
       HuffmanChildInfo() { m_info = 0 ; }
-      ~HuffmanChildInfo() { m_info = 0 ; }
+      ~HuffmanChildInfo() = default ;
 
       // accessors
       bool isValid() const { return (m_info & NODEINFO_VALID) != 0 ; }
@@ -152,6 +150,9 @@ class HuffmanChildInfo
 	 { m_info &= ~(NODEINFO_LEAF | NODEINFO_CHILD_MASK) ;
 	   m_info |= (NODEINFO_VALID | (index & NODEINFO_CHILD_MASK)) ;
 	 }
+
+   private:
+      uint16_t m_info ;
    } ;
 
 //----------------------------------------------------------------------
@@ -383,10 +384,8 @@ class HuffmanInfo : public Object
 	 { return m_distcodes.extraBitsAtLimit(extra) ; }
 
       bool consistentLiteral(HuffmanCode code, unsigned length) const ;
-      bool consistentMatchLength(HuffmanCode code, unsigned len_bits,
-				 unsigned extra_bits) const ;
-      bool consistentDistance(HuffmanCode code, unsigned dist_bits,
-			      unsigned extra_bits) const ;
+      bool consistentMatchLength(HuffmanCode code, unsigned len_bits, unsigned extra_bits) const ;
+      bool consistentDistance(HuffmanCode code, unsigned dist_bits, unsigned extra_bits) const ;
 
       // modifiers
       void setNext(HuffmanInfo *nxt) { m_next = nxt ; }
@@ -399,8 +398,7 @@ class HuffmanInfo : public Object
       void setMaxDistanceLength(size_t maxlen)
 	 { m_distcodes.setMaxBitLength(maxlen) ; }
       void updateLastLiteral(HuffmanCode code, unsigned length) ;
-      void clearLastLiteral()
-	 { m_lastliteral = 0 ; m_lastlitlength = 0 ; m_lastlitcount = 0 ; }
+      void clearLastLiteral() { m_lastliteral = 0 ; m_lastlitlength = 0 ; m_lastlitcount = 0 ; }
 
       // factories
       HuffmanInfo *extend(const BitPointer &position, HuffmanCode code,
@@ -440,12 +438,6 @@ enum HuffmanSearchMode
 
 class SearchTrieNode
    {
-   private:
-      static SmallAlloc* allocator ;
-      union {
-	    SearchTrieNode *m_children[1 << BITS_PER_LEVEL] ;
-  	    HuffmanHypothesis *m_leaves[1 << BITS_PER_LEVEL] ;
-            } ;
    public:
       void *operator new(size_t) { return allocator->allocate() ; }
       void operator delete(void *blk) { allocator->release(blk) ; }
@@ -460,6 +452,13 @@ class SearchTrieNode
       // modifiers
       void setChild(unsigned N, SearchTrieNode *ch) { m_children[N] = ch ; }
       void setLeaf(unsigned N, HuffmanHypothesis *h) { m_leaves[N] = h ; }
+
+   private:
+      static SmallAlloc* allocator ;
+      union {
+	    SearchTrieNode *m_children[1 << BITS_PER_LEVEL] ;
+  	    HuffmanHypothesis *m_leaves[1 << BITS_PER_LEVEL] ;
+            } ;
    } ;
 
 //----------------------------------------------------------------------
@@ -528,8 +527,8 @@ class HuffmanSearchQueue
 
    private:
       Owned<BoundedPriorityQueue> m_queue ;
-      NewPtr<HuffmanHypothesis*>  m_stacks ;
       Owned<HypothesisDirectory>  m_directory ;
+      NewPtr<HuffmanHypothesis*>  m_stacks ;
       uint64_t		   m_additions ;
       uint64_t		   m_dups_skipped ;
       size_t		   m_numstacks ;
@@ -827,7 +826,7 @@ bool SearchTrie::remove(HuffmanHypothesis *hyp)
    unsigned index = hashcode & TRIE_MASK ;
    path[0] = node ;
    path_index[0] = index ;
-   HuffmanHypothesis *prev = 0 ;
+   HuffmanHypothesis *prev = nullptr ;
    HuffmanHypothesis *cand = node->leaf(index) ;
    for ( ; cand ; cand = cand->next())
       {
@@ -855,7 +854,7 @@ bool SearchTrie::remove(HuffmanHypothesis *hyp)
 		  if (i == TRIE_DEPTH - 1)
 		     {
 		     delete m_trie ;
-		     m_trie = 0 ;
+		     m_trie = nullptr ;
 		     }
 		  else
 		     {
@@ -905,11 +904,11 @@ static void traverse(SearchTrieNode* trie, HuffmanHypothesis*& hyps, unsigned de
 
 HuffmanHypothesis *SearchTrie::convertToList()
 {
-   HuffmanHypothesis *hyps = 0 ;
+   HuffmanHypothesis *hyps = nullptr ;
    if (m_trie)
       traverse(m_trie,hyps,0) ;
    m_size = 0 ;
-   m_trie = 0 ;
+   m_trie = nullptr ;
    return hyps ;
 }
 
@@ -1149,7 +1148,7 @@ bool HuffmanSearchQueue::push(HuffmanHypothesis *hyp)
 
 HuffmanHypothesis *HuffmanSearchQueue::pop()
 {
-   HuffmanHypothesis *hyp = 0 ;
+   HuffmanHypothesis *hyp = nullptr ;
    if (m_queue)
       {
       hyp = (HuffmanHypothesis*)m_queue->pop() ;
@@ -1175,7 +1174,7 @@ HuffmanHypothesis *HuffmanSearchQueue::pop()
 
 HuffmanHypothesis *HuffmanSearchQueue::popAll()
 {
-   HuffmanHypothesis *all_hyp = 0 ;
+   HuffmanHypothesis *all_hyp = nullptr ;
    if (m_queue)
       {
       while (m_queue->size() > 0)
@@ -1343,9 +1342,9 @@ void HuffmanTreeHypothesis::releaseCodeAllocators()
 
 HuffmanTreeHypothesis::HuffmanTreeHypothesis(unsigned max_codes)
 {
-   m_next = 0 ;
-   m_prev = 0 ;
-   m_parent = 0 ;
+   m_next = nullptr ;
+   m_prev = nullptr ;
+   m_parent = nullptr ;
    m_refcount = 1 ;
    m_EOD = (1 << MAX_BITLENGTH) ;
    m_maxcodes = max_codes ;
@@ -1366,8 +1365,8 @@ HuffmanTreeHypothesis::HuffmanTreeHypothesis(unsigned max_codes)
 HuffmanTreeHypothesis::HuffmanTreeHypothesis(const HuffmanTreeHypothesis *orig)
 {
    assert(orig != 0) ;
-   m_next = 0 ;
-   m_prev = 0 ;
+   m_next = nullptr ;
+   m_prev = nullptr ;
    m_parent = orig ;
    m_hashcode = 0 ;
    m_refcount = 1 ;
@@ -1393,8 +1392,8 @@ HuffmanTreeHypothesis::HuffmanTreeHypothesis(const HuffmanTreeHypothesis *orig, 
    					     unsigned num_codes)
 {
    assert(orig != 0) ;
-   m_next = 0 ;
-   m_prev = 0 ;
+   m_next = nullptr ;
+   m_prev = nullptr ;
    m_parent = orig ;
    m_hashcode = 0 ;
    m_refcount = 1 ;
@@ -1764,7 +1763,7 @@ const
       }
    else
       {
-      augmented = 0 ;
+      augmented = nullptr ;
       num_codes = 0 ;
       }
    return num_codes ;
@@ -3340,7 +3339,7 @@ cerr<<"stream length = "<<(8*(*str_end - *str_start))<<" bits (approx)"<<endl;
    HuffmanTreeHypothesis::initializeCodeAllocators() ;
    lit_tree_directory.reinit(LIT_TREE_DIR_SIZE) ;
    dist_tree_directory.reinit(DIST_TREE_DIR_SIZE) ;
-   HuffSymbolTable *symtab = 0 ;
+   HuffSymbolTable *symtab = nullptr ;
    if (packet_header)
       {
       // get the packet's type
