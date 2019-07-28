@@ -87,10 +87,6 @@ class BidirModel
       // modifiers
       void setFileModels(LangIDPackedTrie *left, LangIDPackedTrie *right)
 	 { m_file_left = left ; m_file_right = right ; setLengths() ; }
-      void deleteFileModels()
-	 { delete m_file_left ; m_file_left = nullptr ;
-	   delete m_file_right ; m_file_right = nullptr ;
-	   setLengths() ; }
 
       // accessors
       const LangIDPackedTrie *fileForwardModel() const { return m_file_left ; }

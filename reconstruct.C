@@ -666,17 +666,13 @@ static bool reverse_ngram(const uint8_t* key, unsigned keylen, uint32_t frequenc
 
 //----------------------------------------------------------------------
 
-static void augment_file_models(DecodeBuffer &decode_buffer,
-				unsigned max_ngram_len,
-				unsigned min_confidence,
-				LangIDPackedTrie *&ngrams_forward,
-				LangIDPackedTrie *&ngrams_reverse,
-				bool &file_uses_CRLF,
-				bool &file_uses_CR)
+static void augment_file_models(DecodeBuffer& decode_buffer, unsigned max_ngram_len, unsigned min_confidence,
+			        Owned<LangIDPackedTrie>& ngrams_forward, Owned<LangIDPackedTrie>& ngrams_reverse,
+				bool& file_uses_CRLF, bool& file_uses_CR)
 {
    START_TIME(timer) ;
-   delete ngrams_forward ; ngrams_forward = nullptr ;
-   delete ngrams_reverse ; ngrams_reverse = nullptr ;
+   ngrams_forward = nullptr ;
+   ngrams_reverse = nullptr ;
    size_t crlf_count = 0 ;
    size_t cr_count = 0 ;
    size_t nl_count = 0 ;
@@ -711,13 +707,13 @@ static void augment_file_models(DecodeBuffer &decode_buffer,
       cr_count = ngrams_left->find((uint8_t*)"\r",1) ;
       nl_count = ngrams_left->find((uint8_t*)"\n",1) ;
       uint64_t total_tokens = ngrams_left->totalTokens() ;
-      ngrams_forward = new LangIDPackedTrie(ngrams_left,1,false) ;
+      ngrams_forward.reinit(ngrams_left,1,false) ;
       ngrams_left = nullptr ;
       Owned<NybbleTrie> ngrams_right ;
       LocalAlloc<uint8_t> keybuf(max_ngram_len+1) ;
       ngrams_forward->enumerate(keybuf,max_ngram_len,reverse_ngram,ngrams_right) ;
       ngrams_right->addTokenCount(total_tokens) ;
-      ngrams_reverse = new LangIDPackedTrie(ngrams_right,1,false) ;
+      ngrams_reverse.reinit(ngrams_right,1,false) ;
       }
    else
       {
@@ -745,13 +741,9 @@ static void augment_file_models(DecodeBuffer &decode_buffer,
 
 //----------------------------------------------------------------------
 
-static bool collect_ngram_counts(DecodeBuffer &decode_buffer,
-				 LangIDPackedTrie *&ngrams_left,
-				 LangIDPackedTrie *&ngrams_right,
-				 bool &file_uses_CRLF,
-				 bool &file_uses_CR,
-				 unsigned max_ngram_len,
-				 bool first = false)
+static bool collect_ngram_counts(DecodeBuffer& decode_buffer, Owned<LangIDPackedTrie>& ngrams_left,
+                                 Owned<LangIDPackedTrie>& ngrams_right, bool& file_uses_CRLF,
+				 bool& file_uses_CR, unsigned max_ngram_len, bool first = false)
 {
    PROGRESS("   -> generating language model for file\n") ;
    (void)first; // keep compiler happy if not collecting stats
@@ -778,9 +770,7 @@ static bool collect_ngram_counts(DecodeBuffer &decode_buffer,
 	 decode_buffer.applyReplacement(file_buffer[i]) ;
       }
    // augment ngram statistics and scan for CR-LF
-   augment_file_models(decode_buffer,max_ngram_len,0,
-		       ngrams_left,ngrams_right,file_uses_CRLF,
-		       file_uses_CR) ;
+   augment_file_models(decode_buffer,max_ngram_len,0,ngrams_left,ngrams_right,file_uses_CRLF,file_uses_CR) ;
    if (verbosity >= VERBOSITY_PROGRESS)
       {
       fprintf(stderr,"     (file is using %s line terminators)\n",
@@ -788,20 +778,17 @@ static bool collect_ngram_counts(DecodeBuffer &decode_buffer,
       }
    if (!use_local_models)
       {
-      delete ngrams_left ; ngrams_left = nullptr ;
-      delete ngrams_right ; ngrams_right = nullptr ;
+      ngrams_left = nullptr ;
+      ngrams_right = nullptr ;
       }
    return true ;
 }
 
 //----------------------------------------------------------------------
 
-static void update_ngram_score(const DecodeBuffer &decode_buffer,
-			       size_t offset, const BidirModel &langmodel,
-			       const WildcardCollection *context_wildcards,
-			       ScoreCollection *scores,
-			       WildcardCounts *context_counts,
-			       int weight)
+static void update_ngram_score(const DecodeBuffer& decode_buffer, size_t offset, const BidirModel &langmodel,
+			       const WildcardCollection* context_wildcards, ScoreCollection* scores,
+			       WildcardCounts* context_counts, int weight)
 {
    DecodedByte *file_buffer = decode_buffer.fileBuffer() ;
    ContextFlags *context_flags = decode_buffer.contextFlags() ;
@@ -1121,19 +1108,15 @@ static void infer_most_likely(DecodeBuffer &decode_buffer,
 
 //----------------------------------------------------------------------
 
-bool infer_replacements(DecodeBuffer &decode_buffer,
-			const char *encoding, unsigned iteration,
-			bool last_iteration)
+bool infer_replacements(DecodeBuffer& decode_buffer, const char *encoding, unsigned iteration, bool last_iteration)
 {
    // load the file data and build local adaptive ngram model
    bool file_uses_CR = false ;
    bool file_uses_CRLF = false ;
-   LangIDPackedTrie *ngram_counts_forward = nullptr ;
-   LangIDPackedTrie *ngram_counts_reverse = nullptr ;
-   if (!collect_ngram_counts(decode_buffer,ngram_counts_forward,
-			     ngram_counts_reverse,
-			     file_uses_CRLF,file_uses_CR,
-			     MAX_LOCAL_NGRAM_LEN,(iteration==0)))
+   Owned<LangIDPackedTrie> ngram_counts_forward { nullptr } ;
+   Owned<LangIDPackedTrie> ngram_counts_reverse { nullptr } ;
+   if (!collect_ngram_counts(decode_buffer,ngram_counts_forward,ngram_counts_reverse,
+			     file_uses_CRLF,file_uses_CR,MAX_LOCAL_NGRAM_LEN,(iteration==0)))
       {
       PROGRESS("     nothing to be reconstructed\n") ;
       return false ;
@@ -1214,7 +1197,6 @@ bool infer_replacements(DecodeBuffer &decode_buffer,
 	 infer_most_likely(decode_buffer,scores,active_wildcards, mle_ratio_cutoff,iteration) ;
 	 }
       }
-   langmodel.deleteFileModels() ;
    return success ;
 }
 
