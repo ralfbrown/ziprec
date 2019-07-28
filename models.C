@@ -491,6 +491,36 @@ bool BidirModel::computeCenterScore(const LangIDPackedTrie *trie, uint8_t *key,
 
 //----------------------------------------------------------------------
 
+unsigned BidirModel::applyModel(const LangIDPackedTrie* model, double model_weight, uint8_t* key, bool reverse,
+   unsigned max_bytes, size_t min_len, double weight, ZRScore* scores, unsigned* ambiguities,
+   const WildcardSet** contexts, ContextFlags& context_flags)
+   const
+{
+   unsigned good_contexts = 0 ;
+   if (model)
+      {
+      size_t max = std::min(max_bytes+1,model->longestKey()) ;
+      unsigned ranks = 0 ;
+      for (size_t i = max ; i > min_len ; i--)
+	 {
+	 size_t ofs = max_bytes - (i - 1) ;
+	 if (ambiguities[ofs] &&
+	     computeScore(model,key + ofs,i-1, contexts + ofs,scores, i*weight*model_weight))
+	    {
+	    context_flags.setSide(reverse) ;
+	    if (++ranks >= MAX_RANKS)
+	       {
+	       good_contexts++ ;
+	       break ;
+	       }
+	    }
+	 }
+      }
+   return good_contexts ;
+}
+
+//----------------------------------------------------------------------
+
 bool BidirModel::computeScores(bool reverse, const DecodedByte* bytes, size_t max_bytes,
 			       const WildcardCollection* context_wildcards, ZRScore* scores, double weight,
 			       ContextFlags& context_flags) const
@@ -499,92 +529,29 @@ bool BidirModel::computeScores(bool reverse, const DecodedByte* bytes, size_t ma
       return false ;
    LocalAlloc<uint8_t,512> key(max_bytes) ;
    LocalAlloc<const WildcardSet*,512> contexts(max_bytes) ;
-   LocalAlloc<unsigned,512> ambiguities(max_bytes) ;
    double discount_factor = (DBYTE_CONFIDENCE_LEVELS + 2) * RECONST_DISCOUNT ;
-   const LangIDPackedTrie *file_model ;
-   if (reverse)
+   for (size_t i = 0 ; i < max_bytes ; i++)
       {
-      for (size_t i = 0 ; i < max_bytes ; i++)
+      size_t pos = reverse ? max_bytes - i : i ;
+      if (bytes[pos].isDiscontinuity())
 	 {
-	 size_t pos = max_bytes - i ;
-	 if (bytes[pos].isDiscontinuity())
-	    {
-	    max_bytes = i ;
-	    break ;
-	    }
-	 key[i] = bytes[pos].byteValue() ;
-	 if (bytes[pos].isReconstructed())
-	    weight *= (bytes[pos].confidence() / discount_factor) ;
-	 contexts[i] = bytes[pos].isLiteral() ? nullptr : context_wildcards->set(bytes[pos].originalLocation()) ;
+	 max_bytes = i ;
+	 break ;
 	 }
-      file_model = fileReverseModel() ;
+      key[i] = bytes[pos].byteValue() ;
+      if (bytes[pos].isReconstructed())
+	 weight *= (bytes[pos].confidence() / discount_factor) ;
+      contexts[i] = bytes[pos].isLiteral() ? nullptr : context_wildcards->set(bytes[pos].originalLocation()) ;
       }
-   else
-      {
-      for (size_t i = 0 ; i < max_bytes ; i++)
-	 {
-	 if (bytes[i].isDiscontinuity())
-	    {
-	    max_bytes = i ;
-	    break ;
-	    }
-	 key[i] = bytes[i].byteValue() ;
-	 if (bytes[i].isReconstructed())
-	    weight *= (bytes[i].confidence() / discount_factor) ;
-	 const WildcardSet *context = nullptr ;
-	 if (!bytes[i].isLiteral())
-	    context = context_wildcards->set(bytes[i].originalLocation()) ;
-	 contexts[i] = context ;
-	 }
-      file_model = fileForwardModel() ;
-      }
+   LocalAlloc<unsigned> ambiguities(max_bytes) ;
    count_ambiguities(ambiguities,max_bytes,contexts,max_score_ambig) ;
-   unsigned good_contexts = 0 ;
-   if (file_model)
-      {
-      size_t max = max_bytes+1 ;
-      if (file_model->longestKey() < max)
-	 max = file_model->longestKey() ;
-      unsigned ranks = 0 ;
-      for (size_t i = max ; i > MIN_NGRAM_LOCAL ; i--)
-	 {
-	 size_t ofs = max_bytes - (i - 1) ;
-	 if (ambiguities[ofs] &&
-	     computeScore(file_model,key + ofs,i-1, contexts + ofs,scores,
-			  i*weight*local_model_weight))
-	    {
-	    context_flags.setSide(reverse) ;
-	    if (++ranks >= MAX_RANKS)
-	       {
-	       good_contexts++ ;
-	       break ;
-	       }
-	    }
-	 }
-      }
+   const LangIDPackedTrie *file_model = reverse ? fileReverseModel() : fileForwardModel() ;
+   unsigned good_contexts
+      = applyModel(file_model,local_model_weight,key,reverse,max_bytes,MIN_NGRAM_LOCAL,weight,scores,ambiguities,
+	 contexts,context_flags) ;
    auto global_model = reverse ? globalReverseModel() : globalForwardModel() ;
-   if (global_model)
-      {
-      size_t max = max_bytes+1 ;
-      if (global_model->longestKey() < max)
-	 max = global_model->longestKey() ;
-      unsigned ranks = 0 ;
-      for (size_t i = max ; i > MIN_NGRAM_GLOBAL ; i--)
-	 {
-	 size_t ofs = max_bytes - (i - 1) ;
-	 if (ambiguities[ofs] &&
-	     computeScore(global_model,key + ofs,i-1, contexts + ofs, scores,
-			  i*weight*global_model_weight))
-	    {
-	    context_flags.setSide(reverse) ;
-	    if (++ranks >= MAX_RANKS)
-	       {
-	       good_contexts++ ;
-	       break ;
-	       }
-	    }
-	 }
-      }
+   good_contexts += applyModel(global_model,global_model_weight,key,reverse,max_bytes,MIN_NGRAM_GLOBAL,weight,
+      scores,ambiguities,contexts,context_flags) ;
    return (good_contexts > 0) ;
 }
 
@@ -622,10 +589,8 @@ bool BidirModel::computeCenterScores(const DecodedByte *bytes,
       contexts_rev[end_offset - i] = contexts[i-start_offset] = context ;
       key_rev[end_offset - i] = key[i-start_offset] = bytes[i].byteValue() ;
       }
-   find_longest_ambiguities(ambiguities,byte_count,3,max_len,contexts,
-			    max_center_score_ambig) ;
-   find_longest_ambiguities(ambiguities_rev,byte_count,3,max_len,contexts_rev,
-			    max_center_score_ambig) ;
+   find_longest_ambiguities(ambiguities,byte_count,3,max_len,contexts, max_center_score_ambig) ;
+   find_longest_ambiguities(ambiguities_rev,byte_count,3,max_len,contexts_rev, max_center_score_ambig) ;
    size_t good_contexts = 0 ;
    // enumerate the possible spans, from maximal n-grams down to
    //   trigrams, which contain the wildcard we're scoring

@@ -118,7 +118,9 @@ class BidirModel
       static bool computeCenterScore(const LangIDPackedTrie *trie, uint8_t *key, size_t num_bytes,
 				     size_t center_byte, const WildcardSet **context_wildcards,
 				     ZRScore *scores, double weight) ;
-
+      unsigned applyModel(const LangIDPackedTrie* model, double model_weight, uint8_t* key, bool reverse,
+	 		  unsigned max_bytes, size_t min_len, double weight, ZRScore* scores, unsigned* ambiguities,
+	 		  const WildcardSet** contexts, ContextFlags& context_flags) const ;
    public:
       LangIDPackedTrie	*m_file_left ;
       LangIDPackedTrie	*m_file_right ;
@@ -138,15 +140,11 @@ extern ReconstructionData reconstruction_data ;
 /************************************************************************/
 /************************************************************************/
 
-void precompute_history_factors() ;
 void thorough_search(bool thoro = true) ;
 unsigned set_max_score_ambig(unsigned new_max) ;
 
 bool load_reconstruction_data_by_lang(class DecodeBuffer &decode_buffer,
 				      const LanguageIdentifier *langid,
 				      const char *&encoding) ;
-
-bool load_reconstruction_data(const char *datafile) ;
-void clear_reconstruction_data() ;
 
 // end of file models.h //
