@@ -4,7 +4,7 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-26						*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -907,23 +907,19 @@ static LocationList *scan_for_zlib_signatures(const ZipRecParameters &params,
 
 //----------------------------------------------------------------------
 
-static LocationList *check_ZIP_header(const char *bufpos,
-				      off_t offset,
-				      LocationList *locations)
+static LocationList* check_ZIP_header(const char* bufpos, off_t offset, LocationList* locations)
 {
    if (bufpos[2] == 0x01 && bufpos[3] == 0x02 && bufpos[4] >= bufpos[6])
       {
       // central directory entry
-      locations = LocationList::push(ST_CentralDirEntry,offset,
-				   locations) ;
+      locations = LocationList::push(ST_CentralDirEntry,offset, locations) ;
       INCR_STAT(central_dir_entry) ;
       }
    else if (bufpos[2] == 0x03 && bufpos[3] == 0x04 &&
 	    (get_word(bufpos + 26) > 0))
       {
       // local file header; check that filename length is nonzero
-      locations = LocationList::push(ST_LocalFileHeader,offset,
-				   locations) ;
+      locations = LocationList::push(ST_LocalFileHeader,offset, locations) ;
       INCR_STAT(local_file_header) ;
       }
    else if (bufpos[2] == 0x05)
@@ -931,8 +927,7 @@ static LocationList *check_ZIP_header(const char *bufpos,
       if (bufpos[3] == 0x05)
 	 {
 	 // central directory digital signature
-	 locations = LocationList::push(ST_CentralDirSignature,offset,
-				      locations) ;
+	 locations = LocationList::push(ST_CentralDirSignature,offset, locations) ;
 	 }
       else if (bufpos[3] == 0x06 && bufpos[5] < 0x40 &&
 	       bufpos[7] < 0x40)
@@ -946,8 +941,7 @@ static LocationList *check_ZIP_header(const char *bufpos,
 	 uint16_t dir_disk = get_word(bufpos + 6) ;
 	 if (dir_disk <= this_disk)
 	    {
-	    locations = LocationList::push(ST_EndOfCentralDir,offset,
-					 locations) ;
+	    locations = LocationList::push(ST_EndOfCentralDir,offset, locations) ;
 	    INCR_STAT(end_of_central_dir) ;
 	    }
 	 }
@@ -962,8 +956,7 @@ static LocationList *check_ZIP_header(const char *bufpos,
 	 //   bytes or span more than 16M parts :-)
 	 // additionally, the start of the central directory can't
 	 //   be on a disk greater than the total number of disks
-	 locations = LocationList::push(ST_EndOfCentralDir64,offset,
-				      locations) ;
+	 locations = LocationList::push(ST_EndOfCentralDir64,offset, locations) ;
 	 INCR_STAT(end_of_central_dir) ;
 	 }
       else if (bufpos[3] == 0x07 && bufpos[7] == 0 && bufpos[19] == 0)
@@ -971,16 +964,14 @@ static LocationList *check_ZIP_header(const char *bufpos,
 	 // Zip64 end of central directory locator; we assume
 	 //  that the archive doesn't span more than 16M parts
 	 //  :-) to reduce false positives
-	 locations = LocationList::push(ST_EndOfCentralDirLocator,offset,
-				      locations) ;
+	 locations = LocationList::push(ST_EndOfCentralDirLocator,offset, locations) ;
 	 }
       else if (bufpos[3] == 0x08 && bufpos[7] == 0)
 	 {
 	 // extra data record; we'll assume that there will
 	 //   never be more than 16MB in the extra field to reduce
 	 //   false positives
-	 locations = LocationList::push(ST_ExtraData,offset,
-				      locations) ;
+	 locations = LocationList::push(ST_ExtraData,offset, locations) ;
 	 }
       }
    else if (bufpos[2] == 0x07 && bufpos[3] == 0x08)
@@ -995,23 +986,20 @@ static LocationList *check_ZIP_header(const char *bufpos,
 	  locations->signatureType() == ST_EndOfCentralDir64 ||
 	  locations->signatureType() == ST_EndOfCentralDirLocator)
 	 {
-	 locations = LocationList::push(ST_SplitArchiveIndicator,offset,
-				      locations) ;
+	 locations = LocationList::push(ST_SplitArchiveIndicator,offset, locations) ;
 	 }
       else
 	 {
 	 //FIXME: check that compressed-size field is <= uncomp size
 	 //  (difficulty: may be either 4 or 8 byte fields!)
-	 locations = LocationList::push(ST_DataDescriptor,offset,
-				      locations) ;
+	 locations = LocationList::push(ST_DataDescriptor,offset, locations) ;
 	 }
       }
    else if (bufpos[2] == '0' && bufpos[3] == '0' && offset == 0)
       {
       // flag: archive created as split/spanned archive, but only
       //   required a single segment (only valid at offset 0 in file)
-      locations = LocationList::push(ST_SplitArchiveSingleSegment,offset,
-				   locations) ;
+      locations = LocationList::push(ST_SplitArchiveSingleSegment,offset, locations) ;
       }
    else
       {
@@ -1060,9 +1048,8 @@ static const bool signature_start_byte[256] =
 
 //----------------------------------------------------------------------
 
-static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
-					     const char *buffer_end,
-					     const ZipRecParameters &params)
+static LocationList* scan_for_ZIP_signatures(const char* buffer_start, const char* buffer_end,
+					     const ZipRecParameters& params)
 {
    LocationList *locations = nullptr ;
    bool have_central_dir = false ;
@@ -1096,8 +1083,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	       if (version < 0x0410 && bufpos[23] == 0)
 		  {
 		  // WavPack record header
-		  locations = LocationList::push(ST_WavPackRecordHeader,offset,
-					       locations) ;
+		  locations = LocationList::push(ST_WavPackRecordHeader,offset, locations) ;
 		  }
 	       }
 	    break ;
@@ -1107,8 +1093,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 		(bufpos[3] >= '1' && bufpos[3] <= '9'))
 	       {
 	       // BZIP2 stream header (BZh1 through BZh9)
-	       locations = LocationList::push(ST_BZIP2StreamHeader,offset,
-					    locations) ;
+	       locations = LocationList::push(ST_BZIP2StreamHeader,offset, locations) ;
 	       }
 	    else if (bufpos[1] == 'L' && bufpos[2] == 'Z' && bufpos[3] == 0x01)
 	       {
@@ -1116,8 +1101,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	       // check for a sane filename length (<512)
 	       if ((unsigned char)bufpos[5] < 2)
 		  {
-		  locations = LocationList::push(ST_ALZipFileHeader,offset,
-					       locations) ;
+		  locations = LocationList::push(ST_ALZipFileHeader,offset, locations) ;
 		  INCR_STAT(ALZip_file_header) ;
 		  }
 	       }
@@ -1127,8 +1111,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 		bufpos[3] == 0x26 && bufpos[4] == 0x53 && bufpos[5] == 0x59)
 	       {
 	       // BZIP2 record header
-	       locations = LocationList::push(ST_BZIP2BlockHeader,offset,
-					    locations);
+	       locations = LocationList::push(ST_BZIP2BlockHeader,offset, locations);
 	       }
 	    break ;
 	 case 0x17:
@@ -1137,8 +1120,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 		(uint8_t)bufpos[5] == 0x90)
 	       {
 	       // BZIP2 record header
-	       locations = LocationList::push(ST_BZIP2EndOfStream,offset,
-					    locations);
+	       locations = LocationList::push(ST_BZIP2EndOfStream,offset, locations);
 	       }
 	    break ;
 	 case 'F':
@@ -1148,8 +1130,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	       {
 	       // this is the start of a Zlib stream; skip the two-byte
 	       //   Zlib header to work on the raw Deflate stream
-	       locations = LocationList::push(ST_PDF_FlateHeader,offset + 23,
-					    locations) ;
+	       locations = LocationList::push(ST_PDF_FlateHeader,offset + 23, locations) ;
 	       INCR_STAT(FlateDecode_file_header) ;
 	       }
 	    break ;
@@ -1163,8 +1144,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	       unsigned adj = 4 ;
 	       if (bufpos[-1] == '\n')	// "endstream" may or may not have a
 		  adj++ ;		//   leading newline
-	       locations = LocationList::push(ST_PDF_FlateEnd,offset-adj,
-					    locations) ;
+	       locations = LocationList::push(ST_PDF_FlateEnd,offset-adj, locations) ;
 	       }
 	    break ;
 	 case 'i':
@@ -1176,18 +1156,14 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	       if (bufpos[0] == 'i' &&
 		   valid_PNG_iTXt_chunk(bufpos,buffer_end,ofs))
 		  {
-		  locations = LocationList::push(ST_PNG_iTXt,offset+ofs,
-					       locations) ;
-		  locations = add_PNG_chunk_end(bufpos,buffer_end,offset,
-						locations) ;
+		  locations = LocationList::push(ST_PNG_iTXt,offset+ofs, locations) ;
+		  locations = add_PNG_chunk_end(bufpos,buffer_end,offset, locations) ;
 		  }
 	       else if (bufpos[0] == 'z' &&
 			valid_PNG_zTXt_chunk(bufpos,buffer_end,ofs))
 		  {
-		  locations = LocationList::push(ST_PNG_zTXt,offset+ofs,
-					       locations) ;
-		  locations = add_PNG_chunk_end(bufpos,buffer_end,offset,
-						locations) ;
+		  locations = LocationList::push(ST_PNG_zTXt,offset+ofs, locations) ;
+		  locations = add_PNG_chunk_end(bufpos,buffer_end,offset, locations) ;
 		  }
 	       }
 	    break ;
@@ -1197,9 +1173,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 		buffer_end - buffer_start >= 512 * 1024 * 1024)
 	       {
 	       // if scanning disk images, include gzip streams
-	       locations = LocationList::push(ST_gzipHeader,
-					    bufpos - buffer_start,
-					    locations) ;
+	       locations = LocationList::push(ST_gzipHeader, bufpos - buffer_start, locations) ;
 	       INCR_STAT(gzip_file_header) ;
 	       }
 	    break ;
@@ -1208,8 +1182,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	    if (bufpos[1] == 'L' && bufpos[2] == 'Z' && bufpos[1] == 0x01)
 	       {
 	       // ALZip magic number ("ALZ\001")
-	       locations = LocationList::push(ST_ALZipArchiveHeader,offset,
-					    locations) ;
+	       locations = LocationList::push(ST_ALZipArchiveHeader,offset,locations) ;
 	       }
 	    break ;
 	 case 'C':
@@ -1283,8 +1256,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	       else if (bufpos[2] == ' ' && bufpos[3] == '\x88' &&
 			bufpos[4] == '\xF0' && bufpos[5] == '\x27' &&
 			bufpos[6] == '3' && bufpos[7] == '\xD1')
-		  locations = LocationList::push(ST_SZDDAltSignature,offset,
-					       locations) ;
+		  locations = LocationList::push(ST_SZDDAltSignature,offset,locations) ;
 	       }
 	    break ;
 	 case 0x74: // 't': possible RAR file header record
@@ -1292,8 +1264,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	    if (offset >= 2 && valid_RAR_file_header(bufpos-2,
 						     buffer_end - bufpos + 2))
 	       {
-	       locations = LocationList::push(ST_RARFileHeader,offset-2,
-					    locations) ;
+	       locations = LocationList::push(ST_RARFileHeader,offset-2, locations) ;
 	       INCR_STAT(rar_file_header) ;
 	       }
 	    }
@@ -1305,16 +1276,14 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 	       if (bufpos[2] == '\xBC' && bufpos[3] == '\xAF' &&
 		   bufpos[4] == 0x27 && bufpos[5] == 0x1C)
 		  {
-		  locations = LocationList::push(ST_7zipSignature,offset,
-					       locations) ;
+		  locations = LocationList::push(ST_7zipSignature,offset, locations) ;
 		  INCR_STAT(SevenZip_signature) ;
 		  }
 	       else if (bufpos[2] == 'X' && bufpos[3] == 'Z' &&
 			bufpos[4] == 0x00 &&
 			offset > 0 && bufpos[-1] == '\xFD')
 		  {
-		  locations = LocationList::push(ST_XzStreamSignature,offset-1,
-					       locations) ;
+		  locations = LocationList::push(ST_XzStreamSignature,offset-1, locations) ;
 		  INCR_STAT(Xz_signature) ;
 		  }
 	       }
@@ -1339,8 +1308,7 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
 		(bufpos[-3] & 0xC0) == 0 && // could this be a type0 packet?
 		(bufpos[2] & 0x06) != 6)    // following packet valid?
 	       {
-	       locations = LocationList::push(ST_DeflateSyncMark,offset-2,
-					    locations) ;
+	       locations = LocationList::push(ST_DeflateSyncMark,offset-2, locations) ;
 	       INCR_STAT(Deflate_syncmarker) ;
 	       }
 	    }
@@ -1355,14 +1323,12 @@ static LocationList *scan_for_ZIP_signatures(const char *buffer_start,
       off_t eof_offset = buffer_end - buffer_start ;
       locations = LocationList::push(ST_zipEOF,eof_offset,locations) ;
       }
-   locations = locations->reverse() ;
-   return locations ;
+   return locations->reverse() ;
 }
 
 //----------------------------------------------------------------------
 
-static void remove_location(LocationList *&locations,
-			    LocationList *loc)
+static void remove_location(LocationList*& locations, LocationList* loc)
 {
    if (loc == locations)
       {
@@ -1372,8 +1338,8 @@ static void remove_location(LocationList *&locations,
       }
    else if (locations)
       {
-      LocationList *prev = locations ;
-      for (LocationList *l = locations->next() ; l ; l = l->next())
+      LocationList* prev = locations ;
+      for (LocationList* l = locations->next() ; l ; l = l->next())
 	 {
 	 if (l == loc)
 	    {
@@ -1542,7 +1508,7 @@ static LocationList *filter_signatures(LocationList *locations,
 static char* load_file(CFile& zipfp, const char *filename, size_t &datalen,
 		       MemMappedFile* &memory_mapped, const ZipRecParameters &params)
 {
-   char *buffer = nullptr ;
+   CharPtr buffer ;
    memory_mapped = (zipfp.fp() == stdin) ? nullptr : new MemMappedROFile(filename) ;
    if (memory_mapped)
       {
@@ -1566,9 +1532,9 @@ static char* load_file(CFile& zipfp, const char *filename, size_t &datalen,
 	 {
 	 //FIXME: params.scan_range_start = 0 ;
 	 // not seekable, i.e. stdin via a pipe
-	 size_t buflen = buffer_max_size ;
+	 size_t buflen = BUFFER_GRANULARITY ;
 	 size_t bufpos = 0 ;
-	 buffer = new char[buflen] ;
+	 buffer.allocate(BUFFER_GRANULARITY) ;
 	 while (!zipfp.eof())
 	    {
 	    if (bufpos >= buflen)
@@ -1579,16 +1545,11 @@ static char* load_file(CFile& zipfp, const char *filename, size_t &datalen,
 		  break ;
 	       // grow the buffer if it's currently full
 	       size_t newlen = buflen + BUFFER_GRANULARITY ;
-	       char *newbuffer = new char[newlen] ;
-	       if (newbuffer)
-		  {
-		  memcpy(newbuffer,buffer,buflen) ;
-		  delete [] buffer ;
-		  buffer = newbuffer ;
-		  buflen = newlen ;
-		  }
+	       if (!buffer.reallocate(buflen,newlen))
+		  break ;
+	       buflen = newlen ;
 	       }
-	    size_t count = zipfp.read(buffer+bufpos,buflen-bufpos) ;
+	    size_t count = zipfp.read(&buffer+bufpos,buflen-bufpos) ;
 	    if (count == 0)
 	       break ;
 	    bufpos += count ;
@@ -1603,15 +1564,15 @@ static char* load_file(CFile& zipfp, const char *filename, size_t &datalen,
 	 zipfp.seek(0) ;
 	 if (flen > 0)
 	    {
-	    buffer = new char[flen] ;
+	    buffer.allocate(flen) ;
 	    if (buffer)
 	       {
-	       datalen = zipfp.read(buffer,flen) ;
+	       datalen = zipfp.read(&buffer,flen) ;
 	       }
 	    }
 	 }
       }
-   return buffer ;
+   return buffer.move() ;
 }
 
 //----------------------------------------------------------------------
