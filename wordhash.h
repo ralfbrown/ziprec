@@ -4,10 +4,10 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  File: wordhash.h - Hash table for words, with possible wildcards	*/
-/*  Version:  1.00gamma				       			*/
-/*  LastEdit: 28apr2013							*/
+/*  Version:  1.10beta				       			*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
-/*  (c) Copyright 2011,2013 Ralf Brown/CMU				*/
+/*  (c) Copyright 2011,2013,2019 Carnegie Mellon University		*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -114,28 +114,27 @@ class WordList
    {
    public:
       WordList() = default ;
-      WordList(WordString *) ;
-      WordList(const WordString *) ;
+      WordList(WordString* ws) : m_string(ws) {}
+      WordList(const WordString* ws) : m_string(const_cast<WordString*>(ws)) {}
       ~WordList() ;
 
       // accessors
       WordList *next() const { return m_next ; }
-      WordString *string() const { return m_string ; }
+      WordString *string() const { return m_string.get() ; }
       unsigned listlength() const ;
 
       // manipulators
       void setNext(WordList *nxt) { m_next = nxt ; }
-      WordList *nconc(WordList *other) ;
-      WordList *reverse() ;
+      WordList* nconc(WordList *other) ;
+      WordList* reverse() ;
       void clearString() { m_string = nullptr ; }
-      void eraseList() ; // applies delete to each member of list
 
       void setAllFlags() const ;
       void clearAllFlags() const ;
 
    private:
-      WordList*   m_next { nullptr } ;
-      WordString* m_string { nullptr } ;
+      WordList*             m_next { nullptr } ;
+      Fr::Owned<WordString> m_string { nullptr } ;
    } ;
 
 //----------------------------------------------------------------------

@@ -616,16 +616,10 @@ int main(int argc, char **argv)
    fprintf(stdout,"Built language model from %ld bytes of text\n", total_bytes) ;
    uint32_t count = count_words(frequencies) ;
    fprintf(stdout,"Processed %lu unique words\n",(unsigned long)count) ;
-   if (frequencies)
-      {
-      frequencies->eraseList() ;
-      frequencies = nullptr ;
-      }
-   if (words)
-      {
-      words->eraseList() ;
-      words = nullptr ;
-      }
+   delete frequencies ;
+   frequencies = nullptr ;
+   delete words ;
+   words = nullptr ;
    ngram_counts = nullptr ;
    trigram_counts = nullptr ;
    return 0 ;

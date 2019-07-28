@@ -76,7 +76,6 @@ WordList *sort_words(WordList *words, WordCompareFnPtr cmp)
 {
    if (!words || !words->next())	// empty or singleton list?
       return words ;			// if yes, it's already sorted
-#if 1
    WordList* sublists[CHAR_BIT * sizeof(size_t)] ;
    sublists[0] = nullptr ;
    size_t maxbits = 0 ;
@@ -93,7 +92,9 @@ WordList *sort_words(WordList *words, WordCompareFnPtr cmp)
       size_t i ;
       for (i = 0 ; i <= maxbits && sublists[i] ; i++)
 	 {
-	 sublist = merge_lists(sublist,sublists[i],cmp) ;
+	 // longer sublists contain items from earlier in the input, so make them the first arg to merge
+	 //   so that the sort remains stable
+	 sublist = merge_lists(sublists[i],sublist,cmp) ;
 	 sublists[i] = nullptr ;
 	 }
       sublists[i] = sublist ;
@@ -106,27 +107,9 @@ WordList *sort_words(WordList *words, WordCompareFnPtr cmp)
    for (size_t i = 1 ; i <= maxbits ; i++)
       {
       if (sublists[i])
-	 result = merge_lists(result,sublists[i],cmp) ;
+	 result = merge_lists(sublists[i],result,cmp) ;
       }
    return result ;
-#else
-   // this version is slower (because it needs to traverse the complete
-   //   input list log n times for splitting), but is stable
-   WordList *prev = words ;
-   WordList *tail = words->next() ;
-   WordList *end = tail->next() ;
-   while (end != 0)
-      {
-      prev = tail ;
-      tail = tail->next() ;
-      end = end->next() ;
-      if (end)
-	 end = end->next() ;
-      }
-   prev->setNext(0) ;
-   return merge_lists(sort_words(words,cmp),
-		      sort_words(tail,cmp),cmp) ;
-#endif
 }
 
 //----------------------------------------------------------------------
@@ -144,8 +127,7 @@ WordList *merge_duplicates(WordList *words)
       if (*prev->string() == *words->string())
 	 {
 //cerr << "merging " << *prev->string() << " and " << *words->string() << endl;
-	 prev->string()->setFrequency(prev->string()->frequency()
-				      + words->string()->frequency()) ;
+	 prev->string()->setFrequency(prev->string()->frequency() + words->string()->frequency()) ;
 	 prev->setNext(next) ;
 	 words->setNext(nullptr) ;
 	 delete words ;

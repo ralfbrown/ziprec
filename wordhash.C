@@ -5,7 +5,7 @@
 /*									*/
 /*  File: wordhash.C - Hash table for words, with possible wildcards	*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-26						*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
 /*  (c) Copyright 2011,2013,2019 Carnegie Mellon University		*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -378,28 +378,8 @@ ostream &operator << (ostream &out, const WordString &ws)
 /*	Methods for class WordList					*/
 /************************************************************************/
 
-WordList::WordList(WordString *ws)
-{
-   m_next = nullptr ;
-   m_string = ws ;
-   return ;
-}
-
-//----------------------------------------------------------------------
-
-WordList::WordList(const WordString *ws)
-{
-   m_next = nullptr ;
-   m_string = (WordString*)ws ;
-   return ;
-}
-
-//----------------------------------------------------------------------
-
 WordList::~WordList()
 {
-   delete m_string ;
-   m_string = nullptr ;
    delete next() ;
    return ;
 }
@@ -434,21 +414,6 @@ WordList *WordList::reverse()
       list = nxt ;
       }
    return prev ;
-}
-
-//----------------------------------------------------------------------
-
-void WordList::eraseList()
-{
-   WordList *list = this ;
-   while (list)
-      {
-      WordList *nxt = list->next() ;
-      list->setNext(nullptr) ;
-      delete list ;
-      list = nxt ;
-      }
-   return ;
 }
 
 //----------------------------------------------------------------------

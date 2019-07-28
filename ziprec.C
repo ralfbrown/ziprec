@@ -159,7 +159,7 @@ static void parse_offset_range(const char *arg, ZipRecParameters &params,
 
 //----------------------------------------------------------------------
 
-static void parse_reconstruction_opts(const char* arg, LanguageIdentifier*& langid,
+static void parse_reconstruction_opts(const char* arg, Owned<LanguageIdentifier>& langid,
 				      Owned<WordLengthModel>& lenmodel, ZipRecParameters& params)
 {
    if (!arg || !*arg)
@@ -221,7 +221,6 @@ static void parse_reconstruction_opts(const char* arg, LanguageIdentifier*& lang
       const char *lang_db = arg ;
       if (!*lang_db)
 	 lang_db = "languages.db" ;
-      delete langid ;
       langid = LanguageIdentifier::load(lang_db,nullptr) ;
       if (langid)
 	 params.perform_reconstruction = true ;
@@ -453,7 +452,7 @@ int main(int argc, char **argv)
    const char *output_directory = "." ;
    FileFormat file_format = FF_Default ;
    bool gzip_by_extension = false ;
-   LanguageIdentifier *langid = nullptr ;
+   Owned<LanguageIdentifier> langid { nullptr } ;
    Owned<WordLengthModel> lenmodel { nullptr } ;
    ZipRecParameters params ;
 
@@ -554,7 +553,6 @@ int main(int argc, char **argv)
       argv++ ;
       argc-- ;
       }
-   delete langid ;
    if (total_args > 1)
       write_listing_footer(params) ;
    print_statistics() ;
