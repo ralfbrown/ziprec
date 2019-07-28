@@ -38,13 +38,13 @@ class HuffSymbolTable
       HuffSymbolTable(bool deflate64) ;
       ~HuffSymbolTable() ;
 
+      static Fr::Owned<HuffSymbolTable> build(BitPointer& pos, const BitPointer& str_end, bool deflate64 = false) ;
+      static Fr::Owned<HuffSymbolTable> buildDefault(bool deflate64 = false) ;
+
       // accessors
-      void getEOD(VariableBits &eod) const
-	 { eod = m_eod ; }
-      bool nextSymbol(BitPointer &pos, const BitPointer &str_end,
-		      HuffSymbol &symbol) const ;
-      bool nextValue(BitPointer &pos, const BitPointer &str_end,
-		     HuffSymbol &symbol) const ;
+      void getEOD(VariableBits &eod) const { eod = m_eod ; }
+      bool nextSymbol(BitPointer& pos, const BitPointer& str_end, HuffSymbol& symbol) const ;
+      bool nextValue(BitPointer& pos, const BitPointer& str_end,  HuffSymbol& symbol) const ;
       // skip over the next literal or length/distance pair
       bool advance(BitPointer &pos, const BitPointer &str_end) const ;
 
@@ -75,19 +75,10 @@ class HuffSymbolTable
 /************************************************************************/
 /************************************************************************/
 
-HuffSymbolTable *build_default_symtable(bool deflate64) ;
-void clear_default_symbol_table() ;
-
 bool valid_symbol_table_header(BitPointer &pos, bool deflate64) ;
-HuffSymbolTable *build_symbol_table(BitPointer &pos, const BitPointer &str_end,
-				bool deflate64 = false) ;
-void free_symbol_table(HuffSymbolTable *symtab) ;
 
-bool decode_bit_lengths(unsigned lit_count,
-			HuffmanLengthTable &lit_lengths,
-			unsigned dist_count,
-			HuffmanLengthTable &dist_lengths,
-			const HuffSymbolTable *bit_tab,
-			BitPointer &pos, const BitPointer &str_end) ;
+bool decode_bit_lengths(unsigned lit_count, HuffmanLengthTable& lit_lengths,
+			unsigned dist_count, HuffmanLengthTable& dist_lengths,
+			const HuffSymbolTable* bit_tab, BitPointer& pos, const BitPointer& str_end) ;
 
 // end of file symtab.h //

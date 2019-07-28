@@ -4,10 +4,10 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  File: bits.h - Bit-field manipulation				*/
-/*  Version:  1.00gamma				       			*/
-/*  LastEdit: 09may2013							*/
+/*  Version:  1.10beta				       			*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
-/*  (c) Copyright 2011,2012,2013 Ralf Brown/CMU				*/
+/*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -38,18 +38,14 @@ using namespace std ;
 
 class VariableBits
    {
-   private:
-      uint8_t	m_length ;
-      uint32_t	m_value ;
-
    public:
-      VariableBits() { m_length = 0 ; setValue(0) ; }
-      VariableBits(size_t length, size_t val = 0) { m_length = (uint8_t)length ; setValue(val) ; }
-      ~VariableBits() {}
+      VariableBits() = default ;
+      VariableBits(size_t length, size_t val = 0) : m_value(val), m_length(length) {}
+      ~VariableBits() = default ;
 
       // accessors
-      unsigned length() const { return m_length ; }
       uint32_t value() const { return m_value ; }
+      unsigned length() const { return m_length ; }
 
       // modifiers
       void setValue(size_t val) { m_value = (uint32_t)(val & mask(m_length)) ; }
@@ -84,8 +80,11 @@ class VariableBits
 	 }
 
       // utility functions
-      static uint32_t mask(unsigned num_bits)
-	 { return (uint32_t)((1UL << num_bits) - 1) ; }
+      static uint32_t mask(unsigned num_bits) { return (uint32_t)((1UL << num_bits) - 1) ; }
+
+   private:
+      uint32_t	m_value { 0 } ;
+      uint8_t	m_length { 0 } ;
    } ;
 
 //----------------------------------------------------------------------

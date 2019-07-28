@@ -3329,7 +3329,7 @@ cerr<<"stream length = "<<(8*(*str_end - *str_start))<<" bits (approx)"<<endl;
    HuffmanTreeHypothesis::initializeCodeAllocators() ;
    lit_tree_directory.reinit(LIT_TREE_DIR_SIZE) ;
    dist_tree_directory.reinit(DIST_TREE_DIR_SIZE) ;
-   HuffSymbolTable *symtab = nullptr ;
+   Owned<HuffSymbolTable> symtab { nullptr } ;
    if (packet_header)
       {
       // get the packet's type
@@ -3339,17 +3339,16 @@ cerr<<"stream length = "<<(8*(*str_end - *str_start))<<" bits (approx)"<<endl;
 	 case PT_INVALID:
 	    return false ;
 	 case PT_FIXEDHUFF:
-	    symtab = build_default_symtable(deflate64) ;
+	    symtab = HuffSymbolTable::buildDefault(deflate64) ;
 	    break ;
 	 case PT_DYNAMIC:
-	    symtab = build_symbol_table(*packet_header,str_end,false) ;
+	    symtab = HuffSymbolTable::build(*packet_header,str_end,false) ;
 	    break ;
 	 case PT_UNCOMP:
 	    return false ; // can't happen
 	 }
       }
-   HuffmanHypothesis *longest
-      = find_longest_streams(str_start,str_end,symtab) ;
+   HuffmanHypothesis *longest = find_longest_streams(str_start,str_end,symtab) ;
 //FIXME
 
    // output results if requested

@@ -420,16 +420,11 @@ static bool corrupted_language(DecodeBuffer &decode_buf, const LanguageIdentifie
 //    one byte of uncompressed data represented by the stream, and updates
 //    'currpos' to point just after the erroneous symbol.
  
-static bool check_compressed_stream(const HuffSymbolTable *symtab,
-				    DecodeBuffer &decode_buf,
-				    const FileInformation *fileinfo,
-				    BitPointer &currpos,
-				    const BitPointer &str_end,
-				    bool exact_end,
-				    unsigned long uncompressed_offset,
-				    unsigned long &uncomp_size,
-				    bool previous_corruption,
-				    unsigned long &corruption_size)
+static bool check_compressed_stream(const HuffSymbolTable* symtab, DecodeBuffer& decode_buf,
+				    const FileInformation* fileinfo, BitPointer& currpos,
+				    const BitPointer& str_end, bool exact_end,
+				    unsigned long uncompressed_offset, unsigned long& uncomp_size,
+				    bool previous_corruption, unsigned long& corruption_size)
 {
    const LanguageIdentifier *langid = fileinfo->langid() ;
    const WordLengthModel *lenmodel = fileinfo->lengthmodel() ;
@@ -568,7 +563,7 @@ static bool check_compressed_packet(DeflatePacketDesc *packet,
    BitPointer header(packet->packetHeader()) ;
    const BitPointer &str_end = packet->packetEnd() ;
    uint32_t hdr = header.nextBits(PACKHDR_SIZE) ;
-   HuffSymbolTable *symtab = nullptr ;
+   Owned<HuffSymbolTable> symtab { nullptr } ;
    uncomp_size = 0 ;
    switch (PACKHDR_TYPE(hdr))
       {
@@ -580,10 +575,10 @@ static bool check_compressed_packet(DeflatePacketDesc *packet,
 	 uncomp_size = header.getBits(16) ;
 	 return true ;
       case PT_FIXEDHUFF:
-	 symtab = build_default_symtable(packet->deflate64()) ;
+	 symtab = HuffSymbolTable::buildDefault(packet->deflate64()) ;
 	 break ;
       case PT_DYNAMIC:
-	 symtab = build_symbol_table(header,str_end,packet->deflate64()) ;
+	 symtab = HuffSymbolTable::build(header,str_end,packet->deflate64()) ;
 	 break ;
       }
    bool success = true ;
@@ -663,7 +658,7 @@ static bool valid_compressed_packet(const HuffSymbolTable *symtab,
 
 bool valid_fixed_packet(BitPointer &pos, bool deflate64)
 {
-   const HuffSymbolTable *symtab = build_default_symtable(deflate64) ;
+   auto symtab = HuffSymbolTable::buildDefault(deflate64) ;
    BitPointer currpos(pos) ;
    BitPointer str_end(pos) ;
    str_end.advance(800) ;  // check up to 100 bytes
@@ -780,7 +775,7 @@ static bool valid_packet(const BitPointer &pos,
 	 INCR_STAT(considered_fixed_packet) ;
 	 BitPointer position(pos) ;
 	 position.advance(PACKHDR_SIZE) ;
-	 HuffSymbolTable *symtab = build_default_symtable(deflate64) ;
+	 auto symtab = HuffSymbolTable::buildDefault(deflate64) ;
 #if !defined(NDEBUG)
 	 if (verbosity > VERBOSITY_SEARCH)
 	    {
@@ -796,7 +791,6 @@ static bool valid_packet(const BitPointer &pos,
 					      exact_bit,valid_EOD);
 	 INCR_STAT_IF(valid,valid_fixed_packet) ;
 	 INCR_STAT_IF(valid_EOD,valid_fixed_EOD_marker) ;
-	 free_symbol_table(symtab) ;
 	 return valid ;
 	 }
       case PT_DYNAMIC:
@@ -804,7 +798,7 @@ static bool valid_packet(const BitPointer &pos,
 	 INCR_STAT(candidate_dynhuff_packet) ;
 	 BitPointer position(pos) ;
 	 position.advance(PACKHDR_SIZE) ;	// skip the packet header
-	 HuffSymbolTable *symtab = build_symbol_table(position,str_end,deflate64) ;
+	 auto symtab = HuffSymbolTable::build(position,str_end,deflate64) ;
 	 bool valid = symtab != nullptr ;
 	 if (valid)
 	    {
@@ -825,7 +819,6 @@ static bool valid_packet(const BitPointer &pos,
 	    INCR_STAT_IF(valid,valid_dynhuff_packet) ;
 	    INCR_STAT_IF(valid_EOD,valid_EOD_marker) ;
 	    }
-	 free_symbol_table(symtab) ;
 	 return valid ;
 	 }
       }
@@ -912,11 +905,9 @@ static bool skip_to_valid_packet(BitPointer &pos, const BitPointer &str_end,
 	    {
 	    BitPointer position(pos) ;
 	    position.advance(PACKHDR_SIZE) ;
-	    HuffSymbolTable *symtab
-	       = build_symbol_table(position,str_end,deflate64) ;
+	    auto symtab = HuffSymbolTable::build(position,str_end,deflate64) ;
 	    if (symtab)
 	       {
-	       free_symbol_table(symtab) ;
 	       valid = true ;
 	       }
 	    break ;
@@ -973,27 +964,22 @@ static bool split_into_packets(DeflatePacketDesc *stream, bool deflate64)
 	    break ;
 	 case PT_FIXEDHUFF:
 	    {
-	    HuffSymbolTable *symtab = build_default_symtable(deflate64) ;
+	    auto symtab = HuffSymbolTable::buildDefault(deflate64) ;
 	    if (!advance_over_packet(pos,str_end,symtab,offset) &&
 		!skip_to_valid_packet(pos,str_end,stream,deflate64))
 	       {
-	       free_symbol_table(symtab) ;
 	       return false ;
 	       }
-	    free_symbol_table(symtab) ;
 	    break ;
 	    }
 	 case PT_DYNAMIC:
 	    {
-	    HuffSymbolTable *symtab
-	       = build_symbol_table(pos,str_end,deflate64) ;
+	    auto symtab = HuffSymbolTable::build(pos,str_end,deflate64) ;
 	    if (!advance_over_packet(pos,str_end,symtab,offset) &&
 		!skip_to_valid_packet(pos,str_end,stream,deflate64))
 	       {
-	       free_symbol_table(symtab) ;
 	       return false ;
 	       }
-	    free_symbol_table(symtab) ;
 	    break ;
 	    }
 	 }
@@ -1138,12 +1124,11 @@ static bool decompress(BitPointer& str_pos, const BitPointer str_start, const Bi
 	       fprintf(stderr,"  decompressing fixed-Huff packet @ %lu.%u\n",
 		       (unsigned long)(str_pos - str_start),
 		       str_pos.bitNumber()) ;
-	    auto symtab = build_default_symtable(deflate64) ;
+	    auto symtab = HuffSymbolTable::buildDefault(deflate64) ;
 	    if (!decompress(str_pos,str_end,symtab,decode_buffer,start_of_stream,exact_end))
 	       {
 	       success = false ;
 	       }
-	    free_symbol_table(symtab) ;
 	    break ;
 	    }
 	 case PT_DYNAMIC:
@@ -1151,12 +1136,11 @@ static bool decompress(BitPointer& str_pos, const BitPointer str_start, const Bi
 	    if (verbosity > VERBOSITY_PACKETS)
 	       fprintf(stderr,"  decompressing dyn-Huff packet @ %lu.%u\n",
 		       (unsigned long)(str_pos - str_start), str_pos.bitNumber()) ;
-	    auto symtab = build_symbol_table(str_pos,str_end, decode_buffer->deflate64()) ;
+	    auto symtab = HuffSymbolTable::build(str_pos,str_end, decode_buffer->deflate64()) ;
 	    if (!decompress(str_pos,str_end,symtab,decode_buffer, start_of_stream,exact_end))
 	       {
 	       success = false ;
 	       }
-	    free_symbol_table(symtab) ;
 	    break ;
 	    }
 	 case PT_UNCOMP:
@@ -1394,12 +1378,11 @@ static bool decompress_packet(DecodeBuffer* decode_buffer, const DeflatePacketDe
 	 break ;
       case PT_FIXEDHUFF:
 	 ptype = "fixed-Huff" ;
-	 symbol_table = build_default_symtable(packet->deflate64()) ;
+	 symbol_table = HuffSymbolTable::buildDefault(packet->deflate64()) ;
 	 break ;
       case PT_DYNAMIC:
 	 ptype = "dyn-Huff" ;
-	 symbol_table = build_symbol_table(packet_start,packet_end,
-					   packet->deflate64()) ;
+	 symbol_table = HuffSymbolTable::build(packet_start,packet_end,packet->deflate64()) ;
 	 break ;
       }
    if (verbosity > VERBOSITY_PACKETS)
@@ -1440,8 +1423,6 @@ static bool decompress_packet(DecodeBuffer* decode_buffer, const DeflatePacketDe
       }
    else
       success = false ;
-   if (!symtab || !*symtab)
-      free_symbol_table(symbol_table) ;
    return success ;
 }
 
@@ -1539,7 +1520,6 @@ static bool decompress_packet(DecodeBuffer *decode_buffer,
       }
    if (!success && !corruption_loc.bytePointer())
       {
-      free_symbol_table(symtab) ;
       symtab = nullptr ;
       }
    // if we have corruption in the middle of a packet, decompress the
@@ -1573,7 +1553,6 @@ static bool decompress_packet(DecodeBuffer *decode_buffer,
 	 }
       if (!decompress(str_pos,packet_end,symtab,decode_buffer,false,packet->next()))
 	 success = false ;
-      free_symbol_table(symtab) ;
       }
    return true ;
 }
@@ -2006,7 +1985,6 @@ bool recover_stream(const LocationList *start_sig,
 	 unlink(reference_filename) ;
 	 }
       }
-   clear_default_symbol_table() ;
    return success ;
 }
 
