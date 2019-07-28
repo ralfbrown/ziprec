@@ -5,7 +5,7 @@
 /*									*/
 /*  File: models.h - language-model manipulation			*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-16						*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -30,13 +30,6 @@
 #include "whatlang2/langid.h"
 
 /************************************************************************/
-/************************************************************************/
-
-extern Fr::Owned<class NybbleTrie> global_word_frequencies ;
-extern Fr::Owned<LangIDPackedTrie> global_ngrams_forward ;
-extern Fr::Owned<LangIDPackedTrie> global_ngrams_reverse ;
-
-/************************************************************************/
 /*	Types								*/
 /************************************************************************/
 
@@ -45,6 +38,43 @@ typedef float ZRScore ; // save memory
 //#else
 //typedef double ZRScore ;
 //#endif
+
+//----------------------------------------------------------------------
+
+class ReconstructionData
+   {
+   public:
+      ReconstructionData() = default ;
+      ~ReconstructionData() = default ;
+
+      // accessors
+      const char* currentModel() const { return m_current_model ; }
+      const size_t* ngramCounts() const { return m_ngram_counts ; }
+      const double* ngramAvgFreq() const { return m_ngram_avgfreq ; }
+      double ngramAvgFreq(unsigned len) const { return m_ngram_avgfreq[len] ; }
+      size_t ngramLength() const { return m_ngram_length ; }
+      NybbleTrie* wordFreq() { return &m_word_freq ; }
+      LangIDPackedTrie* ngramsForward() { return &m_ngrams_forward ; }
+      LangIDPackedTrie* ngramsReverse() { return &m_ngrams_reverse ; }
+
+      // manipulators
+      void clear() ;
+      bool load(const char* filename) ;
+
+   private:
+      bool load(Fr::CFile& fp, const char* filename) ;
+      void loadCounts(Fr::CFile& fp) ;
+      void computeFrequencies() ;
+
+   private:
+      Fr::CharPtr    m_current_model ;
+      Fr::SizeTPtr   m_ngram_counts ;
+      Fr::DoublePtr  m_ngram_avgfreq ;
+      size_t     m_ngram_length { 0 } ;
+      Fr::Owned<NybbleTrie> m_word_freq { nullptr } ;
+      Fr::Owned<LangIDPackedTrie> m_ngrams_forward { nullptr } ;
+      Fr::Owned<LangIDPackedTrie> m_ngrams_reverse { nullptr } ;
+   } ;
 
 //----------------------------------------------------------------------
 
@@ -98,6 +128,12 @@ class BidirModel
       size_t		 m_forward_len ;
       size_t		 m_reverse_len ;
    } ;
+
+/************************************************************************/
+/*	Global Variables						*/
+/************************************************************************/
+
+extern ReconstructionData reconstruction_data ;
 
 /************************************************************************/
 /************************************************************************/

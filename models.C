@@ -110,13 +110,7 @@ class ScoringFactors
 /*	Global variables for this module				*/
 /************************************************************************/
 
-static CharPtr current_language_model ;
-static SizeTPtr global_ngram_counts ;
-static DoublePtr global_ngram_avgfreq ;
-static size_t global_ngram_length = 0 ;
-Owned<NybbleTrie> global_word_frequencies { nullptr } ;
-Owned<LangIDPackedTrie> global_ngrams_forward { nullptr } ;
-Owned<LangIDPackedTrie> global_ngrams_reverse { nullptr } ;
+ReconstructionData reconstruction_data ;
 
 static double center_match_factor_2 = 0.15 ;    // bidirectional models
 static double center_match_factor_1 = 0.25 ;    // forward model only
@@ -169,6 +163,167 @@ ScoringFactors::ScoringFactors()
    for (size_t i = 1 ; i < LENGTH_FACTOR_CACHESIZE ; i++)
       {
       m_length[i] = computeLengthFactor(i) ;
+      }
+   return ;
+}
+
+/************************************************************************/
+/*	Methods for class ReconstructionData				*/
+/************************************************************************/
+
+void ReconstructionData::clear()
+{
+   m_word_freq = nullptr ;
+   m_ngrams_forward = nullptr ;
+   m_ngrams_reverse = nullptr ;
+   m_ngram_counts = nullptr ;
+   m_ngram_avgfreq = nullptr ;
+   m_ngram_length = 0 ;
+   m_current_model = nullptr ;
+   return ;
+}
+
+//----------------------------------------------------------------------
+
+bool ReconstructionData::load(const char* data_file)
+{
+   bool success = false ;
+   if (data_file && *data_file)
+      {
+      if (m_current_model && m_ngrams_forward && m_ngrams_reverse &&
+	  strcmp(m_current_model,data_file) == 0)
+	 {
+	 // no need to re-load the model, we already have it
+	 return true ;
+	 }
+      CInputFile fp(data_file,CFile::binary) ;
+      if (fp)
+	 {
+	 clear() ;
+	 success = load(fp,data_file) ;
+	 if (success)
+	    {
+	    m_current_model = dup_string(data_file) ;
+	    }
+	 }
+      }
+   return success ;
+}
+
+//----------------------------------------------------------------------
+
+bool ReconstructionData::load(CFile& fp, const char *filename)
+{
+   PROGRESS("loading language model\n") ;
+   // check for the proper file signature
+   char sigbuffer[sizeof(LANGMODEL_SIGNATURE)] ;
+   if (fp.read(sigbuffer,sizeof(sigbuffer),sizeof(char)) < sizeof(sigbuffer))
+      return false ;
+   if (memcmp(LANGMODEL_SIGNATURE,sigbuffer,sizeof(sigbuffer)) != 0)
+      return false ;
+   // check for the proper format version
+   if (fp.getc() != (char)LANGMODEL_FORMAT_VERSION)
+      return false ;
+   // skip the alignment padding
+   if (fp.getc() == EOF || fp.getc() == EOF || fp.getc() == EOF)
+      return false ;
+   // read the offsets of the embedded models
+   uint64_t offset_forward = fp.read64LE() ;
+   uint64_t offset_reverse = fp.read64LE() ;
+   uint64_t offset_counts = fp.read64LE() ;
+   uint64_t offset_words = fp.read64LE() ;
+   // load in the language models
+   bool success = true ;
+   if (offset_forward != 0)
+      {
+      fp.seek(offset_forward) ;
+      m_ngrams_forward = LangIDPackedTrie::load(fp,filename) ;
+      if (!m_ngrams_forward)
+	 success = false ;
+      }
+   if (offset_reverse != 0)
+      {
+      fp.seek(offset_reverse) ;
+      m_ngrams_reverse = LangIDPackedTrie::load(fp,filename) ;
+      if (!m_ngrams_reverse)
+	 success = false ;
+      }
+   if (offset_counts != 0)
+      {
+      fp.seek(offset_counts) ;
+      loadCounts(fp) ;
+      if (m_ngram_counts)
+	 computeFrequencies() ;
+      else
+	 success = false ;
+      }
+   if (offset_words != 0)
+      {
+      fp.seek(offset_words) ;
+      m_word_freq.reinit() ;
+      if (m_word_freq)
+	 {
+	 auto frequencies = m_word_freq.get() ;
+	 // read the number of words to expect
+	 uint32_t count = fp.read32LE() ;
+	 uint32_t total_tokens = 0 ;
+	 for (size_t i = 0 ; i < count && !fp.eof() ; i++)
+	    {
+	    // read a word record: 64-bit frequency, 16-bit length, and then the word
+	    size_t freq = fp.read64LE() ;
+	    total_tokens += freq ;
+	    unsigned wordlen = fp.read16LE() ;
+	    if (wordlen > MAX_WORD)
+	       {
+	       fprintf(stderr,"Invalid data in language file: word length = %u\n",
+		       wordlen) ;
+	       success = false ;
+	       break ;
+	       }
+	    uint8_t wordbuffer[MAX_WORD] ;
+	    if (fp.read(wordbuffer,wordlen,sizeof(char)) < wordlen)
+	       {
+	       success = false ;
+	       break ;
+	       }
+	    frequencies->insert(wordbuffer,wordlen,(uint32_t)freq,false) ;
+	    }
+	 frequencies->addTokenCount(total_tokens) ;
+	 }
+      }
+   return success ;
+}
+
+//----------------------------------------------------------------------
+
+void ReconstructionData::loadCounts(CFile& fp)
+{
+   m_ngram_length = fp.read32LE() ;
+   m_ngram_counts.allocate(m_ngram_length+1) ;
+   if (m_ngram_length > 0 && m_ngram_counts)
+      {
+      for (size_t i = 0 ; i <= m_ngram_length ; i++)
+	 {
+	 m_ngram_counts[i] = (size_t)fp.read64LE() ;
+	 }
+      }
+   return ;
+}
+
+//----------------------------------------------------------------------
+
+void ReconstructionData::computeFrequencies()
+{
+   m_ngram_avgfreq.allocate(m_ngram_length+1) ;
+   if (!m_ngram_avgfreq)
+      return ;
+   m_ngram_avgfreq[0] = DBL_MAX ;
+   for (size_t i = 1 ; i <= m_ngram_length ; i++)
+      {
+      if (m_ngram_counts[i] > 0)
+	 m_ngram_avgfreq[i] = m_ngram_counts[0] / (double)m_ngram_counts[i] ;
+      else
+	 m_ngram_avgfreq[i] = m_ngram_counts[0] ;
       }
    return ;
 }
@@ -322,7 +477,7 @@ bool BidirModel::computeCenterScore(const LangIDPackedTrie *trie, uint8_t *key,
       {
       return false ;
       }
-   weight /= (matchcount * global_ngram_avgfreq[num_bytes]) ;
+   weight /= (matchcount * reconstruction_data.ngramAvgFreq(num_bytes)) ;
    weight *= num_bytes * num_bytes ;
    for (size_t i = 0 ; i < matchcount ; i++)
       {
@@ -444,8 +599,8 @@ bool BidirModel::computeCenterScores(const DecodedByte *bytes,
 				     ZRScore *scores, double weight) const
 {
    size_t max_len = longestForwardNgram() ;
-//   if (max_len > global_ngram_length)
-//      max_len = global_ngram_length ;
+//   if (max_len > reconstruction_data.ngramLength())
+//      max_len = reconstruction_data.ngramLength() ;
    if (max_len < 2)
       return false ;
    // collect the wildcard contexts
@@ -536,38 +691,6 @@ bool BidirModel::computeCenterScores(const DecodedByte *bytes,
 /************************************************************************/
 /************************************************************************/
 
-static SizeTPtr load_ngram_counts(CFile& fp, size_t& max_length)
-{
-   max_length = fp.read32LE() ;
-   SizeTPtr counts(max_length+1) ;
-   if (max_length > 0 && counts)
-      {
-      for (size_t i = 0 ; i <= max_length ; i++)
-	 {
-	 counts[i] = (size_t)fp.read64LE() ;
-	 }
-      }
-   return counts ;
-}
-
-//----------------------------------------------------------------------
-
-static void compute_ngram_frequencies(size_t maxlen, const size_t* counts, DoublePtr& avgfreq)
-{
-   avgfreq.allocate(maxlen+1) ;
-   if (!avgfreq)
-      return ;
-   avgfreq[0] = DBL_MAX ;
-   for (size_t i = 1 ; i <= maxlen ; i++)
-      {
-      if (counts[i] > 0)
-	 avgfreq[i] = counts[0] / (double)counts[i] ;
-      else
-	 avgfreq[i] = counts[0] ;
-      }
-   return ;
-}
-
 //----------------------------------------------------------------------
 
 static unsigned most_frequent_language(DecodeBuffer& decode_buffer, const LanguageIdentifier* langid,
@@ -622,118 +745,6 @@ static unsigned most_frequent_language(DecodeBuffer& decode_buffer, const Langua
 
 //----------------------------------------------------------------------
 
-static bool load_reconstruction_data(CFile& fp, const char *filename)
-{
-   PROGRESS("loading language model\n") ;
-   // check for the proper file signature
-   char sigbuffer[sizeof(LANGMODEL_SIGNATURE)] ;
-   if (fp.read(sigbuffer,sizeof(sigbuffer),sizeof(char)) < sizeof(sigbuffer))
-      return false ;
-   if (memcmp(LANGMODEL_SIGNATURE,sigbuffer,sizeof(sigbuffer)) != 0)
-      return false ;
-   // check for the proper format version
-   if (fp.getc() != (char)LANGMODEL_FORMAT_VERSION)
-      return false ;
-   // skip the alignment padding
-   if (fp.getc() == EOF || fp.getc() == EOF || fp.getc() == EOF)
-      return false ;
-   // read the offsets of the embedded models
-   uint64_t offset_forward = fp.read64LE() ;
-   uint64_t offset_reverse = fp.read64LE() ;
-   uint64_t offset_counts = fp.read64LE() ;
-   uint64_t offset_words = fp.read64LE() ;
-   // load in the language models
-   bool success = true ;
-   if (offset_forward != 0)
-      {
-      fp.seek(offset_forward) ;
-      global_ngrams_forward = LangIDPackedTrie::load(fp,filename) ;
-      if (!global_ngrams_forward)
-	 success = false ;
-      }
-   if (offset_reverse != 0)
-      {
-      fp.seek(offset_reverse) ;
-      global_ngrams_reverse = LangIDPackedTrie::load(fp,filename) ;
-      if (!global_ngrams_reverse)
-	 success = false ;
-      }
-   if (offset_counts != 0)
-      {
-      fp.seek(offset_counts) ;
-      global_ngram_counts = load_ngram_counts(fp,global_ngram_length) ;
-      if (global_ngram_counts)
-	 compute_ngram_frequencies(global_ngram_length,global_ngram_counts,global_ngram_avgfreq) ;
-      else
-	 success = false ;
-      }
-   if (offset_words != 0)
-      {
-      fp.seek(offset_words) ;
-      global_word_frequencies.reinit() ;
-      if (global_word_frequencies)
-	 {
-	 auto frequencies = global_word_frequencies.get() ;
-	 // read the number of words to expect
-	 uint32_t count = fp.read32LE() ;
-	 uint32_t total_tokens = 0 ;
-	 for (size_t i = 0 ; i < count && !fp.eof() ; i++)
-	    {
-	    // read a word record: 64-bit frequency, 16-bit length, and then the word
-	    size_t freq = fp.read64LE() ;
-	    total_tokens += freq ;
-	    unsigned wordlen = fp.read16LE() ;
-	    if (wordlen > MAX_WORD)
-	       {
-	       fprintf(stderr,"Invalid data in language file: word length = %u\n",
-		       wordlen) ;
-	       success = false ;
-	       break ;
-	       }
-	    uint8_t wordbuffer[MAX_WORD] ;
-	    if (fp.read(wordbuffer,wordlen,sizeof(char)) < wordlen)
-	       {
-	       success = false ;
-	       break ;
-	       }
-	    frequencies->insert(wordbuffer,wordlen,(uint32_t)freq,false) ;
-	    }
-	 frequencies->addTokenCount(total_tokens) ;
-	 }
-      }
-   return success ;
-}
-
-//----------------------------------------------------------------------
-
-bool load_reconstruction_data(const char *data_file)
-{
-   bool success = false ;
-   if (data_file && *data_file)
-      {
-      if (current_language_model &&
-	  global_ngrams_forward && global_ngrams_reverse &&
-	  strcmp(current_language_model,data_file) == 0)
-	 {
-	 // no need to re-load the model, we already have it
-	 return true ;
-	 }
-      CInputFile fp(data_file,CFile::binary) ;
-      if (fp)
-	 {
-	 clear_reconstruction_data() ;
-	 success = load_reconstruction_data(fp,data_file) ;
-	 if (success)
-	    {
-	    current_language_model = dup_string(data_file) ;
-	    }
-	 }
-      }
-   return success ;
-}
-
-//----------------------------------------------------------------------
-
 static const char *select_var(unsigned which,
 			      const char *arg1, const char *arg2,
 			      const char *arg3, const char *arg4)
@@ -773,7 +784,7 @@ static char *try_loading(const LocationSpec *locations,
       const char *arg4 = select_var(locations->var4,dblocation,langname,
 				    encoding,alt_encoding) ;
       filename = aprintf(locations->formatstring,arg1,arg2,arg3,arg4) ;
-      if (load_reconstruction_data(filename))
+      if (reconstruction_data.load(filename))
 	 break ;
       else
 	 {
@@ -809,20 +820,6 @@ bool load_reconstruction_data_by_lang(DecodeBuffer &decode_buffer, const Languag
       return success ;
       }
    return true ;
-}
-
-//----------------------------------------------------------------------
-
-void clear_reconstruction_data()
-{
-   global_word_frequencies = nullptr ;
-   global_ngrams_forward = nullptr ;
-   global_ngrams_reverse = nullptr ;
-   global_ngram_counts = nullptr ;
-   global_ngram_avgfreq = nullptr ;
-   global_ngram_length = 0 ;
-   current_language_model = nullptr ;
-   return ;
 }
 
 //----------------------------------------------------------------------

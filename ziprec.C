@@ -55,7 +55,7 @@ extern void print_partial_packet_statistics() ;
 
 static void cleanup()
 {
-   clear_reconstruction_data() ;
+   reconstruction_data.clear() ;
    return ;
 }
 
@@ -166,7 +166,7 @@ static void parse_reconstruction_opts(const char* arg, LanguageIdentifier*& lang
       return ;
    if (*arg == '=')
       {
-      if (load_reconstruction_data(arg+1))
+      if (reconstruction_data.load(arg+1))
 	 params.perform_reconstruction = true ;
       }
    else if (*arg == '+')
@@ -544,7 +544,7 @@ int main(int argc, char **argv)
 	 {
 	 format = FF_gzip ;
 	 }
-      NybbleTrie *wordmodel = params.use_word_model ? global_word_frequencies : nullptr ;
+      NybbleTrie *wordmodel = params.use_word_model ? reconstruction_data.wordFreq() : nullptr ;
       FileInformation fileinfo(input_file,langid,lenmodel,wordmodel,output_directory,format) ;
       if (!recover_file(params,&fileinfo))
 	 {

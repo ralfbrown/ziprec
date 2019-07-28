@@ -1139,7 +1139,7 @@ bool infer_replacements(DecodeBuffer &decode_buffer,
       return false ;
       }
    count_wildcards(iteration,decode_buffer) ;
-   BidirModel langmodel(global_ngrams_forward, global_ngrams_reverse) ;
+   BidirModel langmodel(reconstruction_data.ngramsForward(), reconstruction_data.ngramsReverse()) ;
    langmodel.setFileModels(ngram_counts_forward, ngram_counts_reverse) ;
    // since we need to allocate a bunch of large structures, do all
    //   the allocations at once so that we can bail out if there is
