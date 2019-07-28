@@ -3,10 +3,10 @@
 /*	ZipRecover: extract text from corrupted zip/gzip streams	*/
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
-/*  Version:  1.00gamma				       			*/
-/*  LastEdit: 29apr2013							*/
+/*  Version:  1.10beta				       			*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
-/*  (c) Copyright 2012,2013 Ralf Brown/CMU				*/
+/*  (c) Copyright 2012,2013,2019 Carnegie Mellon University		*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -30,46 +30,32 @@
 class ZipRecParameters
    {
    public: // members
-      uint64_t scan_range_start ;
+      uint64_t scan_range_start { 0 } ;
       uint64_t scan_range_end ;
 
-      size_t test_mode_skip ;
-      size_t test_mode_offset ;
-      size_t reconstruction_iterations ;
+      size_t test_mode_skip { 1 } ;
+      size_t test_mode_offset { 0 } ;
+      size_t reconstruction_iterations { 1 } ;
 
-      WriteFormat write_format ;
+      WriteFormat write_format { WFMT_PlainText } ;
 
-      bool junk_paths ;
-      bool force_overwrite ;
-      bool exclude_PDFs ;
-      bool test_mode ;
-      bool perform_reconstruction ;
-      bool reconstruct_partial_packet ;
-      bool reconstruct_align_discontinuities ;
-      bool use_word_model ;
+      mutable const char* base_name { nullptr } ;
+
+      bool junk_paths { false } ;
+      bool force_overwrite { false } ;
+      bool exclude_PDFs { false } ;
+      bool test_mode { false } ;
+      bool perform_reconstruction { false } ;
+      bool reconstruct_partial_packet { false } ;
+      bool reconstruct_align_discontinuities { true } ;
+      bool use_word_model { true } ;
 
    public: // methods
       ZipRecParameters()
 	 {
-	    scan_range_start = 0ULL ;
 	    scan_range_end = ~0ULL ;
-
-	    reconstruction_iterations = 1 ;
-	    test_mode_skip = 1 ;
-	    test_mode_offset = 0 ;
-
-	    write_format = WFMT_PlainText ;
-
-	    junk_paths = false ;
-	    force_overwrite = false ;
-	    exclude_PDFs = false ;
-	    test_mode = false ;
-	    perform_reconstruction = false ;
-	    reconstruct_partial_packet = false ;
-	    reconstruct_align_discontinuities = true ;
-	    use_word_model = true ;
 	 }
-      ~ZipRecParameters() {}
+      ~ZipRecParameters() = default ;
    } ;
 
 #endif /* !__ZIPREC_H_INCLUDED */

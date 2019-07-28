@@ -1944,6 +1944,7 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
       //   'prev' marker, and if nothing is extracted, test for span types
       //   where we need to work backwards from the 'curr' marker
       bool recovered = false ;
+      params.base_name = nullptr ;
       if (prev)
 	 {
 	 SignatureType sig = prev->signatureType() ;
@@ -1969,31 +1970,28 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 	    if (curr->signatureType() == ST_ZlibEOF ||
 		curr->signatureType() == ST_ZlibHeader)
 	       known_end = true ;
-	    recovery_name_base = "zlibdata" ;
+	    params.base_name = "zlibdata" ;
 	    if (recover_stream(prev,curr,params,fileinfo,nullptr,0,true,false,known_end))
 	       recovered = true ;
-	    recovery_name_base = nullptr ;
 	    }
 	 else if (sig == ST_gzipHeader)
 	    {
 	    // start of a gzip stream; these have no end signature, but the
 	    //   'curr' marker will give the correct end if we processed a
 	    //   single gzip file
-	    recovery_name_base = "gzipdata" ;
+	    params.base_name = "gzipdata" ;
 	    if (recover_gzip_span(prev,curr,params,fileinfo,true))
 	       recovered = true ;
-	    recovery_name_base = nullptr ;
 	    }
 	 else if (sig == ST_PDF_FlateHeader)
 	    {
 	    // try recovering a Deflate stream starting at the previous
 	    //   position up to the current one; if the current position
 	    //   is the matching end marker, we have a known end of the stream
-	    recovery_name_base = "pdfdata" ;
+	    params.base_name = "pdfdata" ;
 	    if (recover_stream(prev,curr,params,fileinfo,nullptr,0,true,false,
 			       curr->signatureType() == ST_PDF_FlateEnd))
 	       success = true ;
-	    recovery_name_base = nullptr ;
 	    }
 	 else if (sig == ST_ALZipFileHeader)
 	    {
@@ -2032,25 +2030,22 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 	    }
 	 else if (sig == ST_RARFileHeader)
 	    {
-	    recovery_name_base = "rardata" ;
+	    params.base_name = "rardata" ;
 	    if (recover_RAR_file(prev,params,fileinfo))
 	       success = true ;
-	    recovery_name_base = nullptr ;
 	    }
 	 else if (sig == ST_DeflateSyncMark)
 	    {
-	    recovery_name_base = "rawdeflate" ;
+	    params.base_name = "rawdeflate" ;
 	    if (recover_stream(prev,curr,params,fileinfo,nullptr,0,true,false,false))
 	       recovered = true ;
-	    recovery_name_base = nullptr ;
 	    }
 	 else if (curr->signatureType() == ST_PNGChunkEnd &&
 		  (sig == ST_PNG_iTXt || sig == ST_PNG_zTXt))
 	    {
-	    recovery_name_base = "pngtext" ;
+	    params.base_name = "pngtext" ;
 	    if (recover_stream(prev,curr,params,fileinfo,nullptr,0,true,false,true))
 	       recovered = true ;
-	    recovery_name_base = nullptr ;
 	    }
 	 }
       if (recovered)
@@ -2076,10 +2071,9 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 	 // no previous header (start of file missing), but we have what looks
 	 //   like the end marker, so try recovering a Deflate stream ending
 	 //   at that point
-	 recovery_name_base = "pdfdata" ;
+	 params.base_name = "pdfdata" ;
 	 if (recover_stream(prev,curr,params,fileinfo,nullptr,0,false,false,true))
 	    success = true ;
-	 recovery_name_base = nullptr ;
 	 }
       else if (curr->signatureType() == ST_DataDescriptor)
 	 {
@@ -2119,17 +2113,15 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 	 }
       else if (curr->signatureType() == ST_gzipEOF)
 	 {
-	 recovery_name_base = "gzipdata" ;
+	 params.base_name = "gzipdata" ;
 	 if (recover_gzip_span(prev,curr,params,fileinfo,false))
 	    success = true ;
-	 recovery_name_base = nullptr ;
 	 }
       else if (curr->signatureType() == ST_ZlibEOF)
 	 {
-	 recovery_name_base = "zlibdata" ;
+	 params.base_name = "zlibdata" ;
 	 if (recover_stream(prev,curr,params,fileinfo,nullptr,0,prev != nullptr,false))
 	    success = true ;
-	 recovery_name_base = nullptr ;
 	 }
       else if (curr->signatureType() == ST_ALZipFileHeader ||
 	       curr->signatureType() == ST_ALZipEOF)
@@ -2139,10 +2131,9 @@ static bool recover_files(const LocationList* locations, const ZipRecParameters&
 	 }
       else if (curr->signatureType() == ST_RARFileHeader)
 	 {
-	 recovery_name_base = "rardata" ;
+	 params.base_name = "rardata" ;
 	 if (recover_RAR_file(curr,params,fileinfo))
 	    success = true ;
-	 recovery_name_base = nullptr ;
 	 }
       prev = curr ;
       }
@@ -2237,9 +2228,7 @@ static CharPtr insert_filename(const char* dirname, unsigned seqnum, const char*
 
 //----------------------------------------------------------------------
 
-bool process_file_data(const ZipRecParameters &params,
-		       FileInformation *fileinfo,
-		       unsigned &seqnum)
+bool process_file_data(const ZipRecParameters& params, FileInformation* fileinfo, unsigned& seqnum)
 {
    CpuTimer timer ;
    bool success = false ;
@@ -2310,12 +2299,12 @@ bool process_file_data(const ZipRecParameters &params,
       }
    else if (file_format == FF_RawDeflate)
       {
-      recovery_name_base = "rawdeflate" ;
+      params.base_name = "rawdeflate" ;
       auto curr = LocationList::push(ST_ZlibEOF,params.scan_range_end,nullptr) ;
       auto prev = LocationList::push(ST_RawDeflateStart,params.scan_range_start,curr) ;
       if (recover_stream(prev,curr,params,fileinfo,nullptr,0,true,false,true))
 	 success = true ;
-      recovery_name_base = nullptr ;
+      params.base_name = nullptr ;
       }
    return success ;
 }

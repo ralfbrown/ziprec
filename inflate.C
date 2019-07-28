@@ -130,11 +130,7 @@ static const char *packet_type_names[] =
       "invalid"
    } ;
 
-//static DecodeBuffer *decode_buffer = nullptr ;
-
 size_t max_packet_size = 2 * 1024 * 1024 ;
-
-const char *recovery_name_base = nullptr ;
 
 /************************************************************************/
 /*	Helper functions						*/
@@ -1845,7 +1841,7 @@ static void generate_output_filenames(const ZipRecParameters &params, const char
    const char *extension = "dat" ;
    if (params.write_format == WFMT_HTML)
       extension = "htm" ;
-   const char *name_base = recovery_name_base ? recovery_name_base : "recovered" ;
+   const char *name_base = params.base_name ? params.base_name : "recovered" ;
    default_filename = aprintf("%s/%s-%8.08lX.%s%c", output_directory,name_base,
 				 (unsigned long)start_offset,extension,'\0') ;
    reconst_filename = nullptr ;

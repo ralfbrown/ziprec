@@ -169,19 +169,12 @@ class DeflatePacketDesc
 /*	Functions						        */
 /************************************************************************/
 
-extern const char *recovery_name_base ;
+bool valid_packet_header(const char* buffer, bool deflate64, bool allow_fixedHuff) ;
 
-bool valid_packet_header(const char *buffer, bool deflate64,
-			 bool allow_fixedHuff) ;
-
-bool recover_stream(const LocationList *start_sig,
-		    const LocationList *end_sig,
-		    const class ZipRecParameters &,
-		    const FileInformation *fileinfo,
-		    const char *filename_hint,
-		    uint32_t original_size_hint,
-		    bool known_start, bool deflate64,
-		    bool known_end = true) ;
+bool recover_stream(const LocationList* start_sig, const LocationList* end_sig,
+		    const class ZipRecParameters&, const FileInformation* fileinfo,
+		    const char* filename_hint, uint32_t original_size_hint,
+		    bool known_start, bool deflate64, bool known_end = true) ;
 
 #endif /* !__INFLATE_H_INCLUDED */
 
