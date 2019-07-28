@@ -375,8 +375,7 @@ static void find_longest_ambiguities(unsigned* ambiguities, size_t num_bytes, si
 
 //----------------------------------------------------------------------
 
-static void count_ambiguities(unsigned *ambiguities, size_t num_bytes,
-			      const WildcardSet **allowed_wild,
+static void count_ambiguities(unsigned* ambiguities, size_t num_bytes, const WildcardSet** allowed_wild,
 			      unsigned max_ambig)
 {
    size_t ambig = 1 ;
@@ -492,11 +491,9 @@ bool BidirModel::computeCenterScore(const LangIDPackedTrie *trie, uint8_t *key,
 
 //----------------------------------------------------------------------
 
-bool BidirModel::computeScores(bool reverse,
-			       const DecodedByte *bytes, size_t max_bytes,
-			       const WildcardCollection *context_wildcards,
-			       ZRScore *scores, double weight,
-			       ContextFlags &context_flags) const
+bool BidirModel::computeScores(bool reverse, const DecodedByte* bytes, size_t max_bytes,
+			       const WildcardCollection* context_wildcards, ZRScore* scores, double weight,
+			       ContextFlags& context_flags) const
 {
    if (max_bytes < MIN_NGRAM_LOCAL)
       return false ;
