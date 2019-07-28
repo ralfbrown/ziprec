@@ -27,11 +27,6 @@
 #include <cstdlib>
 #include <cstring>
 
-#ifdef __WATCOMC__
-#  include <ctype.h>   // for toupper(), isdigit()
-#  include <direct.h>  // for rmdir()
-#endif
-
 using namespace std ;
 
 #include "global.h"

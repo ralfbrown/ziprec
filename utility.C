@@ -33,7 +33,7 @@ using namespace std ;
 #include "utility.h"
 #include "global.h"
 
-#if defined(__MSDOS__) || defined(__WATCOMC__) || defined(_MSC_VER)
+#if defined(_MSC_VER)
 #  include <direct.h> // for mkdir()
 #elif defined(unix)
 #  include <sys/stat.h>  // for mkdir()

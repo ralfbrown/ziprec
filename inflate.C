@@ -40,9 +40,9 @@
 #include "framepac/texttransforms.h"
 #include "framepac/timer.h"
 
-#if defined(__WATCOMC__) || defined(__MSDOS__) || defined(_MSC_VER)
+#if defined(_MSC_VER)
 #  include <io.h> 	// for unlink()
-#endif /* __WATCOMC__ || __MSDOS__ || _MSC_VER */
+#endif /* _MSC_VER */
 #ifdef __linux__
 #  include <unistd.h>	// for unlink()
 #endif /* __linux__ */
