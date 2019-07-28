@@ -5,7 +5,7 @@
 /*									*/
 /*  File: models.C - language-model manipulation			*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-16						*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -81,6 +81,31 @@ struct LocationSpec
    unsigned var1, var2, var3, var4 ;
    } ;
 
+//----------------------------------------------------------------------
+
+class ScoringFactors
+   {
+   public:
+      ScoringFactors() ;
+      ~ScoringFactors() = default ;
+
+      double ratioFactor(unsigned freq)
+	 { return freq < HISTORY_FACTOR_CACHESIZE ? m_ratio[freq] : computeRatioFactor(freq) ; }
+      double lengthFactor(unsigned freq)
+	 { return freq < HISTORY_FACTOR_CACHESIZE ? m_length[freq] : computeLengthFactor(freq) ; }
+
+   private:
+      static double computeRatioFactor(unsigned hist)
+	 { return (((1.0 + ::log(hist)) * ratio_weight_factor)/hist) ; }
+      static double computeLengthFactor(unsigned len)
+	 { return ::exp(len * length_weight_factor) ; }
+   private:
+      double m_ratio[HISTORY_FACTOR_CACHESIZE] ;
+      double m_length[HISTORY_FACTOR_CACHESIZE] ;
+      static constexpr double length_weight_factor { 0.4 } ;
+      static constexpr double ratio_weight_factor { 0.4 } ;
+   } ;
+
 /************************************************************************/
 /*	Global variables for this module				*/
 /************************************************************************/
@@ -100,13 +125,7 @@ static bool center_match_reverse = false ;
 static double global_model_weight = 1.0 ;
 static double local_model_weight = 0.05 ;
 
-static double length_weight_factor = 0.4 ;
-
-static bool cached_history_factors_initialized = false ;
-static double cached_ratio_factor[HISTORY_FACTOR_CACHESIZE] ;
-static double cached_length_factor[LENGTH_FACTOR_CACHESIZE] ;
-
-static double ratio_weight_factor = 0.4 ;
+static ScoringFactors score_factors ;
 
 unsigned max_score_ambig = MAX_SCORE_AMBIG ;
 unsigned max_center_score_ambig = MAX_CENTER_SCORE_AMBIG ;
@@ -138,28 +157,18 @@ static LocationSpec model_locations[] =
 /************************************************************************/
 
 /************************************************************************/
-/*	Scoring functions						*/
+/*	Methods for class ScoringFactors				*/
 /************************************************************************/
 
-#define compute_ratio_factor(hist)				\
-   (((1.0 + ::log(hist)) * ratio_weight_factor)/hist)
-
-#define compute_length_factor(len)				\
-   ::exp(len * length_weight_factor)
-
-void precompute_history_factors()
+ScoringFactors::ScoringFactors()
 {
-   if (!cached_history_factors_initialized)
+   for (size_t i = 1 ; i < HISTORY_FACTOR_CACHESIZE ; i++)
       {
-      for (size_t i = 1 ; i < HISTORY_FACTOR_CACHESIZE ; i++)
-	 {
-	 cached_ratio_factor[i] = compute_ratio_factor(i) ;
-	 }
-      for (size_t i = 1 ; i < LENGTH_FACTOR_CACHESIZE ; i++)
-	 {
-	 cached_length_factor[i] = compute_length_factor(i) ;
-	 }
-      cached_history_factors_initialized = true ;
+      m_ratio[i] = computeRatioFactor(i) ;
+      }
+   for (size_t i = 1 ; i < LENGTH_FACTOR_CACHESIZE ; i++)
+      {
+      m_length[i] = computeLengthFactor(i) ;
       }
    return ;
 }
@@ -273,10 +282,8 @@ void BidirModel::setLengths()
 
 //----------------------------------------------------------------------
 
-bool BidirModel::computeScore(const LangIDPackedTrie *trie, uint8_t *key,
-			      size_t num_bytes,
-			      const WildcardSet **context_wildcards,
-			      ZRScore *scores, double weight)
+bool BidirModel::computeScore(const LangIDPackedTrie* trie, uint8_t* key, size_t num_bytes,
+			      const WildcardSet** context_wildcards, ZRScore* scores, double weight)
 {
    PackedTrieMatch matches[MAX_AMBIG] ;
    unsigned matchcount
@@ -284,20 +291,11 @@ bool BidirModel::computeScore(const LangIDPackedTrie *trie, uint8_t *key,
    if (matchcount == 0 || matchcount > MAX_AMBIG)
       return false ;
    size_t len = (num_bytes<LENGTH_FACTOR_CACHESIZE) ? num_bytes : LENGTH_FACTOR_CACHESIZE ;
-   weight = weight * cached_length_factor[len] / matchcount ;
+   weight = weight * score_factors.lengthFactor(len) / matchcount ;
    for (size_t i = 0 ; i < matchcount ; i++)
       {
-      const PackedSimpleTrieNode *node = matches[i].node() ;
-      uint32_t history_frequency = node->frequency() ;
-      double ratio_factor ;
-      if (history_frequency < HISTORY_FACTOR_CACHESIZE)
-	 {
-	 ratio_factor = cached_ratio_factor[history_frequency] ;
-	 }
-      else
-	 {
-	 ratio_factor = compute_ratio_factor(history_frequency) ;
-	 }
+      auto node = matches[i].node() ;
+      double ratio_factor = score_factors.ratioFactor(node->frequency()) ;
       node->addToScores(trie,scores,ratio_factor * weight) ;
       }
    return true ;

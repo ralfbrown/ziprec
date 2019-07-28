@@ -5,7 +5,7 @@
 /*									*/
 /*  File: reconstruct.C - Lempel-Ziv stream reconstruction		*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-26						*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -1159,7 +1159,6 @@ bool infer_replacements(DecodeBuffer &decode_buffer,
       }
    else
       {
-      precompute_history_factors() ;
       eliminate_invalid_encodings(allowed_wildcards,encoding,decode_buffer) ;
       if (file_uses_CRLF)
 	 {
