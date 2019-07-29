@@ -155,6 +155,12 @@ class WordList
       void setAllFlags() const ;
       void clearAllFlags() const ;
 
+      static WordList* push(const uint8_t* word, unsigned len, WordList* list)
+	 {
+	    auto w = new WordList(new WordString(word,len)) ;
+	    w->setNext(list) ;
+            return w ;
+	 }
       // iterator support
       WordListIter begin() const { return this ; }
       WordListIter cbegin() const { return WordListIter(this) ; }

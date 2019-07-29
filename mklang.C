@@ -121,10 +121,7 @@ static void make_word(uint8_t *word, unsigned wordlen, bool &had_text)
 {
    if (wordlen && wordlen < MAX_WORD)
       {
-      WordString *ws = new WordString(word,wordlen) ;
-      WordList *newword = new WordList(ws) ;
-      newword->setNext(words) ;
-      words = newword ;
+      words = WordList::push(word,wordlen,words) ;
       wordcount++ ;
       if (wordcount >= SORT_INTERVAL)
 	 {
