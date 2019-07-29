@@ -671,11 +671,11 @@ static unsigned most_frequent_language(DecodeBuffer& decode_buffer, const Langua
 	 //   tends to leave all the null bytes as unknown, which breaks
 	 //   the scoring of known bytes only, also identify based on
 	 //   the recovered data with all unknown bytes changed to NULs
-	 LanguageScores *scores = langid->identify(decoded,SAMPLE_SIZE) ;
+	 Owned<LanguageScores> scores { langid->identify(decoded,SAMPLE_SIZE) } ;
 	 if (scores)
 	    scores->scaleScores(0.5) ; // give lower weight to replaced unknowns
 	 else
-	    scores = new LanguageScores(langid->numLanguages()) ;
+	    scores.reinit(langid->numLanguages()) ;
 	 size_t start = 0 ;
 	 for ( ; ; )
 	    {
@@ -691,7 +691,6 @@ static unsigned most_frequent_language(DecodeBuffer& decode_buffer, const Langua
 	    start = end ;
 	    }
 	 top_scores->addThresholded(scores,scores->highestScore()*0.8) ;
-	 delete scores ;
 	 }
       unsigned top_lang = top_scores->highestLangID() ;
       return top_lang ;
