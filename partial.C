@@ -717,7 +717,7 @@ HuffmanHypothesis *SearchTrie::find(uint32_t hashcode) const
 
 //----------------------------------------------------------------------
 
-static bool is_duplicate(const HuffmanHypothesis *hyp1, const HuffmanHypothesis *cand_dup)
+static bool is_duplicate(const HuffmanHypothesis *hyp, const HuffmanHypothesis *cand_dup)
 {
    for ( ; cand_dup ; cand_dup = cand_dup->next())
       {
