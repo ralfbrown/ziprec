@@ -335,13 +335,13 @@ static bool write_ngram_counts(CFile& fp, const LangIDPackedTrie *ngrams,
    if (fp && ngrams && counts_by_len)
       {
       unsigned max_len = ngrams->longestKey() ;
-      if (!fp.write32BE(max_len) || !fp.write64BE(total_bytes))
+      if (!fp.write32LE(max_len) || !fp.write64LE(total_bytes))
 	 return false ;
       fprintf(stdout,"N-gram frequencies:") ;
       for (size_t i = 1 ; i <= max_len ; i++)
 	 {
 	 fprintf(stdout," %lu",(unsigned long)counts_by_len[i]) ;
-	 if (!fp.write64BE(counts_by_len[i]))
+	 if (!fp.write64LE(counts_by_len[i]))
 	    return false ;
 	 }
       fprintf(stdout,"\n") ;
@@ -358,7 +358,7 @@ static bool write_words(CFile& fp, const WordList *frequencies, bool display_wor
       return false ;
    // store the count of words as a 32-bit big-endian number
    uint32_t count = count_words(frequencies) ;
-   if (!fp.write32BE(count))
+   if (!fp.write32LE(count))
       return false ;
    for (const auto word : *frequencies)
       {
@@ -368,7 +368,7 @@ static bool write_words(CFile& fp, const WordList *frequencies, bool display_wor
 	 cout << freq << '\t' << *word << endl ;
 	 }
       // write frequency as 64-bit big-endian number
-      if (!fp.write64BE(freq))
+      if (!fp.write64LE(freq))
 	 return false ;
       unsigned len = word->length() ;
       // write string length as 16-bit big-endian number
@@ -387,18 +387,12 @@ static bool write_words(CFile& fp, const WordList *frequencies, bool display_wor
 
 //----------------------------------------------------------------------
 
-static bool write_frequencies(CFile& fp,
-			      const LangIDPackedTrie *forward_ngrams,
-			      const LangIDPackedTrie *reverse_ngrams,
-			      const size_t *counts_by_len,
-			      const WordList *word_model,
-			      uint64_t total_bytes,
-			      bool display_words)
+static bool write_frequencies(CFile& fp, const LangIDPackedTrie* forward_ngrams,
+			      const LangIDPackedTrie* reverse_ngrams, const size_t* counts_by_len,
+			      const WordList* word_model, uint64_t total_bytes, bool display_words)
 {
-   if (fp.write(LANGMODEL_SIGNATURE,sizeof(LANGMODEL_SIGNATURE),sizeof(char)) < sizeof(LANGMODEL_SIGNATURE))
-      return false ;
-   // write format version number
-   if (!fp.putc((char)LANGMODEL_FORMAT_VERSION))
+   // write format signature and version number
+   if (!fp.writeSignature(LANGMODEL_SIGNATURE,LANGMODEL_FORMAT_VERSION))
       return false ;
    // some padding bytes for alignment and possible future use
    if (!fp.putNulls(3))
@@ -406,12 +400,12 @@ static bool write_frequencies(CFile& fp,
    // write dummy offsets
    fp.flush() ;
    off_t offsets_offset = fp.tell() ;
-   if (!fp.write64BE(0) ||	// offset of forward ngram model
-       !fp.write64BE(0) ||	// offset of reverse ngram model
-       !fp.write64BE(0) ||	// offset of forward ngram counts
-       !fp.write64BE(0) ||	// offset of word unigram model
-       !fp.write64BE(0) ||	// some dummies for future expansion
-       !fp.write64BE(0))
+   if (!fp.write64LE(0) ||	// offset of forward ngram model
+       !fp.write64LE(0) ||	// offset of reverse ngram model
+       !fp.write64LE(0) ||	// offset of forward ngram counts
+       !fp.write64LE(0) ||	// offset of word unigram model
+       !fp.write64LE(0) ||	// some dummies for future expansion
+       !fp.write64LE(0))
       return false ;
    // write the forward ngram model, if present
    off_t forward_offset = fp.tell() ;
@@ -433,10 +427,10 @@ static bool write_frequencies(CFile& fp,
    // finally, go back and update the offsets of the embedded models
    fp.flush() ;
    fp.seek(offsets_offset) ;
-   if (!fp.write64BE(forward_offset) ||
-       !fp.write64BE(reverse_offset) ||
-       !fp.write64BE(counts_offset) ||
-       !fp.write64BE(word_offset))
+   if (!fp.write64LE(forward_offset) ||
+       !fp.write64LE(reverse_offset) ||
+       !fp.write64LE(counts_offset) ||
+       !fp.write64LE(word_offset))
       return false ;
    fp.flush() ;
    return true ;
