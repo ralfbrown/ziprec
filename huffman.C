@@ -41,8 +41,7 @@ using namespace Fr ;
 
 HuffmanLengthTable::HuffmanLengthTable()
 {
-   for (size_t i = 0 ; i < MAX_HUFFMAN_LENGTH ; i++)
-      m_counts[i] = 0 ;
+   std::fill_n(m_counts,MAX_HUFFMAN_LENGTH,0) ;
    return ;
 }
 
