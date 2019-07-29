@@ -778,41 +778,28 @@ bool LangIDPackedTrie::insertChildren(PackedSimpleTrieNode *parent,
 
 bool LangIDPackedTrie::parseHeader(CFile& f)
 {
-   const size_t siglen = sizeof(PACKEDTRIE_SIGNATURE) ;
-   char signature[siglen] ;
-   if (f.read(signature,siglen,sizeof(char)) != siglen ||
-       memcmp(signature,PACKEDTRIE_SIGNATURE,siglen) != 0)
+   int version = f.verifySignature(PACKEDTRIE_SIGNATURE) ;
+   if (version < PACKEDTRIE_FORMAT_MIN_VERSION || version > PACKEDTRIE_FORMAT_VERSION)
       {
-      // error: wrong file type
+      // error: wrong file type or wrong version of data file
       return false ;
       }
-   unsigned char version ;
-   if (!f.readValue(&version)
-       || version < PACKEDTRIE_FORMAT_MIN_VERSION
-       || version > PACKEDTRIE_FORMAT_VERSION)
-      {
-      // error: wrong version of data file
-      return false ;
-      }
-   unsigned char bits ;
-   if (!f.readValue(&bits) || bits != PTRIE_BITS_PER_LEVEL)
+   uint8_t bits ;
+   if (!f.read8(bits) || bits != PTRIE_BITS_PER_LEVEL)
       {
       // error: wrong type of trie
       return false ;
       }
-   UInt32 val_size, val_keylen, val_numterm ;
-   char padbuf[PACKEDTRIE_PADBYTES_1] ;
-   if (!f.readValue(&val_size) ||
-      !f.readValue(&val_keylen) ||
-      !f.readValue(&val_numterm) ||
-      f.read(padbuf,sizeof(padbuf),1) != sizeof(padbuf))
+   uint32_t val_size, val_keylen, val_numterm ;
+   if (!f.read32LE(val_size) || !f.read32LE(val_keylen) || !f.read32LE(val_numterm)
+      || !f.skip(PACKEDTRIE_PADBYTES_1))
       {
       // error reading header
       return false ;
       }
-   m_maxkeylen = val_keylen.load() ;
-   m_size = val_size.load() ;
-   m_numterminals = val_numterm.load() ;
+   m_maxkeylen = val_keylen ;
+   m_size = val_size ;
+   m_numterminals = val_numterm ;
    return true ;
 }
 
@@ -949,20 +936,13 @@ Owned<LangIDPackedTrie> LangIDPackedTrie::load(const char* filename)
 
 bool LangIDPackedTrie::writeHeader(CFile& f) const
 {
-   // write the signature string
-   const size_t siglen = sizeof(PACKEDTRIE_SIGNATURE) ;
-   if (f.write(PACKEDTRIE_SIGNATURE,siglen,sizeof(char)) != siglen)
+   // write the signature string and format version number
+   if (!f.writeSignature(PACKEDTRIE_SIGNATURE,PACKEDTRIE_FORMAT_VERSION))
       return false; 
-   // follow with the format version number
-   unsigned char version = PACKEDTRIE_FORMAT_VERSION ;
-   unsigned char bits = PTRIE_BITS_PER_LEVEL ;
-   if (!f.writeValue(version) || !f.writeValue(bits))
+   if (!f.write8(PTRIE_BITS_PER_LEVEL))
       return false ;
    // write out the size of the trie
-   UInt32 val_used(size()), val_keylen(longestKey()), val_numterm(m_numterminals) ;
-   if (!f.writeValue(val_used) ||
-      !f.writeValue(val_keylen) ||
-      !f.writeValue(val_numterm))
+   if (!f.write32LE(size()) || !f.write32LE(longestKey()) || !f.write32LE(m_numterminals))
       return false ;
    // pad the header with NULs for the unused reserved portion of the header
    return f.putNulls(PACKEDTRIE_PADBYTES_1) ;

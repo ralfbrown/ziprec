@@ -215,17 +215,11 @@ bool ReconstructionData::load(const char* data_file)
 bool ReconstructionData::load(CFile& fp, const char *filename)
 {
    PROGRESS("loading language model\n") ;
-   // check for the proper file signature
-   char sigbuffer[sizeof(LANGMODEL_SIGNATURE)] ;
-   if (fp.read(sigbuffer,sizeof(sigbuffer),sizeof(char)) < sizeof(sigbuffer))
-      return false ;
-   if (memcmp(LANGMODEL_SIGNATURE,sigbuffer,sizeof(sigbuffer)) != 0)
-      return false ;
-   // check for the proper format version
-   if (fp.getc() != (char)LANGMODEL_FORMAT_VERSION)
+   // check for the proper file signature and version number
+   if (fp.verifySignature(LANGMODEL_SIGNATURE) != LANGMODEL_FORMAT_VERSION)
       return false ;
    // skip the alignment padding
-   if (fp.getc() == EOF || fp.getc() == EOF || fp.getc() == EOF)
+   if (!fp.skip(3))
       return false ;
    // read the offsets of the embedded models
    uint64_t offset_forward = fp.read64LE() ;

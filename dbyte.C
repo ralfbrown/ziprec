@@ -413,8 +413,7 @@ bool DecodedByte::writeHTMLHeader(CFile& outfp, const char *encoding, bool test_
 
 bool DecodedByte::writeDBHeader(CFile& outfp, size_t reference_window) 
 {
-   bool success = (outfp.write(DECODEDBYTE_SIGNATURE,sizeof(char),sizeof(DECODEDBYTE_SIGNATURE))
-		   == sizeof(DECODEDBYTE_SIGNATURE) ) ;
+   bool success = outfp.writeSignature(DECODEDBYTE_SIGNATURE,DECODEDBYTE_VERSION) ;
    if (success)
       {
       // write a dummy count and offset for the data bytes
@@ -452,7 +451,7 @@ bool DecodedByte::writeDBHeader(CFile& outfp, size_t reference_window)
       if (success)
 	 {
 	 off_t db_offset = outfp.tell() ;
-	 outfp.seek(sizeof(DECODEDBYTE_SIGNATURE)) ;
+	 outfp.seek(sizeof(DECODEDBYTE_SIGNATURE)+6) ;
 	 success = outfp.write64LE(db_offset) ;
 	 // return to end of file
 	 outfp.seek(db_offset) ;

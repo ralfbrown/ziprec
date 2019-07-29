@@ -26,10 +26,7 @@
 #ifndef __DBYTE_H_INCLUDED
 #define __DBYTE_H_INCLUDED
 
-#include <cstdio>
-#include <stdint.h>
-#include <unistd.h>	// for off_t
-
+#include <cstdint>
 #include "framepac/file.h"
 
 using namespace std ;
@@ -41,6 +38,7 @@ using namespace std ;
 #define DEFAULT_UNKNOWN '?'
 
 #define DECODEDBYTE_SIGNATURE "Recovered Lempel-Ziv Data Stream\nv2\n\n\x1A\4"
+#define DECODEDBYTE_VERSION   2
 
 #define DBYTE_RECONSTRUCTED      0xFF000000
 #define DBYTE_MASK_LITERAL       0xFF800000

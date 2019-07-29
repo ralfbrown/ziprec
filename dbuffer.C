@@ -382,7 +382,7 @@ bool DecodeBuffer::finalizeDB()
 	 num_packets = 0 ;
       }
    // go back and store the number of decoded bytes actually written
-   outfp.seek(sizeof(DECODEDBYTE_SIGNATURE)+8) ;
+   outfp.seek(sizeof(DECODEDBYTE_SIGNATURE)+14) ;
    success = outfp.write64LE(m_numbytes) ;
    if (success)
       {
@@ -607,7 +607,7 @@ bool DecodeBuffer::openInputFile(CFile& fp, const char *filename)
    bool success = true ;
    // check for the proper signature at the start of the file
    fp.seek(0L) ;
-   if (fp.verifySignature(DECODEDBYTE_SIGNATURE) < 1)
+   if (fp.verifySignature(DECODEDBYTE_SIGNATURE) < DECODEDBYTE_VERSION)
       success = false ;
    uint64_t value64, db_offset = 0 ;
    // read the file offset and number of decoded bytes
@@ -699,9 +699,8 @@ bool DecodeBuffer::openInputFile(CFile& fp, const char *filename)
 
 //----------------------------------------------------------------------
 
-bool DecodeBuffer::setOutputFile(CFile& fp, WriteFormat fmt, unsigned char unk,
-				 const char *friendly_filename,
-				 const char *encoding, bool test_mode)
+bool DecodeBuffer::setOutputFile(CFile& fp, WriteFormat fmt, unsigned char unk, const char* friendly_filename,
+				 const char* encoding, bool test_mode)
 {
    bool had_file = (bool)outputFile() ;
    if (fp && had_file)
