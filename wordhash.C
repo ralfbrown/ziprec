@@ -249,10 +249,7 @@ bool WordString::trim(unsigned start_pos, unsigned end_pos)
 {
    if (start_pos >= end_pos || start_pos >= length())
       return false ;
-   for (size_t i = start_pos ; i < end_pos ; i++)
-      {
-      m_chars[i - start_pos] = m_chars[i] ;
-      }
+   std::copy(m_chars.at(start_pos),m_chars.at(end_pos),m_chars.begin()) ;
    m_length = (end_pos - start_pos) ;
    return true ;
 }

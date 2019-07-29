@@ -32,7 +32,6 @@
 /************************************************************************/
 /************************************************************************/
 
-bool is_whitespace(uint8_t byte) ;
 bool is_whitespace(const uint8_t* array, size_t position1, size_t position2) ;
 bool is_word_boundary(const uint8_t* array, size_t position, bool utf8=true) ;
 

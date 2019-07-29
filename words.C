@@ -23,6 +23,7 @@
 /*                                                                      */
 /************************************************************************/
 
+#include <algorithm>
 #include <ctype.h>
 #include "chartype.h"
 #include "words.h"
@@ -31,7 +32,7 @@
 /*	Utility functions						*/
 /************************************************************************/
 
-bool is_whitespace(uint8_t byte)
+bool is_whitespace_char(uint8_t byte)
 {
    if (isascii(byte))
       return isspace(byte) ;
@@ -43,14 +44,7 @@ bool is_whitespace(uint8_t byte)
 
 bool is_whitespace(const uint8_t *array, size_t position1, size_t position2)
 {
-   if (position1 >= position2)
-      return false ;
-   for (size_t i = position1 ; i < position2 ; i++)
-      {
-      if (!is_whitespace(array[i]))
-	 return false ;
-      }
-   return true ;
+   return position1 < position2 ? std::all_of(array+position1,array+position2,is_whitespace_char) : false ;
 }
 
 //----------------------------------------------------------------------
@@ -59,12 +53,7 @@ bool contains_unknown(const uint8_t *array, size_t position1, size_t position2)
 {
    if (position1 >= position2)
       return false ;
-   for (size_t i = position1 ; i < position2 ; i++)
-      {
-      if (array[i] == 0x7F)
-	 return true ;
-      }
-   return false ;
+   return std::any_of(array+position1,array+position2,[](uint8_t ch) { return ch == 0x7F ; }) ;
 }
 
 //----------------------------------------------------------------------
