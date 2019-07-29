@@ -1911,8 +1911,7 @@ static bool recover_ALZip_span(const LocationList* prev, const LocationList* cur
 static bool recover_RAR_file(const LocationList* locations, const ZipRecParameters& params,
 			     const FileInformation* fileinfo)
 {
-   // for now, we just create a new file containing just the one member,
-   //   still compressed
+   // for now, we just create a fresh file containing just the one member, still compressed
    off_t end_offset = rar_record_end(locations,fileinfo->bufferStart()) ;
    if (locations->next() && locations->next()->offset() < end_offset)
       end_offset = locations->next()->offset() ;
