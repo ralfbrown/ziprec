@@ -717,18 +717,24 @@ HuffmanHypothesis *SearchTrie::find(uint32_t hashcode) const
 
 //----------------------------------------------------------------------
 
+static bool is_duplicate(const HuffmanHypothesis *hyp1, const HuffmanHypothesis *cand_dup)
+{
+   for ( ; cand_dup ; cand_dup = cand_dup->next())
+      {
+      if (hyp->bitCount() == cand_dup->bitCount() && hyp->sameTrees(cand_dup))
+	 return true ;
+      }
+   return false ;
+}
+
+//----------------------------------------------------------------------
+
 bool SearchTrie::isDuplicate(const HuffmanHypothesis *hyp) const
 {
    if (!hyp)
       return false ;
    HuffmanHypothesis *cand_dup = find(hyp->hashCode()) ;
-   for ( ; cand_dup ; cand_dup = cand_dup->next())
-      {
-      if (hyp->bitCount() == cand_dup->bitCount() &&
-	  hyp->sameTrees(cand_dup))
-	 return true ;
-      }
-   return false ;
+   return is_duplicate(hyp,cand_dup) ;
 }
 
 //----------------------------------------------------------------------
@@ -767,15 +773,8 @@ bool SearchTrie::insert(HuffmanHypothesis *hyp)
       }
    unsigned index = hashcode & TRIE_MASK ;
    HuffmanHypothesis *cand_dup = node->leaf(index) ;
-   for ( ; cand_dup ; cand_dup = cand_dup->next())
-      {
-      if (hyp->bitCount() == cand_dup->bitCount() &&
-	  hyp->sameTrees(cand_dup))
-	 {
-	 // hypothesis already exists in trie
-	 return false ;
-	 }
-      }
+   if (is_duplicate(hyp,cand_dup))
+      return false ;
    hyp->setNext(node->leaf(index)) ;
    node->setLeaf(index,hyp) ;
    m_size++ ;
@@ -3075,8 +3074,7 @@ static bool extend_bitstream(HuffmanHypothesis* hyp, HuffmanSearchQueue& search_
 	       HuffmanHypothesis *new_hyp
 		  = hyp->extend(new_start,code,len,extra,false) ;
 //cerr<<"add gen"<<hyp->generation()<<" @ "<<hyp->bitCount()<<": len "<<binary(code,len)<<"+"<<extra<<endl;
-	       if (add_extension(str_start,new_hyp,search_queue,
-				 longest_streams))
+	       if (add_extension(str_start,new_hyp,search_queue, longest_streams))
 		  {
 		  extended = true ;
 		  }
@@ -3145,8 +3143,7 @@ static bool extend_bitstream(HuffmanHypothesis* hyp, HuffmanSearchQueue& search_
 	       HuffmanHypothesis *new_hyp
 		  = hyp->extend(new_pos, distcode, len, extra, true) ;
 //cerr<<"add gen"<<hyp->generation()<<" @ "<<hyp->bitCount()<<": dist "<<binary(distcode,len)<<"+"<<extra<<endl;
-	       if (add_extension(str_start,new_hyp,search_queue,
-				 longest_streams))
+	       if (add_extension(str_start,new_hyp,search_queue, longest_streams))
 		  {
 		  extended = true ;
 		  if (search_queue.full())
@@ -3176,8 +3173,7 @@ static bool extend_bitstream(HuffmanHypothesis* hyp, HuffmanSearchQueue& search_
 	    cerr << "found longest consistent stream of " << hyp->bitCount()
 		 << " bits" << endl << flush ;
 	 }
-      else if (verbosity >= 3 && added &&
-	       hyp->bitCount() >= KEEP_ALL_THRESHOLD)
+      else if (verbosity >= 3 && added && hyp->bitCount() >= KEEP_ALL_THRESHOLD)
 	 cerr << "found consistent stream of " << hyp->bitCount()
 	      << " bits" << endl << flush ;
       }
