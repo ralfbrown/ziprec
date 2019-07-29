@@ -5,7 +5,7 @@
 /*									*/
 /*  File: inflate.C - DEFLATE decompression				*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-28						*/
+/*  LastEdit: 2019-07-29						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -1261,10 +1261,7 @@ static DeflatePacketDesc* locate_packets(BitPointer str_start, BitPointer str_en
       //   packet to test multiple positions
       exact_bit = (ptype != PT_UNCOMP) || (packets == nullptr) ;
       // add the packet to the list of all packets found
-      DeflatePacketDesc *p = new DeflatePacketDesc(&str_start,&str_pos,&curr_end,packets==nullptr,deflate64) ;
-      p->setNext(packets) ;
-      p->setPacketType(ptype) ;
-      packets = p ;
+      packets = DeflatePacketDesc::push(&str_start,&str_pos,&curr_end,deflate64,packets) ;
       // update boundary pointers
       curr_end = str_pos ;
       }

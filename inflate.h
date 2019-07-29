@@ -5,7 +5,7 @@
 /*									*/
 /*  File: inflate.h - DEFLATE decompression				*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-25						*/
+/*  LastEdit: 2019-07-29						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -148,7 +148,15 @@ class DeflatePacketDesc
 	    packets = p ;
 	    return packets ;
 	 }
-
+      static DeflatePacketDesc* push(const BitPointer* stream_start, const BitPointer* packet_start,
+	                             const BitPointer* packet_end, bool deflate64, DeflatePacketDesc* packets)
+	 {
+	    auto p = new DeflatePacketDesc(stream_start,packet_start,packet_end,packets!=nullptr,deflate64) ;
+	    p->setNext(packets) ;
+	    packets = p ;
+	    return packets ;
+	 }
+      
       // I/O
       bool read(class Fr::CFile& infp) ;
       bool write(Fr::CFile& outfp) const ;
