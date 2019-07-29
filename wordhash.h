@@ -111,6 +111,28 @@ class WordString
 
 //----------------------------------------------------------------------
 
+class WordList ;
+
+class WordListIter
+   {
+   public:
+      WordListIter() : m_list(nullptr) {}
+      WordListIter(WordList* w) : m_list(w) {}
+      WordListIter(const WordList* w) : m_list(const_cast<WordList*>(w)) {}
+      WordListIter(WordList& w) : m_list(&w) {}
+      WordListIter(const WordList& w) : m_list(const_cast<WordList*>(&w)) {}
+      ~WordListIter() = default ;
+
+      WordString* operator*() const ;
+      WordListIter& operator++() ;
+      bool operator== (const WordListIter& it) { return m_list == it.m_list ; }
+      bool operator!= (const WordListIter& it) { return m_list != it.m_list ; }
+   private:
+      WordList* m_list ;
+   } ;
+
+//----------------------------------------------------------------------
+
 class WordList
    {
    public:
@@ -133,10 +155,19 @@ class WordList
       void setAllFlags() const ;
       void clearAllFlags() const ;
 
+      // iterator support
+      WordListIter begin() const { return this ; }
+      WordListIter cbegin() const { return WordListIter(this) ; }
+      WordListIter end() const { return WordListIter() ; }
+      WordListIter cend() const { return WordListIter() ; }
+
    private:
       WordList*             m_next { nullptr } ;
       Fr::Owned<WordString> m_string { nullptr } ;
    } ;
+
+inline WordString* WordListIter::operator* () const { return m_list ? m_list->string() : nullptr ; }
+inline WordListIter& WordListIter::operator++() { if (m_list) m_list = m_list->next() ; return *this ; }
 
 //----------------------------------------------------------------------
 

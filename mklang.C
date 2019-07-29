@@ -380,9 +380,8 @@ static bool write_words(CFile& fp, const WordList *frequencies, bool display_wor
    uint32_t count = count_words(frequencies) ;
    if (!fp.write32BE(count))
       return false ;
-   for ( ; frequencies ; frequencies = frequencies->next())
+   for (const auto word : *frequencies)
       {
-      const WordString *word = frequencies->string() ;
       size_t freq = word->frequency() ;
       if (display_words)
 	 {
