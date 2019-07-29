@@ -5,9 +5,9 @@
 /*									*/
 /*  File: utility.h - utility functions					*/
 /*  Version:  1.00beta				       			*/
-/*  LastEdit: 04feb2013							*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
-/*  (c) Copyright 2011,2012,2013 Ralf Brown/CMU				*/
+/*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -28,10 +28,6 @@
 
 #include <cstdio>
 #include "framepac/file.h"
-
-bool ask_yes_no(const char *prompt) ;
-Fr::CFile safely_open_for_write(const char *filename, bool reading_stdin = false, bool force_overwrite = false) ;
-
 
 #endif /* !__UTILITY_H_INCLUDED */
 

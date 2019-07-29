@@ -34,7 +34,6 @@ using namespace std ;
 #include "loclist.h"
 #include "recover.h"
 #include "reconstruct.h"
-#include "utility.h"
 #include "whatlang2/langid.h"
 #include "framepac/config.h"
 #include "framepac/byteorder.h"

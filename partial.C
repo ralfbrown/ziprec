@@ -654,21 +654,6 @@ static const unsigned eod_lengths[] =
 /*	Helper functions						*/
 /************************************************************************/
 
-#if 0
-static void erase_list(HuffmanInfo *info)
-{
-   while (info)
-      {
-      HuffmanInfo *next = info->next() ;
-      delete info ;
-      info = next ;
-      }
-   return ;
-}
-#endif
-
-//----------------------------------------------------------------------
-
 void free_hypotheses(HuffmanHypothesis *hyp)
 {
    while (hyp)
@@ -3354,10 +3339,8 @@ cerr<<"stream length = "<<(8*(*str_end - *str_start))<<" bits (approx)"<<endl;
    print_partial_packet_statistics();
    if (verbosity >= VERBOSITY_PACKETS)
       {
-      while (longest)
+      for (auto hyp = longest ; longest ; longest = longest->next())
 	 {
-	 HuffmanHypothesis *hyp = longest ; 
-	 longest = longest->next() ; 
 	 cerr << "hyp, len=" << hyp->bitCount() << endl ;
 	 hyp->dumpLitCodes();
 	 cerr << "--dist--" << endl ;

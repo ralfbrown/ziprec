@@ -32,7 +32,6 @@
 #include "recover.h"
 #include "reconstruct.h"
 #include "symtab.h"
-#include "utility.h"
 #include "words.h"
 #include "global.h"
 #include "whatlang2/langid.h"
@@ -1505,8 +1504,7 @@ static bool decompress_packet(DecodeBuffer *decode_buffer,
       }
    HuffSymbolTable *symtab = nullptr ;
    BitPointer corruption_loc((char*)nullptr) ;
-   bool success = decompress_packet(decode_buffer,packet,packet_end,
-				    &symtab,corruption_loc) ;
+   bool success = decompress_packet(decode_buffer,packet,packet_end,&symtab,corruption_loc) ;
    if (!success || packet->containsCorruption())
       {
       unsigned max_backref = decode_buffer->referenceWindow() ;
@@ -1531,8 +1529,7 @@ static bool decompress_packet(DecodeBuffer *decode_buffer,
 	 // search for a synchronization point following the end of
 	 //   the known corruption, using the Huffman trees from the
 	 //   packet's header
-	 HuffmanHypothesis *longest = search(&str_pos,&packet_end,
-					     symtab) ;
+	 HuffmanHypothesis *longest = search(&str_pos,&packet_end,symtab) ;
 	 if (longest)
 	    {
 	    str_pos = longest->startPosition() ;
@@ -1543,8 +1540,7 @@ static bool decompress_packet(DecodeBuffer *decode_buffer,
 	 {
 	 // find the point at which the symbol streams for all possible 
 	 //   starting bit offsets resynchronize
-	 str_pos = resynchronize(str_pos,packet_end,symtab,
-				 decode_buffer->deflate64()) ;
+	 str_pos = resynchronize(str_pos,packet_end,symtab,decode_buffer->deflate64()) ;
 	 }
       if (!decompress(str_pos,packet_end,symtab,decode_buffer,false,packet->next()))
 	 success = false ;

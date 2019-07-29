@@ -26,7 +26,6 @@
 #ifndef __PSTRIE_H_INCLUDED
 #define __PSTRIE_H_INCLUDED
 
-#include "wildcard.h"
 #include "whatlang2/ptrie.h"
 #include "whatlang2/trie.h"
 #include "framepac/byteorder.h"
@@ -44,13 +43,12 @@
 /************************************************************************/
 /************************************************************************/
 
-typedef bool PackedSimpleTrieEnumFn(const uint8_t *key, unsigned keylen,
-				    uint32_t frequency, void *user_data) ;
+class WildcardSet ;
 
-typedef bool PackedSimpleTrieMatchFn(const uint8_t *key, unsigned keylen,
-				     const class LangIDPackedTrie *trie,
-				     const class PackedSimpleTrieNode *node,
-				     void *user_data) ;
+typedef bool PackedSimpleTrieEnumFn(const uint8_t* key, unsigned keylen, uint32_t frequency, void* user_data) ;
+
+typedef bool PackedSimpleTrieMatchFn(const uint8_t* key, unsigned keylen, const class LangIDPackedTrie* trie,
+				     const class PackedSimpleTrieNode* node, void* user_data) ;
 
 //----------------------------------------------------------------------
 

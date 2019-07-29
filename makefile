@@ -19,7 +19,6 @@ OBJS = build/bits.o \
 	build/reconstruct.o \
 	build/sort.o \
 	build/symtab.o \
-	build/utility.o \
 	build/wordhash.o \
 	build/words.o \
 	build/global.o \
@@ -171,9 +170,8 @@ build/huffman.o: 	huffman.C huffman.h global.h
 
 build/index.o: 		index.C index.h
 
-build/inflate.o: 	inflate.C inflate.h dbuffer.h loclist.h models.h \
-			partial.h recover.h reconstruct.h symtab.h utility.h words.h \
-			global.h whatlang2/langid.h
+build/inflate.o: 	inflate.C inflate.h dbuffer.h loclist.h models.h partial.h recover.h \
+			reconstruct.h symtab.h words.h global.h whatlang2/langid.h
 
 build/lenmodel.o: 	lenmodel.C lenmodel.h
 
@@ -190,15 +188,13 @@ build/pstrie.o:		pstrie.C pstrie.h wildcard.h
 build/reconstruct.o: 	reconstruct.C reconstruct.h dbuffer.h index.h global.h \
 			models.h wildcard.h
 
-build/recover.o: 	recover.C recover.h inflate.h loclist.h reconstruct.h utility.h global.h
+build/recover.o: 	recover.C recover.h inflate.h loclist.h reconstruct.h global.h
 
 build/scan_ziprec.o: 	scan_ziprec.C
 
 build/sort.o: 		sort.C sort.h
 
 build/symtab.o:		symtab.C symtab.h inflate.h global.h
-
-build/utility.o: 	utility.C utility.h
 
 build/wildcard.o:	wildcard.C wildcard.h
 
@@ -208,33 +204,37 @@ build/words.o: 		words.C words.h chartype.h
 
 build/ziprec.o: 	ziprec.C inflate.h models.h recover.h reconstruct.h global.h
 
-build/mklang.o: 	mklang.C global.h pstrie.h sort.h wordhash.h words.h ziprec.h whatlang2/langid.h
+build/mklang.o: 	mklang.C global.h pstrie.h sort.h wildcard.h wordhash.h words.h ziprec.h whatlang2/langid.h
 
-dbuffer.h: 	dbyte.h
+dbuffer.h: 		dbyte.h
 	touch $@
 
-global.h: 	dbyte.h
+dbyte.h:		framepac/framepac/file.h
 	touch $@
 
-huffman.h:	bits.h framepac/framepac/smartptr.h
+global.h: 		dbyte.h
 	touch $@
 
-index.h: 	dbyte.h
+huffman.h:		bits.h framepac/framepac/smartptr.h
 	touch $@
 
-inflate.h: 	huffman.h framepac/framepac/file.h
+index.h: 		dbyte.h
 	touch $@
 
-models.h: 	dbyte.h dbuffer.h pstrie.h whatlang2/langid.h
+inflate.h: 		huffman.h framepac/framepac/file.h
 	touch $@
 
-pstrie.h:	wildcard.h whatlang2/ptrie.h whatlang2/trie.h framepac/framepac/byteorder.h framepac/framepac/file.h
+models.h: 		dbyte.h dbuffer.h pstrie.h whatlang2/langid.h
 	touch $@
 
-recover.h: 	lenmodel.h ziprec.h
+pstrie.h:		whatlang2/ptrie.h whatlang2/trie.h framepac/framepac/byteorder.h \
+			framepac/framepac/file.h
 	touch $@
 
-symtab.h:	huffman.h framepac/framepac/memory.h framepac/framepac/smartptr.h
+recover.h: 		lenmodel.h ziprec.h
+	touch $@
+
+symtab.h:		huffman.h framepac/framepac/memory.h framepac/framepac/smartptr.h
 	touch $@
 
 ziprec.h: dbyte.h

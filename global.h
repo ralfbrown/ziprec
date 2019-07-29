@@ -4,8 +4,8 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  File: global.h - global constants and variables			*/
-/*  Version:  1.10bega				       			*/
-/*  LastEdit: 28jun2019							*/
+/*  Version:  1.10beta				       			*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -58,10 +58,10 @@
 /*	Manifest Constants						*/
 /************************************************************************/
 
-#define ZIPREC_VERSION "1.00rc1"
+#define ZIPREC_VERSION "1.10alpha"
 
 #define LANGMODEL_SIGNATURE "ZipRec Language Model Data\n"
-#define LANGMODEL_FORMAT_VERSION 2
+#define LANGMODEL_FORMAT_VERSION 3
 
 // set the verbosity levels at which various types of data are dumped
 #define VERBOSITY_PROGRESS 1

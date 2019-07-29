@@ -5,7 +5,7 @@
 /*									*/
 /*  File: dbuffer.h - file-wise buffer for bytes/back-references	*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-25						*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -26,17 +26,14 @@
 #ifndef __DBUFFER_H_INCLUDED
 #define __DBUFFER_H_INCLUDED
 
+#include <iostream>
 #include <memory.h>
 #include "dbyte.h"
-#include "framepac/cstring.h"
-#include "framepac/file.h"
 
 //----------------------------------------------------------------------
 
 class ContextFlags
    {
-   private:
-      uint8_t m_flags ;
    public:
       enum { left = 1, right = 2, center = 4 } ;
       ContextFlags() { clear() ; }
@@ -54,6 +51,9 @@ class ContextFlags
       void setRight() { m_flags |= right ; }
       void setSide(bool rght) { m_flags |= (rght ? right : left) ; }
       void setCenter() { m_flags |= center ; }
+
+   private:
+      uint8_t m_flags ;
    } ;
 
 //----------------------------------------------------------------------
