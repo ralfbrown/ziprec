@@ -433,19 +433,6 @@ bool DecodeBuffer::finalize()
 
 //----------------------------------------------------------------------
 
-DecodedByte *DecodeBuffer::copyReplacements() const
-{
-   DecodedByte *repl = nullptr ;
-   if (numReplacements() > 0 && replacements())
-      {
-      repl = new DecodedByte[numReplacements()] ;
-      std::copy_n(replacements(),numReplacements(),repl) ;
-      }
-   return repl ;
-}
-
-//----------------------------------------------------------------------
-
 bool DecodeBuffer::expandReplacements(size_t added_repl)
 {
    if (!m_replacements.reallocate(numReplacements(),numReplacements()+added_repl+1))

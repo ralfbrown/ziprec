@@ -122,7 +122,6 @@ class DecodeBuffer
       size_t loadedBytes() const { return m_loadedbytes ; }
       size_t firstRealByte() const { return loadedBytes() - totalBytes() ; }
       unsigned discontinuities() const ;
-      DecodedByte *copyReplacements() const ;
       const char *friendlyFilename() const { return m_filename ; }
       const WildcardCounts *wildcardCounts() const { return m_wildcardcounts ; }
       unsigned copyBufferTail(unsigned char *result, unsigned num_bytes) const ;
