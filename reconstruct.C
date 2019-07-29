@@ -389,8 +389,7 @@ static void eliminate_invalid_UTF8(WildcardCollection* wildcards, DecodeBuffer& 
 
 //----------------------------------------------------------------------
 
-static void eliminate_invalid_ASCII16(WildcardCollection *wildcards,
-				      DecodeBuffer &decode_buffer)
+static void eliminate_invalid_ASCII16(WildcardCollection* wildcards, DecodeBuffer& decode_buffer)
 {
    DecodedByte *file_buffer = decode_buffer.fileBuffer() ;
    size_t num_bytes = decode_buffer.loadedBytes() ;
@@ -515,8 +514,7 @@ static void enforce_CRLF(WildcardCollection *wildcards,
 /************************************************************************/
 
 #ifdef STATISTICS
-static void count_wildcards(unsigned iteration,
-			    const DecodeBuffer &decode_buffer)
+static void count_wildcards(unsigned iteration, const DecodeBuffer& decode_buffer)
 {
    if (iteration == 0)
       {
@@ -536,10 +534,9 @@ static void count_wildcards(unsigned iteration,
 
 //----------------------------------------------------------------------
 
-static void clear_unused_wildcards(DecodeBuffer &decode_buffer,
-				   WildcardCollection *wildcards)
+static void clear_unused_wildcards(DecodeBuffer& decode_buffer, WildcardCollection* wildcards)
 {
-   const WildcardCounts *wccounts = decode_buffer.wildcardCounts() ;
+   const WildcardCounts* wccounts = decode_buffer.wildcardCounts() ;
    if (wccounts)
       {
       unsigned highest_used = wccounts->highestUsed() ;
@@ -556,8 +553,7 @@ static void clear_unused_wildcards(DecodeBuffer &decode_buffer,
 
 //----------------------------------------------------------------------
 
-static bool enough_contexts(uint32_t seen_contexts,
-			    uint32_t occurrences)
+static bool enough_contexts(uint32_t seen_contexts, uint32_t occurrences)
 {
    // if the wildcard doesn't occur in the recovered text, but we have
    //  a good context anyway due to adjacent wildcards in the pre-recovery
@@ -570,10 +566,8 @@ static bool enough_contexts(uint32_t seen_contexts,
 
 //----------------------------------------------------------------------
 
-static bool remove_unsupported_wildcards(DecodeBuffer &decode_buffer,
-					 WildcardCollection *wildcards,
-					 const WildcardCounts *contexts,
-					 ScoreCollection *scores,
+static bool remove_unsupported_wildcards(DecodeBuffer& decode_buffer, WildcardCollection* wildcards,
+					 const WildcardCounts* contexts, ScoreCollection* scores,
 					 double cutoff = UNSUPPORTED_CUTOFF)
 {
    if (!wildcards || !scores)
@@ -608,11 +602,9 @@ static bool remove_unsupported_wildcards(DecodeBuffer &decode_buffer,
    if (verbosity > VERBOSITY_PROGRESS)
       {
       if (removed)
-	 fprintf(stderr,"      removed %lu wildcard possibilities\n",
-		 (unsigned long)removed) ;
+	 fprintf(stderr,"      removed %lu wildcard possibilities\n", (unsigned long)removed) ;
       if (unambig)
-	 fprintf(stderr,"      replaced %lu unambiguous wildcards\n",
-		 (unsigned long)unambig) ;
+	 fprintf(stderr,"      replaced %lu unambiguous wildcards\n", (unsigned long)unambig) ;
       }
    ADD_TIME(timer,time_reconst_wildcards) ;
    return (removed > 0) ;
@@ -620,9 +612,8 @@ static bool remove_unsupported_wildcards(DecodeBuffer &decode_buffer,
 
 //----------------------------------------------------------------------
 
-static void apply_unambiguous_wildcards(DecodeBuffer &decode_buffer,
-					WildcardCollection *wildcards,
-					WildcardList *active_wildcards)
+static void apply_unambiguous_wildcards(DecodeBuffer& decode_buffer, WildcardCollection* wildcards,
+					WildcardList* active_wildcards)
 {
    if (!wildcards)
       return ;
@@ -641,8 +632,7 @@ static void apply_unambiguous_wildcards(DecodeBuffer &decode_buffer,
       }
    if (unambig && verbosity > VERBOSITY_PACKETS)
       {
-      fprintf(stderr,"      replaced %lu unambiguous wildcards\n",
-	      (unsigned long)unambig) ;
+      fprintf(stderr,"      replaced %lu unambiguous wildcards\n", (unsigned long)unambig) ;
       }
    ADD_TIME(timer,time_reconst_wildcards) ;
    return ;
@@ -653,10 +643,7 @@ static void apply_unambiguous_wildcards(DecodeBuffer &decode_buffer,
 static bool reverse_ngram(const uint8_t* key, unsigned keylen, uint32_t frequency, void* user_data)
 {
    LocalAlloc<uint8_t> reversed_key(keylen) ;
-   for (size_t i = 0 ; i < keylen ; i++)
-      {
-      reversed_key[i] = key[keylen-i-1] ;
-      }
+   std::reverse_copy(key,key+keylen,&reversed_key) ;
    auto reverse = reinterpret_cast<NybbleTrie*>(user_data) ;
    reverse->insert(reversed_key,keylen,frequency,false) ;
    return true ;
@@ -867,12 +854,10 @@ static void collect_ngram_scores(const DecodeBuffer &decode_buffer,
    size_t num_bytes = decode_buffer.loadedBytes() ;
    scores->clearAll() ;
    unsigned max_ambig = set_max_score_ambig(1) ;
-//   set_max_score_ambig(2*max_ambig/3) ;
    set_max_score_ambig(max_ambig) ;
    for (size_t i = 0 ; i < num_bytes ; i++)
       {
-      update_ngram_score(decode_buffer,i,langmodel,context_wildcards,
-			 scores,context_counts,1) ;
+      update_ngram_score(decode_buffer,i,langmodel,context_wildcards,scores,context_counts,1) ;
       }
    set_max_score_ambig(max_ambig) ;
    if (wildcards)
@@ -1048,10 +1033,8 @@ static bool can_infer_replacements(DecodeBuffer& decode_buffer, ScoreCollection*
 	 if (context_count == 0)
 	    continue ;  // would generate a conf of 0.0, which is default
 	 uint32_t wc_count = wildcard_counts->count(i) ;
-	 double context_ratio
-	    = compute_context_ratio(context_count,wc_count) ;
-	 conf_scores->setScore(i,replacement_confidence(i,scores,
-							context_ratio)) ;
+	 double context_ratio = compute_context_ratio(context_count,wc_count) ;
+	 conf_scores->setScore(i,replacement_confidence(i,scores, context_ratio)) ;
 	 }
       // find the very top wildcards by how confident we are in the
       //   accuracy of the best replacement value for them
@@ -1061,8 +1044,7 @@ static bool can_infer_replacements(DecodeBuffer& decode_buffer, ScoreCollection*
 	 for (size_t i = 0 ; i < conf_scores->numLanguages() ; i++)
 	    {
 	    unsigned wild = conf_scores->languageNumber(i) ;
-	    if (infer_replacement(decode_buffer,scores,wild,
-				  active_wildcards,iteration))
+	    if (infer_replacement(decode_buffer,scores,wild, active_wildcards,iteration))
 	       num_replaced++ ;
 	    }
 	 }

@@ -248,13 +248,11 @@ void WildcardCollection::allowAllIfEmpty()
 
 //----------------------------------------------------------------------
 
-void WildcardCollection::copy(const WildcardCollection *source,
-			      bool allow_all_if_empty)
+void WildcardCollection::copy(const WildcardCollection* source, bool allow_all_if_empty)
 {
    if (source)
       {
-      for (size_t i = 0 ; i < numSets() ; i++)
-	 m_wildcards[i] = source->m_wildcards[i] ;
+      std::copy_n(source->m_wildcards.begin(),numSets(),m_wildcards.begin()) ;
       if (allow_all_if_empty)
 	 {
 	 allowAllIfEmpty() ;

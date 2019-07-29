@@ -250,13 +250,7 @@ static CharPtr extract_local_header_filename(const LocationList *loc, const char
       if (buffer_start[loc->offset() + 30 + i] < ' ')
 	 return nullptr ;
       }
-   CharPtr name(len+1) ;
-   if (name)
-      {
-      std::copy_n(buffer_start + loc->offset() + 30, len, name.begin()) ;
-      name[len] = '\0' ;
-      }
-   return name ;
+   return dup_string_n(buffer_start + loc->offset() + 30, len) ;
 }
 
 //----------------------------------------------------------------------
@@ -1380,17 +1374,16 @@ static LocationList *sort_signatures(LocationList *locations)
 
 //----------------------------------------------------------------------
 
-static LocationList *filter_signatures(LocationList *locations,
-				       const char *buffer_start,
-				       const char *buffer_end)
+static LocationList *filter_signatures(LocationList* locations, const char* buffer_start,
+				       const char* buffer_end)
 {
    // remove spurious signatures by checking for consistency of the data
    //   following the signature and/or ordering of signatures
    // (this function is a low priority at the moment because on average
    //  there will be one spurious signature per 512MB of compressed data)
-   LocationList *next ;
-   LocationList *prev = nullptr ;
-   for (LocationList *locs = locations ; locs ; locs = next)
+   LocationList* next ;
+   LocationList* prev = nullptr ;
+   for (LocationList* locs = locations ; locs ; locs = next)
       {
       next = locs->next() ;
       SignatureType sig = locs->signatureType() ;
@@ -1592,14 +1585,13 @@ static const LocationList *find_central_dir(const LocationList *locations)
 
 //----------------------------------------------------------------------
 
-static int32_t central_dir_offset(const LocationList *localheader,
-				  const LocationList *&central_dir,
-				  const char *buffer_start)
+static int32_t central_dir_offset(const LocationList* localheader, const LocationList*& central_dir,
+				  const char* buffer_start)
 {
-   const LocationList *dir ;
    auto localname = extract_local_header_filename(localheader,buffer_start) ;
    if (!localname)
       return INT_MAX ;
+   const LocationList *dir ;
    for (dir = central_dir ; dir ; dir = dir->next())
       {
       if (dir->signatureType() != ST_CentralDirEntry)

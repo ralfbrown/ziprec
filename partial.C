@@ -810,11 +810,9 @@ bool SearchTrie::remove(HuffmanHypothesis *hyp)
    path[0] = node ;
    path_index[0] = index ;
    HuffmanHypothesis *prev = nullptr ;
-   HuffmanHypothesis *cand = node->leaf(index) ;
-   for ( ; cand ; cand = cand->next())
+   for (auto cand = node->leaf(index) ; cand ; cand = cand->next())
       {
-      if (hyp->bitCount() == cand->bitCount() &&
-	  hyp->sameTrees(cand))
+      if (hyp->bitCount() == cand->bitCount() && hyp->sameTrees(cand))
 	 {
 	 // we've found a match, so unlink it from the list
 	 if (prev)
@@ -997,15 +995,9 @@ void HuffmanSearchQueue::shift(size_t count)
       clearStack(i) ;
       }
    // shift any remaining stacks down
-   for (size_t i = 0 ; i + count <= m_numstacks ; i++)
-      {
-      m_stacks[i] = m_stacks[i+count] ;
-      }
+   std::copy_n(m_stacks.at(to_clear),m_numstacks-to_clear,m_stacks.begin()) ;
    // clear the vacated stacks
-   for (size_t i = m_numstacks - to_clear ; i <= m_numstacks ; i++)
-      {
-      m_stacks[i] = nullptr ;
-      }
+   std::fill_n(m_stacks.at(m_numstacks-to_clear),to_clear,nullptr) ;
    m_shiftcount += count ;
    return ;
 }
@@ -2375,10 +2367,7 @@ void PartialHuffmanTreeBase::initLeftmost()
 
 void PartialHuffmanTreeBase::initRightmost()
 {
-   for (size_t i = 0 ; i <= MAX_BITLENGTH ; i++)
-      {
-      m_rightmost[i] = 0 ;
-      }
+   std::fill_n(m_rightmost,MAX_BITLENGTH+1,0) ;
    return ;
 }
 
@@ -2440,8 +2429,7 @@ unsigned PartialHuffmanTreeBase::requiredLeaves() const
 
 //----------------------------------------------------------------------
 
-bool PartialHuffmanTreeBase::tooManyLeaves(HuffmanCode code,
-					   unsigned length) const
+bool PartialHuffmanTreeBase::tooManyLeaves(HuffmanCode code, unsigned length) const
 {
 //HuffmanCode orig_code = code ;
    if (code >= m_leftmost[length])

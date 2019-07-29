@@ -216,8 +216,7 @@ void PackedSimpleTrieNode::setPopCounts()
 
 //----------------------------------------------------------------------
 
-bool PackedSimpleTrieNode::nextFrequencies(const LangIDPackedTrie *trie,
-					   uint32_t *frequencies) const
+bool PackedSimpleTrieNode::nextFrequencies(const LangIDPackedTrie* trie, uint32_t* frequencies) const
 {
    if (!frequencies || trie->terminalNode(this))
       return false ;
@@ -228,16 +227,11 @@ bool PackedSimpleTrieNode::nextFrequencies(const LangIDPackedTrie *trie,
       unsigned i = 32 ;
       while (children)
 	 {
-	 if ((children & 1) != 0)
-	    {
-	    *frequencies++ = trie->node(child++)->frequency() ;
-	    }
-	 else
-	    *frequencies++ = 0 ;
-	 i-- ;
+	 *frequencies++ = (children&1) ? trie->node(child++)->frequency() : 0 ;
 	 children >>= 1 ;
+	 i-- ;
 	 }
-      memset(frequencies,'\0',i*sizeof(frequencies[0])) ;
+      std::fill_n(frequencies,i,0) ;
       frequencies += i ;
       }
    return (child != firstChild()) ;
@@ -250,8 +244,7 @@ bool PackedSimpleTrieNode::nextFrequencies(const LangIDPackedTrie *trie,
 //   avoiding a second pass over the 256-element array of frequencies that
 //   one gets with nextFrequencies()
 // PRECOND: 'this' must not be a terminal node
-bool PackedSimpleTrieNode::addToScores(const LangIDPackedTrie *trie,
-				       float *scores, double weight) const
+bool PackedSimpleTrieNode::addToScores(const LangIDPackedTrie* trie, float* scores, double weight) const
 {
 //   if (trie->terminalNode(this))
 //      return false ;
@@ -264,9 +257,7 @@ bool PackedSimpleTrieNode::addToScores(const LangIDPackedTrie *trie,
 	 {
 	 if ((children & 1) != 0)
 	    {
-	    double f = trie->node(child)->frequency() ;
-	    *scores += (float)(weight * f) ;
-	    child++ ;
+	    *scores += (float)(weight * trie->node(child++)->frequency()) ;
 	    }
 	 scores++ ;
 	 i-- ;
@@ -284,8 +275,7 @@ bool PackedSimpleTrieNode::addToScores(const LangIDPackedTrie *trie,
 //   avoiding a second pass over the 256-element array of frequencies that
 //   one gets with nextFrequencies()
 // PRECOND: 'this' must not be a terminal node
-bool PackedSimpleTrieNode::addToScores(const LangIDPackedTrie *trie,
-				       double *scores, double weight) const
+bool PackedSimpleTrieNode::addToScores(const LangIDPackedTrie* trie, double* scores, double weight) const
 {
 //   if (trie->terminalNode(this))
 //      return false ;
@@ -298,9 +288,7 @@ bool PackedSimpleTrieNode::addToScores(const LangIDPackedTrie *trie,
 	 {
 	 if ((children & 1) != 0)
 	    {
-	    double f = trie->node(child)->frequency() ;
-	    *scores += weight * f ;
-	    child++ ;
+	    *scores += weight * trie->node(child++)->frequency() ;
 	    }
 	 scores++ ;
 	 i-- ;
@@ -343,10 +331,8 @@ unsigned PackedSimpleTrieNode::countMatches(const LangIDPackedTrie *trie,
 		  PackedSimpleTrieNode *childnode = trie->node(child) ;
 		  if (!childnode)
 		     continue ;
-		  matches += childnode->countMatches(trie,key+1,keylen-1,
-						     alternatives+1,
-						     max_matches - matches,
-						     nonterminals_only) ;
+		  matches += childnode->countMatches(trie,key+1,keylen-1, alternatives+1,
+						     max_matches - matches, nonterminals_only) ;
 		  if (matches > max_matches)
 		     return matches ;
 		  }
@@ -372,20 +358,16 @@ unsigned PackedSimpleTrieNode::countMatches(const LangIDPackedTrie *trie,
 
 //----------------------------------------------------------------------
 
-bool PackedSimpleTrieNode::enumerateMatches(const LangIDPackedTrie *trie,
-					    uint8_t *keybuf,
-					    unsigned max_keylength,
-					    unsigned curr_keylength,
-					    const WildcardSet **alternatives,
-					    PackedSimpleTrieMatchFn *fn,
-					    void *user_data) const
+bool PackedSimpleTrieNode::enumerateMatches(const LangIDPackedTrie* trie, uint8_t* keybuf,
+					    unsigned max_keylength, unsigned curr_keylength,
+					    const WildcardSet** alternatives, PackedSimpleTrieMatchFn* fn,
+					    void* user_data) const
 {
    if (curr_keylength >= max_keylength)
       return fn(keybuf,curr_keylength,trie,this,user_data) ;
    else if (trie->terminalNode(this))
       return true ;
-   if (alternatives[curr_keylength] &&
-       alternatives[curr_keylength]->setSize() > 0)
+   if (alternatives[curr_keylength] && alternatives[curr_keylength]->setSize() > 0)
       {
       // we have a wildcard, so enumerate the possibilities
       uint32_t child = firstChild() ;
@@ -429,12 +411,9 @@ bool PackedSimpleTrieNode::enumerateMatches(const LangIDPackedTrie *trie,
 
 //----------------------------------------------------------------------
 
-bool PackedSimpleTrieNode::enumerateChildren(const LangIDPackedTrie *trie,
-					     uint8_t *keybuf,
-					     unsigned max_keylength_bits,
-					     unsigned curr_keylength_bits,
-					     PackedSimpleTrieEnumFn *fn,
-					     void *user_data) const
+bool PackedSimpleTrieNode::enumerateChildren(const LangIDPackedTrie* trie, uint8_t* keybuf,
+					     unsigned max_keylength_bits, unsigned curr_keylength_bits,
+					     PackedSimpleTrieEnumFn* fn, void* user_data) const
 {
    if (leaf() && !fn(keybuf,curr_keylength_bits/8,frequency(),user_data))
       return false ;
@@ -456,9 +435,7 @@ bool PackedSimpleTrieNode::enumerateChildren(const LangIDPackedTrie *trie,
 		  {
 		  unsigned byte = curr_keylength_bits / 8 ;
 		  keybuf[byte] = i ;
-		  if (!childnode->enumerateChildren(trie,keybuf,
-						    max_keylength_bits,
-						    curr_bits,fn,user_data))
+		  if (!childnode->enumerateChildren(trie,keybuf, max_keylength_bits, curr_bits,fn,user_data))
 		     return false ;
 		  }
 	       }
