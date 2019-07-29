@@ -844,10 +844,8 @@ bool SearchTrie::remove(HuffmanHypothesis *hyp)
 	 m_size-- ;
 	 if (!node->leaf(index) && !node->hasDescendants())
 	    {
-	    // we removed the last hypothesis at this leaf, so check
-	    //   whether the node has any descendants.  If no descendants,
-	    //   we can delete the node, which may allow us to remove its
-	    //   parent, etc.
+	    // we removed the last hypothesis at this leaf, so check whether the node has any descendants.  If no
+	    //   descendants, we can delete the node, which may allow us to remove its parent, etc.
 	    for (size_t i = 1 ; i < TRIE_DEPTH ; i++)
 	       {
 	       if (!path[i]->hasDescendants())
@@ -1108,13 +1106,12 @@ bool HuffmanSearchQueue::push(Owned<HuffmanHypothesis> hyp)
       if (queueSize() >= m_maxqueue)
 	 {
 	 // pop a non-longest item to make space
-	 HuffmanHypothesis *popped = pop() ;
+	 Owned<HuffmanHypothesis> popped { pop() } ;
 	 for (size_t i = 1 ; !popped && i <= m_numstacks ; i++)
 	    {
 	    shift(1) ;
 	    popped = pop() ;
 	    }
-	 delete popped ;
 	 }
       if (extension <= m_numstacks && queueSize() < m_maxqueue)
 	 {
