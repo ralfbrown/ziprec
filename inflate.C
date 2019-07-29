@@ -5,7 +5,7 @@
 /*									*/
 /*  File: inflate.C - DEFLATE decompression				*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-26						*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -358,8 +358,7 @@ static bool corrupted_words(DecodeBuffer& decode_buf, const NybbleTrie* wordmode
 	 // extract the next word from the buffer
 	 if (is_word_boundary(text,pos))
 	    {
-	    if (!is_whitespace(text,prev_word,pos) &&
-		!contains_unknown(text,prev_word,pos))
+	    if (!is_whitespace(text,prev_word,pos) && !contains_unknown(text,prev_word,pos))
 	       {
 	       unsigned wordlen = pos - prev_word ;
 	       if (wordlen > 1/* || text[prev_word] != '?'*/)

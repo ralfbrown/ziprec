@@ -204,7 +204,7 @@ build/wildcard.o:	wildcard.C wildcard.h
 
 build/wordhash.o: 	wordhash.C wordhash.h
 
-build/words.o: 		words.C words.h chartype.h dbyte.h
+build/words.o: 		words.C words.h chartype.h
 
 build/ziprec.o: 	ziprec.C inflate.h models.h recover.h reconstruct.h global.h
 
@@ -235,9 +235,6 @@ recover.h: 	lenmodel.h ziprec.h
 	touch $@
 
 symtab.h:	huffman.h framepac/framepac/memory.h framepac/framepac/smartptr.h
-	touch $@
-
-words.h:	wildcard.h
 	touch $@
 
 ziprec.h: dbyte.h

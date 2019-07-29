@@ -5,7 +5,7 @@
 /*									*/
 /*  File: words.h - word-segmentation functions				*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-16						*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
 /*  (c) Copyright 2011,2013,2019 Carnegie Mellon University		*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -27,22 +27,16 @@
 #define __WORDS_H_INCLUDED
 
 #include <cstdlib>
-#include <ctype.h>
-#include <stdint.h>
-#include "chartype.h"
-#include "wildcard.h"
-#include "whatlang2/trie.h"
+#include <cstdint>
 
 /************************************************************************/
 /************************************************************************/
 
 bool is_whitespace(uint8_t byte) ;
-bool is_whitespace(const uint8_t *array, size_t position) ;
-bool is_whitespace(const uint8_t *array,
-		   size_t position1, size_t position2) ;
-bool is_word_boundary(const uint8_t *array, size_t position, bool utf8=true) ;
+bool is_whitespace(const uint8_t* array, size_t position1, size_t position2) ;
+bool is_word_boundary(const uint8_t* array, size_t position, bool utf8=true) ;
 
-bool contains_unknown(const uint8_t *array, size_t position1, size_t position2) ;
+bool contains_unknown(const uint8_t* array, size_t position1, size_t position2) ;
 
 #endif /* !__WORDS_H_INCLUDED */
 

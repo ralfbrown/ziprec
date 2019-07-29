@@ -4,10 +4,10 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  File: words.C - word-segmentation functions				*/
-/*  Version:  1.00gamma				       			*/
-/*  LastEdit: 07may2013							*/
+/*  Version:  1.10beta				       			*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
-/*  (c) Copyright 2011,2013 Ralf Brown/CMU				*/
+/*  (c) Copyright 2011,2013,2019 Carnegie Mellon University		*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -23,10 +23,9 @@
 /*                                                                      */
 /************************************************************************/
 
+#include <ctype.h>
 #include "chartype.h"
 #include "words.h"
-
-using namespace Fr ;
 
 /************************************************************************/
 /*	Utility functions						*/
@@ -42,27 +41,13 @@ bool is_whitespace(uint8_t byte)
 
 //----------------------------------------------------------------------
 
-bool is_whitespace(const uint8_t *array, size_t position)
-{
-   //FIXME: the following code only works for 8-bit charsets based on
-   //  ASCII and partially for UTF-8, not for EBCDIC, UTF-16, UTF-32,
-   //  etc.
-   uint8_t byte = array[position] ;
-   if (!is_whitespace(byte))
-      return false ;
-   return true ;
-}
-
-//----------------------------------------------------------------------
-
-bool is_whitespace(const uint8_t *array,
-		   size_t position1, size_t position2)
+bool is_whitespace(const uint8_t *array, size_t position1, size_t position2)
 {
    if (position1 >= position2)
       return false ;
    for (size_t i = position1 ; i < position2 ; i++)
       {
-      if (!is_whitespace(array,i))
+      if (!is_whitespace(array[i]))
 	 return false ;
       }
    return true ;
@@ -70,8 +55,7 @@ bool is_whitespace(const uint8_t *array,
 
 //----------------------------------------------------------------------
 
-bool contains_unknown(const uint8_t *array,
-		      size_t position1, size_t position2)
+bool contains_unknown(const uint8_t *array, size_t position1, size_t position2)
 {
    if (position1 >= position2)
       return false ;
