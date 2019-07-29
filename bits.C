@@ -27,41 +27,23 @@
 
 #include "global.h"
 #include "bits.h"
+#include "framepac/bits.h"
+
+using namespace Fr ;
 
 /************************************************************************/
 /*	Manifest Constants						*/
 /************************************************************************/
-
-// number of bits for which to use a prepared table to reverse the
-//   bits rather than shifting them one-by-one
-// the number of reversals during table construction drops by two
-//   orders of magnitude between 4 and 5, so we'd use 5 bits except
-//   that partial-packet searching uses many longer bit strings that
-//   need reversal
-#define REVERSE_TABLE_BITS    10
 
 /************************************************************************/
 /*	Global variables						*/
 /************************************************************************/
 
 #define REVTABLE_SIZE (1<<REVERSE_TABLE_BITS)
-static unsigned short bit_reverse_table[(REVERSE_TABLE_BITS+1)*REVTABLE_SIZE] ;
-static bool bit_reverse_table_initialized = false ;
 
 /************************************************************************/
 /*	Helper functions						*/
 /************************************************************************/
-
-uint32_t reverse_bits(uint32_t bits, unsigned num_bits)
-{
-   uint32_t reversed = 0 ;
-   for (size_t i = 0 ; i < num_bits ; i++)
-      {
-      reversed = (reversed << 1) | (bits & 1) ;
-      bits >>= 1 ;
-      }
-   return reversed ;
-}
 
 /************************************************************************/
 /*	Methods for class VariableBits					*/
@@ -82,25 +64,6 @@ ostream &operator << (ostream &out, const VariableBits &bits)
 /************************************************************************/
 /*	Methods for class BitPointer					*/
 /************************************************************************/
-
-void BitPointer::initBitReversal()
-{
-   if (!bit_reverse_table_initialized)
-      {
-      for (size_t bits = 0 ; bits <= REVERSE_TABLE_BITS ; bits++)
-	 {
-	 for (size_t value = 0 ; value < REVTABLE_SIZE  ; value++)
-	    {
-	    bit_reverse_table[bits * REVTABLE_SIZE + value]
-	       = (unsigned short)reverse_bits(value,bits) & VariableBits::mask(bits) ;
-	    }
-	 }
-      bit_reverse_table_initialized = true ;
-      }
-   return ;
-}
-
-//----------------------------------------------------------------------
 
 uint32_t BitPointer::getBits(unsigned num_bits) const
 {
@@ -136,11 +99,7 @@ uint32_t BitPointer::getBits(unsigned num_bits) const
 
 uint32_t BitPointer::getBitsReversed(unsigned num_bits) const
 {
-   uint32_t bits = getBits(num_bits) ;
-   if (num_bits <= REVERSE_TABLE_BITS)
-      return bit_reverse_table[num_bits * REVTABLE_SIZE + bits] ;
-   else
-      return reverse_bits(bits,num_bits) ;
+   return BitReverser::reverse(getBits(num_bits),num_bits) ;
 }
 
 //----------------------------------------------------------------------
@@ -158,10 +117,7 @@ uint32_t BitPointer::nextBitsReversed(unsigned num_bits)
 {
    uint32_t bits = getBits(num_bits) ;
    advance(num_bits) ;
-   if (num_bits <= REVERSE_TABLE_BITS)
-      return bit_reverse_table[num_bits * REVTABLE_SIZE + bits] ;
-   else
-      return reverse_bits(bits,num_bits) ;
+   return BitReverser::reverse(bits,num_bits) ;
 }
 
 //----------------------------------------------------------------------
@@ -178,10 +134,7 @@ uint32_t BitPointer::prevBitsReversed(unsigned num_bits)
 {
    retreat(num_bits) ;
    uint32_t bits = getBits(num_bits) ;
-   if (num_bits <= REVERSE_TABLE_BITS)
-      return bit_reverse_table[num_bits * REVTABLE_SIZE + bits] ;
-   else
-      return reverse_bits(bits,num_bits) ;
+   return BitReverser::reverse(bits,num_bits) ;
 }
 
 //----------------------------------------------------------------------

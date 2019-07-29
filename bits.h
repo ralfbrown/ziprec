@@ -98,8 +98,6 @@ class BitPointer
       BitPointer(const BitPointer *ptr) { m_byteptr = ptr->m_byteptr ; m_bitnumber = ptr->m_bitnumber ; }
       ~BitPointer() = default ;
 
-      static void initBitReversal() ;
-
       // accessors
       const uint8_t *bytePointer() const { return m_byteptr ; }
       unsigned bitNumber() const { return m_bitnumber ; }

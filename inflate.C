@@ -1201,7 +1201,6 @@ static CharPtr decompress_reference(const char* stream_start, const char* stream
 				    const ZipRecParameters& params, const char* outfile_hint,
 				    bool deflate64 = true)
 {
-   BitPointer::initBitReversal() ;
    auto outfile = aprintf("%s.ref",outfile_hint) ;
    if (!outfile)
       return nullptr ;
@@ -1615,7 +1614,6 @@ static bool recover_stream(const ZipRecParameters &params, const FileInformation
 			   const char *stream_start, const char *stream_end,
 			   size_t base_offset, bool known_start, bool deflate64, bool known_end)
 {
-   BitPointer::initBitReversal() ;
    if (!outfp || !stream_start || !stream_end || stream_end <= stream_start)
       return false ;
    if (params.test_mode && params.test_mode_offset == 0 && known_start &&
