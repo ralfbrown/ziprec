@@ -38,7 +38,7 @@ class ZiprecUICurses : public ZiprecUICommon
       ZiprecUICurses() ;
       virtual ~ZiprecUICurses() ;
 
-      ZiprecUserInterface *instantiate() ;
+      Fr::Owned<ZiprecUserInterface> instantiate() ;
       virtual bool run(const char *initial_file) ;
 
       // possible user commands to invoke from the event dispatcher
@@ -53,6 +53,17 @@ class ZiprecUICurses : public ZiprecUICommon
       virtual bool shiftResyncForward() ;
       virtual bool shiftResyncBackward() ;
       virtual bool exitCommand() ;
+
+   protected:
+      bool clearScreen() ;
+      bool clearLine() ;
+      bool clearToEndOfLine() ;
+      bool homeCursor() ;
+      bool setCursor(unsigned row, unsigned col) ;
+      bool displayChar(char c) ;
+      bool displayText(const char*, unsigned int len) ;
+      bool displayString(const char*) ;
+      
    } ;
 
 #endif /* !UI_CURSES_H_INCLUDED */

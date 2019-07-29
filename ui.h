@@ -22,6 +22,11 @@
 /*                                                                      */
 /************************************************************************/
 
+#ifndef UI_H_INCLUDED
+#define UI_H_INCLUDED
+
+#include "framepac/smartptr.h"
+
 class ZiprecUserInterface
    {
    private:
@@ -33,9 +38,10 @@ class ZiprecUserInterface
       bool loadConfig(const char *cfgfile) ;
       bool selectInterfaceType(const char *iface) ;
 
-      ZiprecUserInterface *instantiate() ;
+      Fr::Owned<ZiprecUserInterface> instantiate() ;
       virtual bool run(const char *initial_file) ;
    } ;
 
+#endif /* !UI_H_INCLUDED */
 
 // end of file ui.h //

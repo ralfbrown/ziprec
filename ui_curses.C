@@ -4,9 +4,9 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  Version:  1.10beta		User Interface - Curses			*/
-/*  LastEdit: 27jun2019							*/
+/*  LastEdit: 2019-07-29						*/
 /*									*/
-/*  (c) Copyright 2012,2013,2019 Ralf Brown/CMU				*/
+/*  (c) Copyright 2012,2013,2019 Carnegie Mellon University		*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -22,7 +22,12 @@
 /*                                                                      */
 /************************************************************************/
 
+#include <cstring>
+#include <unistd.h>
 #include "ui_curses.h"
+#include "framepac/texttransforms.h"
+
+using namespace Fr ;
 
 /************************************************************************/
 /*	Methods for class ZiprecUICurses				*/
@@ -44,9 +49,9 @@ ZiprecUICurses::~ZiprecUICurses()
 
 //----------------------------------------------------------------------
 
-ZiprecUserInterface *ZiprecUICurses::instantiate()
+Owned<ZiprecUserInterface> ZiprecUICurses::instantiate()
 {
-   return new ZiprecUICurses ;
+   return static_cast<ZiprecUserInterface*>(new ZiprecUICurses) ;
 }
 
 //----------------------------------------------------------------------
@@ -94,7 +99,7 @@ bool ZiprecUICurses::setCursor(unsigned row, unsigned col)
 
 bool ZiprecUICurses::displayChar(char c)
 {
-   write(1,&c,1) ;
+   ::write(1,&c,1) ;
    return true ;
 }
 

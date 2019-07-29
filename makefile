@@ -19,6 +19,7 @@ OBJS = build/bits.o \
 	build/reconstruct.o \
 	build/sort.o \
 	build/symtab.o \
+	build/ui_curses.o \
 	build/wordhash.o \
 	build/words.o \
 	build/global.o \
@@ -196,6 +197,8 @@ build/sort.o: 		sort.C sort.h
 
 build/symtab.o:		symtab.C symtab.h inflate.h global.h
 
+build/ui_curses.o:	ui_curses.C ui_curses.h
+
 build/wildcard.o:	wildcard.C wildcard.h
 
 build/wordhash.o: 	wordhash.C wordhash.h
@@ -235,6 +238,12 @@ recover.h: 		lenmodel.h ziprec.h
 	touch $@
 
 symtab.h:		huffman.h framepac/framepac/memory.h framepac/framepac/smartptr.h
+	touch $@
+
+ui_common.h:		ui.h
+	touch $@
+
+ui_curses.h:		ui_common.h
 	touch $@
 
 ziprec.h: dbyte.h
