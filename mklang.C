@@ -182,17 +182,14 @@ static bool count_trigrams(const char *filename)
 	 return false ;
       std::fill_n(trigram_counts.begin(),256*256*256,0) ;
       }
-   if (filename && *filename)
+   CInputFile fp(filename) ;
+   if (fp)
       {
-      CInputFile fp(filename) ;
-      if (fp)
-	 {
-	 return count_trigrams(fp) ;
-	 }
-      else
-	 {
-	 fprintf(stderr,"Unable to open %s\n",filename) ;
-	 }
+      return count_trigrams(fp) ;
+      }
+   else if (filename)
+      {
+      fprintf(stderr,"Unable to open %s\n",filename) ;
       }
    return false ;
 }
@@ -204,8 +201,7 @@ static bool process_file(CFile& fp, NybbleTrie *forward, unsigned max_ngram,
 {
    uint8_t file_buffer[BUFFER_SIZE] ;
    // read the first block of the file
-   size_t bufsize
-      = fp.read(file_buffer,sizeof(uint8_t),lengthof(file_buffer)) ;
+   size_t bufsize = fp.read(file_buffer,lengthof(file_buffer)) ;
    total_bytes += bufsize ;
    size_t prev_word = 0 ;
    size_t bufpos = 0 ;
@@ -392,7 +388,7 @@ static bool write_frequencies(CFile& fp, const LangIDPackedTrie* forward_ngrams,
    if (!fp.writeSignature(LANGMODEL_SIGNATURE,LANGMODEL_FORMAT_VERSION))
       return false ;
    // some padding bytes for alignment and possible future use
-   if (!fp.putNulls(3))
+   if (!fp.putNulls(6))
       return false ;
    // write dummy offsets
    fp.flush() ;

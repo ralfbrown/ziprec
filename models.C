@@ -219,7 +219,7 @@ bool ReconstructionData::load(CFile& fp, const char *filename)
    if (fp.verifySignature(LANGMODEL_SIGNATURE) != LANGMODEL_FORMAT_VERSION)
       return false ;
    // skip the alignment padding
-   if (!fp.skip(3))
+   if (!fp.skip(6))
       return false ;
    // read the offsets of the embedded models
    uint64_t offset_forward = fp.read64LE() ;
