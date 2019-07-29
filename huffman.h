@@ -5,7 +5,7 @@
 /*									*/
 /*  File: huffman.h - Huffman-coding classes				*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-26						*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -27,6 +27,7 @@
 #define __HUFFMAN_H_INCLUDED
 
 #include "bits.h"
+#include "framepac/bits.h"
 #include "framepac/smartptr.h"
 
 /************************************************************************/
@@ -84,13 +85,13 @@ class HuffmanLengthTable
 
 //----------------------------------------------------------------------
 
-typedef bool HuffmanTreeIterFn(HuffSymbol sym, VariableBits codestring, void* user_data) ;
+typedef bool HuffmanTreeIterFn(HuffSymbol sym, Fr::VarBits codestring, void* user_data) ;
 
 class HuffmanTree
    {
    public:
       HuffmanTree() : m_bits(0), m_prefix(0) {}
-      HuffmanTree(unsigned bits, VariableBits prefix, HuffmanTree* parent = nullptr, unsigned parentloc = 0) ;
+      HuffmanTree(unsigned bits, Fr::VarBits prefix, HuffmanTree* parent = nullptr, unsigned parentloc = 0) ;
       ~HuffmanTree() ;
 
       // accessors
@@ -98,7 +99,7 @@ class HuffmanTree
       unsigned parentLocation() const { return m_parentloc ; }
       unsigned commonBits() const { return m_bits ; }
       unsigned childCount() const { return commonBits() ? 1 << commonBits() : 0 ; }
-      VariableBits prefix() const { return m_prefix ; }
+      Fr::VarBits prefix() const { return m_prefix ; }
       unsigned prefixLength() const { return m_prefix.length() ; }
       unsigned codeLength() const { return commonBits() + prefixLength() ; }
       bool nextSymbol(BitPointer& ptr, const BitPointer& str_end, HuffSymbol& symbol) const ;
@@ -121,7 +122,7 @@ class HuffmanTree
       Fr::NewPtr<HuffmanTree*> m_next ;		// subtree pointers, or NULL for leaves
       HuffmanTree*             m_parent ;
       unsigned                 m_bits ;		// number of bits covered by this node
-      VariableBits             m_prefix ;	// all entries in this node share the prefix
+      Fr::VarBits              m_prefix ;	// all entries in this node share the prefix
       unsigned                 m_parentloc ;	// offset within parent's m_next array
    } ;
 
@@ -139,7 +140,7 @@ class HuffmanLocation
       unsigned level() const { return m_level ; }
       unsigned offset() const { return m_offset ; }
       HuffmanTree *tree() const { return m_tree ; }
-      VariableBits currentCode() const ;
+      Fr::VarBits currentCode() const ;
 
       // manipulators
       bool advance() ;

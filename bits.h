@@ -29,65 +29,13 @@
 #include <cstdlib>
 #include <iostream>
 #include <stdint.h>
+#include "framepac/bits.h"
 
 using namespace std ;
 
 /************************************************************************/
 /*	Type definitions						*/
 /************************************************************************/
-
-class VariableBits
-   {
-   public:
-      VariableBits() = default ;
-      VariableBits(size_t length, size_t val = 0) : m_value(val), m_length(length) {}
-      ~VariableBits() = default ;
-
-      // accessors
-      uint32_t value() const { return m_value ; }
-      unsigned length() const { return m_length ; }
-
-      // modifiers
-      void setValue(size_t val) { m_value = (uint32_t)(val & mask(m_length)) ; }
-      void appendBit(unsigned bit)
-	 { 
-	 if (m_length < 32)
-	    { m_value = (m_value << 1) | (bit & 1) ; m_length++ ; } 
-	 }
-      void appendBits(const VariableBits &other)
-	 { 
-	 if (m_length + other.m_length < 32)
-	    { m_value = (m_value << other.m_length) | other.m_value ;
-	      m_length += other.m_length ; }
-	 }
-      void appendBits(unsigned bits, unsigned bit_count)
-	 { 
-	 if (m_length + bit_count < 32)
-	    { m_value = (m_value << bit_count) | bits ;
-	      m_length = (uint8_t)(m_length + bit_count) ; }
-	 }
-      void trimBits(size_t bits_to_keep)
-	 {
-	 m_value &= mask(bits_to_keep) ;
-	 m_length = (uint8_t)bits_to_keep ;
-	 }
-
-      // operators
-      VariableBits &operator = (const VariableBits &other)
-	 {
-	 m_length = (uint8_t)other.length() ; m_value = other.value() ; 
-	 return *this ;
-	 }
-
-      // utility functions
-      static uint32_t mask(unsigned num_bits) { return (uint32_t)((1UL << num_bits) - 1) ; }
-
-   private:
-      uint32_t	m_value { 0 } ;
-      uint8_t	m_length { 0 } ;
-   } ;
-
-//----------------------------------------------------------------------
 
 class BitPointer
    {
@@ -153,10 +101,8 @@ class BitPointer
 	 m_byteptr -= (size_t)other.m_byteptr ;
 	 return *this ;
 	 }
-      BitPointer &operator += (const VariableBits &bits)
-	 { advance(bits.length()) ; return *this ; }
-      BitPointer &operator -= (const VariableBits &bits)
-	 { retreat(bits.length()) ; return *this ; }
+      BitPointer &operator += (const Fr::VarBits &bits) { advance(bits.length()) ; return *this ; }
+      BitPointer &operator -= (const Fr::VarBits &bits) { retreat(bits.length()) ; return *this ; }
 
       // comparison operators
       bool inBounds(const BitPointer &bound, unsigned num_bits) const
@@ -205,7 +151,7 @@ class BitPointer
 /************************************************************************/
 /************************************************************************/
 
-ostream &operator << (ostream &, const VariableBits &) ;
+ostream &operator << (ostream &, const Fr::VarBits &) ;
 ostream &operator << (ostream &, const BitPointer &) ;
 
 #endif /* !__BITS_H_INCLUDED */

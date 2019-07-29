@@ -5,7 +5,7 @@
 /*									*/
 /*  File: symtab.h - DEFLATE symbol tables				*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-26						*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -42,7 +42,7 @@ class HuffSymbolTable
       static Fr::Owned<HuffSymbolTable> buildDefault(bool deflate64 = false) ;
 
       // accessors
-      void getEOD(VariableBits &eod) const { eod = m_eod ; }
+      Fr::VarBits getEOD() const { return m_eod ; }
       bool nextSymbol(BitPointer& pos, const BitPointer& str_end, HuffSymbol& symbol) const ;
       bool nextValue(BitPointer& pos, const BitPointer& str_end,  HuffSymbol& symbol) const ;
       // skip over the next literal or length/distance pair
@@ -52,7 +52,7 @@ class HuffSymbolTable
       unsigned getDistance(BitPointer &pos, const BitPointer &str_end) const ;
 
       // manipulators
-      void setEOD(VariableBits &eod) { m_eod = eod ; }
+      void setEOD(Fr::VarBits &eod) { m_eod = eod ; }
       void makeDefaultTrees() ;
       void setLengthTable(HuffmanLengthTable *lt) { m_lengthtable = lt ; }
       bool buildHuffmanTree(bool build_distance_tree = false) ;
@@ -71,7 +71,7 @@ class HuffSymbolTable
       HuffmanLengthTable*    m_lengthtable ;
       Fr::Owned<HuffmanTree> m_codetree ;
       Fr::Owned<HuffmanTree> m_distancetree ;
-      VariableBits	     m_eod ;
+      Fr::VarBits	     m_eod ;
       bool		     m_deflate64 ;
    } ;
 

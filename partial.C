@@ -3186,10 +3186,9 @@ static bool extend_bitstream(HuffmanHypothesis* hyp, HuffmanSearchQueue& search_
 
 //----------------------------------------------------------------------
 
-static bool add_literal_code(HuffSymbol sym, VariableBits codestring,
-			     void *user_data)
+static bool add_literal_code(HuffSymbol sym, VarBits codestring, void* user_data)
 {
-   HuffmanHypothesis *hyp = (HuffmanHypothesis*)user_data ;
+   auto hyp = reinterpret_cast<HuffmanHypothesis*>(user_data) ;
    HuffmanCode code = (HuffmanCode)codestring.value() ;
    unsigned extra = 0 ; //FIXME
    hyp->addLitCode(code,codestring.length(),extra,(unsigned)sym) ;
@@ -3198,10 +3197,9 @@ static bool add_literal_code(HuffSymbol sym, VariableBits codestring,
 
 //----------------------------------------------------------------------
 
-static bool add_distance_code(HuffSymbol sym, VariableBits codestring,
-			      void *user_data)
+static bool add_distance_code(HuffSymbol sym, VarBits codestring, void* user_data)
 {
-   HuffmanHypothesis *hyp = (HuffmanHypothesis*)user_data ;
+   auto hyp = reinterpret_cast<HuffmanHypothesis*>(user_data) ;
    HuffmanCode code = (HuffmanCode)codestring.value() ;
    unsigned extra = 0 ; //FIXME
    hyp->addDistCode(code,codestring.length(),extra,(unsigned)sym) ;
@@ -3228,8 +3226,7 @@ static HuffmanHypothesis *find_longest_streams(const BitPointer *str_start,
       HuffmanCode code = str_pos.getBitsReversed(eod_length) ;
       if (symtab)
 	 {
-	 VariableBits eod ;
-	 symtab->getEOD(eod) ;
+	 VarBits eod { symtab->getEOD() } ;
 	 if (eod.length() != eod_length)
 	    continue ;
 	 if (eod.value() != code)

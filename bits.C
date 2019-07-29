@@ -4,10 +4,10 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  File: bits.C - Bit-field manipulation				*/
-/*  Version:  1.00gamma				       			*/
-/*  LastEdit: 09may2013							*/
+/*  Version:  1.10beta				       			*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
-/*  (c) Copyright 2011,2012,2013 Ralf Brown/CMU				*/
+/*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
 /*      modify it under the terms of the GNU General Public License as  */
 /*      published by the Free Software Foundation, version 3.           */
@@ -27,7 +27,6 @@
 
 #include "global.h"
 #include "bits.h"
-#include "framepac/bits.h"
 
 using namespace Fr ;
 
@@ -46,10 +45,10 @@ using namespace Fr ;
 /************************************************************************/
 
 /************************************************************************/
-/*	Methods for class VariableBits					*/
+/*	Methods for class VarBits					*/
 /************************************************************************/
 
-ostream &operator << (ostream &out, const VariableBits &bits)
+ostream &operator << (ostream &out, const VarBits &bits)
 {
    out << '{' ;
    for (unsigned i = bits.length() ; i > 0 ; i--)
@@ -92,7 +91,7 @@ uint32_t BitPointer::getBits(unsigned num_bits) const
       bits = get_dword(m_byteptr) ;
       }
 #endif
-   return (bits >> m_bitnumber) & VariableBits::mask(num_bits) ;
+   return (bits >> m_bitnumber) & VarBits::mask(num_bits) ;
 }
 
 //----------------------------------------------------------------------

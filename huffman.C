@@ -33,6 +33,8 @@ using namespace std ;
 #include "global.h"
 #include "huffman.h"
 
+using namespace Fr ;
+
 /************************************************************************/
 /*	Methods for class HuffmanLengthTable				*/
 /************************************************************************/
@@ -140,7 +142,7 @@ void HuffmanLengthTable::dump() const
 /*	Methods for class HuffmanTree					*/
 /************************************************************************/
 
-HuffmanTree::HuffmanTree(unsigned bits, VariableBits prefix, HuffmanTree *parent, unsigned parentloc)
+HuffmanTree::HuffmanTree(unsigned bits, VarBits prefix, HuffmanTree *parent, unsigned parentloc)
 {
    m_prefix = prefix ;
    m_bits = bits ;
@@ -182,7 +184,7 @@ bool HuffmanTree::nextSymbol(BitPointer &ptr, const BitPointer &str_end, HuffSym
 #if DEBUG
       if (verbosity >= VERBOSITY_TREE)
 	 {
-	 VariableBits varbits(commonBits(),next_bits) ;
+	 VarBits varbits(commonBits(),next_bits) ;
 	 cerr << ' ' << varbits ;
 	 }
 #endif /* DEBUG */
@@ -277,8 +279,8 @@ bool HuffmanTree::iterate(HuffmanTreeIterFn *fn, void *user_data) const
       return false ;
    for (size_t i = 0 ; i < childCount() ; i++)
       {
-      VariableBits code(prefix()) ;
-      code.appendBits(i,commonBits()) ;
+      VarBits code(prefix()) ;
+      code.append(i,commonBits()) ;
       if (m_symbols && m_symbols[i] != INVALID_SYMBOL)
 	 {
 	 if (!fn(m_symbols[i],code,user_data))
@@ -300,8 +302,8 @@ void HuffmanTree::dump() const
 {
    for (size_t i = 0 ; i < childCount() ; i++)
       {
-      VariableBits code(prefix()) ;
-      code.appendBits(i,commonBits()) ;
+      VarBits code(prefix()) ;
+      code.append(i,commonBits()) ;
       if (m_symbols && m_symbols[i] != INVALID_SYMBOL)
 	 cout << m_symbols[i] << '\t' << code << endl ;
       else if (m_next && m_next[i])
@@ -349,17 +351,17 @@ HuffmanLocation::HuffmanLocation(HuffmanTree *tree)
 
 //----------------------------------------------------------------------
 
-VariableBits HuffmanLocation::currentCode() const
+VarBits HuffmanLocation::currentCode() const
 {
    if (m_tree)
       {
-      VariableBits code = m_tree->prefix() ;
-      code.appendBits(offset(),m_tree->commonBits()) ;
+      VarBits code { m_tree->prefix() } ;
+      code.append(offset(),m_tree->commonBits()) ;
       return code ;
       }
    else
       {
-      VariableBits null ;
+      VarBits null ;
       return null ;
       }
 }

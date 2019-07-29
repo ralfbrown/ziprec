@@ -604,16 +604,13 @@ static bool check_compressed_packet(DeflatePacketDesc *packet,
 
 //----------------------------------------------------------------------
 
-static bool valid_compressed_packet(const HuffSymbolTable *symtab,
-				    BitPointer &pos,
-				    const BitPointer &str_end,
-				    bool exact_end, bool &valid_EOD)
+static bool valid_compressed_packet(const HuffSymbolTable* symtab, BitPointer& pos,
+				    const BitPointer& str_end, bool exact_end, bool &valid_EOD)
 {
    valid_EOD = false ;
    if (!symtab)
       return false ;
-   VariableBits eod ;
-   symtab->getEOD(eod) ;
+   VarBits eod { symtab->getEOD() } ;
    if (eod.length() == 0)
       return false ;
    // check whether the last symbol in the candidate packet is an end-of-data
@@ -839,13 +836,12 @@ static bool advance_over_literal_packet(BitPointer &pos,
 
 //----------------------------------------------------------------------
 
-static bool advance_over_packet(BitPointer &pos, const BitPointer &str_end,
-				const HuffSymbolTable *symtab, off_t &offset)
+static bool advance_over_packet(BitPointer& pos, const BitPointer& str_end,
+				const HuffSymbolTable* symtab, off_t& offset)
 {
    if (!symtab)
       return false ;
-   VariableBits eod ;
-   symtab->getEOD(eod) ;
+   VarBits eod { symtab->getEOD() } ;
    if (eod.length() == 0)
       return false ;
    while (pos < str_end)

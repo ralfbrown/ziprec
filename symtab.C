@@ -449,7 +449,7 @@ bool HuffSymbolTable::buildHuffmanTree(bool build_distance_tree)
 	 fprintf(stderr,"Empty Huffman table!\n") ;
       return false ;
       }
-   VariableBits prefix ;
+   VarBits prefix ;
    Owned<HuffmanTree> tree_root(length,prefix) ;
    HuffmanLocation table_loc(m_lengthtable,length) ;
    HuffmanLocation tree_loc(tree_root) ;
