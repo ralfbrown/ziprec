@@ -5,7 +5,7 @@
 /*									*/
 /*  File: huffman.C - Huffman-coding classes				*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-26						*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -279,8 +279,7 @@ bool HuffmanTree::iterate(HuffmanTreeIterFn *fn, void *user_data) const
       return false ;
    for (size_t i = 0 ; i < childCount() ; i++)
       {
-      VarBits code(prefix()) ;
-      code.append(i,commonBits()) ;
+      VarBits code(prefix(),i,commonBits()) ;
       if (m_symbols && m_symbols[i] != INVALID_SYMBOL)
 	 {
 	 if (!fn(m_symbols[i],code,user_data))
@@ -302,8 +301,7 @@ void HuffmanTree::dump() const
 {
    for (size_t i = 0 ; i < childCount() ; i++)
       {
-      VarBits code(prefix()) ;
-      code.append(i,commonBits()) ;
+      VarBits code(prefix(),i,commonBits()) ;
       if (m_symbols && m_symbols[i] != INVALID_SYMBOL)
 	 cout << m_symbols[i] << '\t' << code << endl ;
       else if (m_next && m_next[i])
@@ -355,8 +353,7 @@ VarBits HuffmanLocation::currentCode() const
 {
    if (m_tree)
       {
-      VarBits code { m_tree->prefix() } ;
-      code.append(offset(),m_tree->commonBits()) ;
+      VarBits code(m_tree->prefix(),offset(),m_tree->commonBits()) ;
       return code ;
       }
    else
