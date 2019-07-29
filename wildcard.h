@@ -5,7 +5,7 @@
 /*									*/
 /*  File:     wildcard.h						*/
 /*  Version:  1.30							*/
-/*  LastEdit: 2019-07-26						*/
+/*  LastEdit: 2019-07-28						*/
 /*                                                                      */
 /*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -26,7 +26,8 @@
 #ifndef __WILDCARD_H_INCLUDED
 #define __WILDCARD_H_INCLUDED
 
-#include <limits.h>
+#include <bitset>
+#include <climits>
 #include "framepac/smartptr.h"
 
 using namespace std ;
@@ -46,35 +47,18 @@ using namespace std ;
 /************************************************************************/
 /************************************************************************/
 
-inline bool bit_is_set(const void *mem, uint16_t bitnum)
-{
-#if defined(__386__) && defined(__GNUC__)
-   bool result ;
-   __asm__ ("btw %w1,(%2)\n\t"
-	    "setc %%al"
-	    : "=a" (result) : "r" (bitnum), "r" (mem) : "cc") ;
-   return result ;
-#else
-   uint8_t mask = 1 << (bitnum % 8) ;
-   return (((const uint8_t*)mem)[bitnum / 8] & mask) != 0 ;
-#endif
-}
-
 class WildcardSet
    {
-   private:
-      uint16_t	m_count ;
-      uint32_t	m_values[256 / sizeof(uint32_t) / CHAR_BIT] ;
    public:
       WildcardSet(bool allow_all = false) ;
-      WildcardSet(const WildcardSet &) ;
+      WildcardSet(const WildcardSet &) = default ;
       ~WildcardSet() { m_count = 0 ; }
       //WildcardSet &operator = (const WildcardSet &) ;
 
       // accessors
       unsigned setSize() const { return m_count ; }
       uint8_t firstMember() const ;
-      bool contains(uint8_t value) const { return bit_is_set(m_values,value) ; }
+      bool contains(uint8_t value) const { return m_values.test(value) ; }
       bool couldBe(const bool *charset) const ;
       bool mustBe(const bool *charset) const ;
 
@@ -85,6 +69,9 @@ class WildcardSet
       void remove(uint8_t value) ;
       void removeRange(uint8_t first, uint8_t last) ;
       void removeAll() ;
+   private:
+      std::bitset<256> m_values ;
+      uint16_t	       m_count ;   // cached value of m_values.count()
    };
 
 //----------------------------------------------------------------------
@@ -108,9 +95,6 @@ class WildcardCollection
       bool mustBe(class DecodedByte db, const bool *charset) const ;
 
       // modifiers
-      void cacheSetSize(unsigned wildcard)
-	 { m_wildcards[wildcard].cacheSetSize() ; }
-      void cacheSetSizes() ;
       void add(unsigned wildcard, uint8_t value)
 	 { if (wildcard < numSets()) m_wildcards[wildcard].add(value) ; }
       void addAll(unsigned wildcard)

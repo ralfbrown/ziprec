@@ -47,20 +47,9 @@ WildcardSet::WildcardSet(bool allow_all)
 
 //----------------------------------------------------------------------
 
-WildcardSet::WildcardSet(const WildcardSet &orig)
-{
-   std::copy_n(orig.m_values,lengthof(m_values),m_values) ;
-   m_count = orig.setSize() ;
-   return ;
-}
-
-//----------------------------------------------------------------------
-
 void WildcardSet::cacheSetSize()
 {
-   m_count = 0 ;
-   for (size_t i = 0 ; i < lengthof(m_values) ; i++)
-      m_count += Fr::popcount(m_values[i]) ;
+   m_count = m_values.count() ;
    return ;
 }
 
@@ -68,17 +57,7 @@ void WildcardSet::cacheSetSize()
 
 uint8_t WildcardSet::firstMember() const
 {
-   for (size_t i = 0 ; i < 256 ; i += 32)
-      {
-      if (!m_values[i/32])
-	 continue ;
-      for (size_t bit = 0 ; bit < 32 ; bit++)
-	 {
-	 if (contains(i+bit))
-	    return (uint8_t)i+bit ;
-	 }
-      }
-   return 0 ;
+   return m_values._Find_first() ;
 }
 
 //----------------------------------------------------------------------
@@ -113,8 +92,7 @@ bool WildcardSet::mustBe(const bool *charset) const
 
 void WildcardSet::add(uint8_t value)
 {
-   uint32_t mask = 1 << (value % BITS_PER_ENTRY) ;
-   m_values[value / BITS_PER_ENTRY] |= mask ;
+   m_values.set(value) ;
    return ;
 }
 
@@ -122,7 +100,7 @@ void WildcardSet::add(uint8_t value)
 
 void WildcardSet::addAll()
 {
-   std::fill_n(m_values,lengthof(m_values),(uint32_t)~0) ;
+   m_values.set() ;
    m_count = 256 ;
    return ;
 }
@@ -131,8 +109,7 @@ void WildcardSet::addAll()
 
 void WildcardSet::remove(uint8_t value)
 {
-   uint32_t mask = 1 << (value % BITS_PER_ENTRY) ;
-   m_values[value / BITS_PER_ENTRY] &= ~mask ;
+   m_values.reset(value) ;
    return ;
 }
 
@@ -140,9 +117,8 @@ void WildcardSet::remove(uint8_t value)
 
 void WildcardSet::removeRange(uint8_t first, uint8_t last)
 {
-   //FIXME: could be done much more efficiently
    for (size_t i = first ; i <= last ; i++)
-      remove(i) ;
+      m_values.reset(i) ;
    return ;
 }
 
@@ -150,7 +126,7 @@ void WildcardSet::removeRange(uint8_t first, uint8_t last)
 
 void WildcardSet::removeAll()
 {
-   std::fill_n(m_values,lengthof(m_values),0) ;
+   m_values.reset() ;
    m_count = 0 ;
    return ;
 }
@@ -204,15 +180,6 @@ WildcardCollection::WildcardCollection(const WildcardCollection* orig, bool allo
       m_numsets = orig->numSets() ;
       copy(orig,allow_all_if_empty) ;
       }
-   return ;
-}
-
-//----------------------------------------------------------------------
-
-void WildcardCollection::cacheSetSizes()
-{
-   for (size_t i = 0 ; i < numSets() ; i++)
-      m_wildcards[i].cacheSetSize() ;
    return ;
 }
 
