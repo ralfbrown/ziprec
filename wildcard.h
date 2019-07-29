@@ -59,8 +59,6 @@ class WildcardSet
       unsigned setSize() const { return m_count ; }
       uint8_t firstMember() const ;
       bool contains(uint8_t value) const { return m_values.test(value) ; }
-      bool couldBe(const bool *charset) const ;
-      bool mustBe(const bool *charset) const ;
 
       // modifiers
       void cacheSetSize() ;

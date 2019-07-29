@@ -62,34 +62,6 @@ uint8_t WildcardSet::firstMember() const
 
 //----------------------------------------------------------------------
 
-#define BITS_PER_ENTRY (CHAR_BIT * sizeof(m_values[0]))
-
-//----------------------------------------------------------------------
-
-bool WildcardSet::couldBe(const bool *charset) const
-{
-   for (size_t i = 0 ; i <= 0xFF ; i++)
-      {
-      if (charset[i] && contains(i))
-	 return true ;
-      }
-   return false ;
-}
-
-//----------------------------------------------------------------------
-
-bool WildcardSet::mustBe(const bool *charset) const
-{
-   for (size_t i = 0 ; i <= 0xFF ; i++)
-      {
-      if (!charset[i] && contains(i))
-	 return false ;
-      }
-   return true ;
-}
-
-//----------------------------------------------------------------------
-
 void WildcardSet::add(uint8_t value)
 {
    m_values.set(value) ;

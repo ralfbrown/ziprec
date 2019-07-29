@@ -72,26 +72,6 @@ static WordList *words = nullptr ;  // intermediate, gets merged into 'frequenci
 static size_t wordcount = 0 ;
 
 /************************************************************************/
-/*	Additional methods for class WildcardCollection			*/
-/************************************************************************/
-
-bool WildcardCollection::couldBe(DecodedByte db, const bool *charset) const
-{
-   return (db.isLiteral()
-	   ? charset[db.byteValue()]
-	   : m_wildcards[db.originalLocation()].couldBe(charset)) ;
-}
-
-//----------------------------------------------------------------------
-
-bool WildcardCollection::mustBe(DecodedByte db, const bool *charset) const
-{
-   return (db.isLiteral()
-	   ? charset[db.byteValue()]
-	   : m_wildcards[db.originalLocation()].mustBe(charset)) ;
-}
-
-/************************************************************************/
 /************************************************************************/
 
 static void usage(const char *argv0)
