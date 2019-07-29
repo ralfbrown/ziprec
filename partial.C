@@ -467,7 +467,7 @@ class SearchTrie
    public:
       void *operator new(size_t) { return allocator->allocate() ; }
       void operator delete(void *blk) { allocator->release(blk) ; }
-      SearchTrie() { m_trie = nullptr ; m_size = 0 ; }
+      SearchTrie() = default ;
       ~SearchTrie() ;
 
       // accessors
@@ -486,8 +486,8 @@ class SearchTrie
 
    private:
       static SmallAlloc* allocator ;
-      SearchTrieNode* m_trie ;
-      size_t	      m_size ;
+      SearchTrieNode* m_trie { nullptr } ;
+      size_t	      m_size { 0 } ;
    } ;
 
 //----------------------------------------------------------------------
@@ -518,7 +518,7 @@ class HuffmanSearchQueue
       bool conditionalShift()
 	 { return (m_numstacks>0 && m_stacks[0] == nullptr) ? shift() : more() ; }
       bool trim(size_t size, bool permanent = false) ;
-      bool push(HuffmanHypothesis *hyp) ;
+      bool push(Owned<HuffmanHypothesis> hyp) ;
       HuffmanHypothesis *pop() ;
       HuffmanHypothesis *popAll() ;
    protected:
@@ -739,10 +739,35 @@ bool SearchTrie::isDuplicate(const HuffmanHypothesis *hyp) const
 
 //----------------------------------------------------------------------
 
+static void erase(SearchTrieNode* trie, unsigned depth = 0)
+{
+   if (!trie)
+      return ;
+   if (depth < TRIE_DEPTH-1)
+      {
+      for (unsigned i = 0 ; i < (1 << BITS_PER_LEVEL) ; i++)
+	 {
+	 erase(trie->child(i),depth+1) ;
+	 }
+      }
+   else
+      {
+      for (unsigned i = 0 ; i < (1 << BITS_PER_LEVEL) ; i++)
+	 {
+	 HuffmanHypothesis *hyp = trie->leaf(i) ;
+	 free_hypotheses(hyp) ;
+	 }
+      }
+   delete trie ;
+   return ;
+}
+
+//----------------------------------------------------------------------
+
 void SearchTrie::clear()
 {
-   HuffmanHypothesis *hyps = convertToList() ;
-   free_hypotheses(hyps) ;
+   if (m_trie)
+      erase(m_trie) ;
    return ;
 }
 
@@ -878,7 +903,7 @@ static void traverse(SearchTrieNode* trie, HuffmanHypothesis*& hyps, unsigned de
 
 //----------------------------------------------------------------------
 
-HuffmanHypothesis *SearchTrie::convertToList()
+HuffmanHypothesis* SearchTrie::convertToList()
 {
    HuffmanHypothesis *hyps = nullptr ;
    if (m_trie)
@@ -1041,11 +1066,10 @@ bool HuffmanSearchQueue::trim(size_t size, bool permanent)
    while (size < queueSize())
       {
       // reduce contents until the requested size is reached
-      HuffmanHypothesis *popped = pop() ;
+      Owned<HuffmanHypothesis> popped { pop() } ;
       if (popped)
 	 {
 	 trimmed = true ;
-	 delete popped ;
 	 }
       }
    if (size < maxSize() && permanent)
@@ -1058,7 +1082,7 @@ bool HuffmanSearchQueue::trim(size_t size, bool permanent)
 
 //----------------------------------------------------------------------
 
-bool HuffmanSearchQueue::push(HuffmanHypothesis *hyp)
+bool HuffmanSearchQueue::push(Owned<HuffmanHypothesis> hyp)
 {
    if (!hyp)
       return false ;
@@ -1066,7 +1090,6 @@ bool HuffmanSearchQueue::push(HuffmanHypothesis *hyp)
    if (duplicate(hyp))
       {
       m_dups_skipped++ ;
-      delete hyp ;
       return false ;
       }
    bool added = false ;
@@ -1105,11 +1128,11 @@ bool HuffmanSearchQueue::push(HuffmanHypothesis *hyp)
       m_queuesize++ ;
       if (directory())
 	 directory()->insert(hyp) ;
+      (void)hyp.move() ;
       }
    else
       {
       m_dups_skipped++ ;
-      delete hyp ;
       }
    return added ;
 }
