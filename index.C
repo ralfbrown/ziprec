@@ -32,8 +32,7 @@ using namespace Fr ;
 /*	Methods for class WildcardIndex					*/
 /************************************************************************/
 
-WildcardIndex::WildcardIndex(const DecodedByte *bytes, size_t num_bytes,
-			     unsigned max_ref)
+WildcardIndex::WildcardIndex(const DecodedByte *bytes, size_t num_bytes, unsigned max_ref)
    : m_counts(max_ref), m_locations(max_ref)
 {
    if (!m_counts || !m_locations)

@@ -250,17 +250,15 @@ static double score_alignment(const DecodedByte *bytes,
 
 //----------------------------------------------------------------------
 
-bool DecodeBuffer::alignDiscontinuity(unsigned which,
-				      unsigned corruptionsize,
-				      double compression_ratio)
+bool DecodeBuffer::alignDiscontinuity(unsigned which, unsigned corruptionsize, double compression_ratio)
 {
    if (which <= m_discontinuities)
       {
       unsigned max_repl = highestReplacement(which,referenceWindow()) ;
       max_repl %= referenceWindow() ;
       // scan the buffer for the desired discontinuity
-      const DecodedByte *file_buffer = &m_filebuffer[firstRealByte()] ;
-      const DecodedByte *buffer_end = &m_filebuffer[loadedBytes()] ;
+      const DecodedByte* file_buffer = &m_filebuffer[firstRealByte()] ;
+      const DecodedByte* buffer_end = &m_filebuffer[loadedBytes()] ;
       unsigned disc = 0 ;
       for ( ; file_buffer < buffer_end ; file_buffer++)
 	 {
@@ -687,12 +685,7 @@ bool DecodeBuffer::openInputFile(CFile& fp, const char *filename)
       DeflatePacketDesc *packets = nullptr ;
       for (size_t i = 0 ; i < packet_count && !inputFile().eof() ; i++)
 	 {
-	 auto p = new DeflatePacketDesc(inputFile()) ;
-	 if (p)
-	    {
-	    p->setNext(packets) ;
-	    packets = p ;
-	    }
+	 packets = DeflatePacketDesc::push(inputFile(),packets) ;
 	 }
       }
    // return to the start of the decoded bytes, and remember that location
@@ -785,8 +778,7 @@ DecodedByte *DecodeBuffer::loadBytes(bool add_sentinel, bool include_wildcards)
 	    unsigned loc = bytes[i+ofs].originalLocation() ;
 	    if (loc >= m_wildcardcounts->numCounts())
 	       {
-	       unsigned new_size
-		  = (loc + referenceWindow() - 1) / referenceWindow() ;
+	       unsigned new_size = (loc + referenceWindow() - 1) / referenceWindow() ;
 	       m_wildcardcounts->expandTo(new_size*referenceWindow()) ;
 	       }
 	    m_wildcardcounts->incr(loc) ;
@@ -801,8 +793,7 @@ DecodedByte *DecodeBuffer::loadBytes(bool add_sentinel, bool include_wildcards)
       // snip out the unused members
       if (shift)
 	 {
-	 for (size_t i = ofs ; i < totalBytes() + extra ; i++)
-	    bytes[i-shift] = bytes[i] ;
+	 std::copy_n(bytes.at(ofs),totalBytes()+extra-ofs,bytes.at(ofs-shift)) ;
 	 }
       ofs = (add_sentinel ? 1 : 0) ;
       for (size_t i = 0 ; i <= highest ; i++)
@@ -1129,8 +1120,7 @@ size_t DecodeBuffer::highestReplacement(unsigned num_discont,
 
 //----------------------------------------------------------------------
 
-unsigned DecodeBuffer::countReplacements(unsigned num_discont,
-					 unsigned max_backref) const
+unsigned DecodeBuffer::countReplacements(unsigned num_discont, unsigned max_backref) const
 {
    if (max_backref == 0)
       max_backref = referenceWindow() ;
@@ -1339,16 +1329,14 @@ void DecodeBuffer::compareToReference(DecodedByte dbyte, CFile& reffp, bool repl
 
 //----------------------------------------------------------------------
 
-bool DecodeBuffer::convert(size_t offset, size_t length, unsigned char unk,
-			   char *result, bool *literals)
+bool DecodeBuffer::convert(size_t offset, size_t length, unsigned char unk, char* result, bool* literals)
 {
    // set the file pointer to the start of the data to be converted
    inputFile().seek(m_datastart + BYTES_PER_DBYTE * offset) ;
    for (size_t i = 0 ; i < length ; i++)
       {
       // get a byte
-      DecodedByte dbyte ;
-      dbyte.read(inputFile()) ;
+      DecodedByte dbyte(inputFile()) ;
       // apply any known replacements
       if (!dbyte.isLiteral())
 	 {

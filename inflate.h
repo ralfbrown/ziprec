@@ -139,8 +139,15 @@ class DeflatePacketDesc
       void usingDeflate64(bool use = true) { m_deflate64 = use ; }
       bool cacheStreamData() ; // make local copy
 
-      bool split(const BitPointer &next_packet_start,
-		 unsigned type = PT_DYNAMIC) ;
+      bool split(const BitPointer& next_packet_start, unsigned type = PT_DYNAMIC) ;
+
+      static DeflatePacketDesc* push(Fr::CFile& fp, DeflatePacketDesc* packets)
+	 {
+	    auto p = new DeflatePacketDesc(fp) ;
+	    p->setNext(packets) ;
+	    packets = p ;
+	    return packets ;
+	 }
 
       // I/O
       bool read(class Fr::CFile& infp) ;

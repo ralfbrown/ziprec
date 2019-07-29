@@ -217,9 +217,7 @@ ostream &operator << (ostream &out, const DecodedByte &wc)
 /*	Scoring functions						*/
 /************************************************************************/
 
-static double replacement_confidence(unsigned wildcard,
-				     ScoreCollection *scores,
-				     double context_ratio)
+static double replacement_confidence(unsigned wildcard, ScoreCollection* scores, double context_ratio)
 {
    double topscore = scores->highest(wildcard) ;
    if (topscore <= 0.0)
@@ -1010,16 +1008,14 @@ static bool infer_replacement(DecodeBuffer &decode_buffer,
       conf -= 8 * iteration ;
    else
       conf = 1 ;
-   decode_buffer.setReplacement(wildcard,scores->indexOfHighest(wildcard),
-				(unsigned)conf) ;
+   decode_buffer.setReplacement(wildcard,scores->indexOfHighest(wildcard),(unsigned)conf) ;
    active_wildcards->append(wildcard) ;
    return true ;
 }
 
 //----------------------------------------------------------------------
 
-static double compute_context_ratio(double context_count,
-				    uint32_t wc_count)
+static double compute_context_ratio(double context_count, uint32_t wc_count)
 {
    if (wc_count == 0)
       wc_count = 1 ;
@@ -1031,10 +1027,8 @@ static double compute_context_ratio(double context_count,
 
 //----------------------------------------------------------------------
 
-static bool can_infer_replacements(DecodeBuffer &decode_buffer,
-				   ScoreCollection *scores,
-				   WildcardList *active_wildcards,
-				   const WildcardCounts *context_counts,
+static bool can_infer_replacements(DecodeBuffer& decode_buffer, ScoreCollection* scores,
+				   WildcardList* active_wildcards, const WildcardCounts* context_counts,
 				   unsigned iteration)
 {
    PROGRESS2("     -> finding highest-scoring wildcards\n") ;
@@ -1064,7 +1058,6 @@ static bool can_infer_replacements(DecodeBuffer &decode_buffer,
       conf_scores->sort(WILDCARD_SCORE_CUTOFF) ;
       if (conf_scores->score(0) > 0.0)
 	 {
-//cerr<<"best conf="<<conf_scores->score(0)<<endl;
 	 for (size_t i = 0 ; i < conf_scores->numLanguages() ; i++)
 	    {
 	    unsigned wild = conf_scores->languageNumber(i) ;
@@ -1076,8 +1069,7 @@ static bool can_infer_replacements(DecodeBuffer &decode_buffer,
       }
    if (num_replaced && verbosity > VERBOSITY_PACKETS)
       {
-      fprintf(stderr,"      replaced %lu wildcards\n",
-	      (unsigned long)num_replaced) ;
+      fprintf(stderr,"      replaced %lu wildcards\n",(unsigned long)num_replaced) ;
       }
    ADD_TIME(timer,time_reconst_infer) ;
    return num_replaced > 0 ;

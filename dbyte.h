@@ -110,27 +110,11 @@ class DecodeBuffer ;
 
 class DecodedByte
    {
-   private:
-      // we use 24 bits in the file, but there is no convenient standard
-      //  type of that size, so use 32 bits in RAM
-      uint32_t m_byte_or_pointer ;
-      static ByteType s_prev_bytetype ;
-      static const ByteType s_confidence_to_type[] ;
-      static size_t s_total_bytes ;	// statistics for WFMT_Listing
-      static size_t s_known_bytes ;
-      static size_t s_original_size ;
-      static uint64_t s_global_total_bytes ;
-      static uint64_t s_global_known_bytes ;
-      static uint64_t s_global_original_size ;
-   protected:
-      ByteType byteType_raw() const
-	 { return s_confidence_to_type[DBYTE_LIT_TYPE(m_byte_or_pointer)] ; }
-      ByteType prevByteType() const { return s_prev_bytetype ; }
-      static void prevByteType(ByteType bt) { s_prev_bytetype = bt ; }
    public:
       DecodedByte(const DecodedByte &orig)
 	 { m_byte_or_pointer = orig.m_byte_or_pointer ; }
       DecodedByte(uint8_t byte) { setByteValue(byte) ; }
+      DecodedByte(Fr::CFile& fp) { read(fp) ; }
       DecodedByte() { m_byte_or_pointer = 0 ; }
       ~DecodedByte() {}
 
@@ -203,6 +187,25 @@ class DecodedByte
       static bool writeMessage(WriteFormat, Fr::CFile&, const char* msg) ;
       static bool writeFooter(WriteFormat, Fr::CFile&, const char* filename,
 			      bool test_mode = false, DecodeBuffer* dbuf = nullptr) ;
+
+   protected:
+      ByteType byteType_raw() const
+	 { return s_confidence_to_type[DBYTE_LIT_TYPE(m_byte_or_pointer)] ; }
+      ByteType prevByteType() const { return s_prev_bytetype ; }
+      static void prevByteType(ByteType bt) { s_prev_bytetype = bt ; }
+
+   private:
+      // we use 24 bits in the file, but there is no convenient standard
+      //  type of that size, so use 32 bits in RAM
+      uint32_t m_byte_or_pointer ;
+      static ByteType s_prev_bytetype ;
+      static const ByteType s_confidence_to_type[] ;
+      static size_t s_total_bytes ;	// statistics for WFMT_Listing
+      static size_t s_known_bytes ;
+      static size_t s_original_size ;
+      static uint64_t s_global_total_bytes ;
+      static uint64_t s_global_known_bytes ;
+      static uint64_t s_global_original_size ;
    } ;
 
 #endif /* !__DBYTE_H_INCLUDED */
