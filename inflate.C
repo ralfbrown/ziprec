@@ -1417,9 +1417,7 @@ static bool decompress_packet(DecodeBuffer* decode_buffer, const DeflatePacketDe
 
 //----------------------------------------------------------------------
 
-static BitPointer resynchronize(BitPointer &str_pos,
-				const BitPointer &packet_end,
-				const HuffSymbolTable *symtab,
+static BitPointer resynchronize(BitPointer& str_pos, const BitPointer& packet_end, const HuffSymbolTable* symtab,
 				bool deflate64)
 {
 //symtab->dump();
@@ -1455,11 +1453,8 @@ static BitPointer resynchronize(BitPointer &str_pos,
 	    }
 	 if (new_pos < positions[new_loc])
 	    {
-	    for (size_t i = 1 ; i < new_loc ; i++)
-	       {
-	       positions[i-1] = positions[i] ;
-	       }
 	    new_loc-- ;
+	    std::copy_n(positions+1,new_loc,positions) ;
 	    positions[new_loc] = new_pos ;
 	    inserted = true ;
 	    }
@@ -1467,10 +1462,7 @@ static BitPointer resynchronize(BitPointer &str_pos,
       if (!inserted)
 	 {
 	 // move all remaining candidates down
-	 for (size_t i = 1 ; i <= num_positions ; i++)
-	    {
-	    positions[i-1] = positions[i] ;
-	    }
+	 std::copy_n(positions+1,num_positions,positions) ;
 	 num_positions-- ;
 	 }
       }
@@ -1478,8 +1470,7 @@ static BitPointer resynchronize(BitPointer &str_pos,
       {
       unsigned bytes = positions[0].bytePointer() - str_pos.bytePointer() ;
       unsigned bits = positions[0].bitNumber() ;
-      fprintf(stderr,"DEFLATE stream re-converges after %u.%u bytes\n",
-	      bytes,bits) ;
+      fprintf(stderr,"DEFLATE stream re-converges after %u.%u bytes\n", bytes,bits) ;
       }
    return positions[0] ;
 }
