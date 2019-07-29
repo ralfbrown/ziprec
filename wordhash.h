@@ -41,8 +41,6 @@
 //   the code
 class WordCharacter : public DecodedByte
    {
-   private:
-      // no additional members
    public:
       WordCharacter() : DecodedByte() {}
       WordCharacter(const WordCharacter &orig) : DecodedByte(orig) {}
@@ -58,6 +56,9 @@ class WordCharacter : public DecodedByte
 	 { return originalLocation() == other.originalLocation() ; }
       bool operator != (const WordCharacter &other) const
 	 { return originalLocation() != other.originalLocation() ; }
+
+   private:
+      // no additional data members
    } ;
 
 //----------------------------------------------------------------------
@@ -65,7 +66,7 @@ class WordCharacter : public DecodedByte
 class WordString
    {
    public:
-      WordString() ;
+      WordString() = default ;
       WordString(const WordString *) ;
       WordString(const WordString *, WordCharacter, const WordString *) ;
       WordString(const WordString *, const WordString *, const WordString *) ;
@@ -73,7 +74,7 @@ class WordString
       WordString(const WordString &, bool add_sentinels) ;
       WordString(const uint8_t *word, unsigned length) ;
       WordString(const WordCharacter *word, unsigned length) ;
-      ~WordString() ;
+      ~WordString() = default ;
 
       // accessors
       bool hasWildcards() const { return m_wildcards ; }
@@ -102,10 +103,10 @@ class WordString
 
    private:
       Fr::NewPtr<WordCharacter> m_chars ;
-      size_t	     m_frequency ;
-      unsigned       m_length ;
-      bool	     m_wildcards ;
-      bool	     m_userflag ;
+      size_t	     m_frequency { 0 } ;
+      unsigned       m_length { 0 } ;
+      bool	     m_wildcards { false } ;
+      bool	     m_userflag { false } ;
    } ;
 
 //----------------------------------------------------------------------

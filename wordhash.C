@@ -29,16 +29,8 @@
 /*	Methods for class WordString					*/
 /************************************************************************/
 
-WordString::WordString()
-{
-   initClear() ;
-}
-
-//----------------------------------------------------------------------
-
 WordString::WordString(const uint8_t* word, unsigned length)
 {
-   initClear() ;
    if (word && length > 0)
       {
       m_chars.allocate(length) ;
@@ -59,7 +51,6 @@ WordString::WordString(const uint8_t* word, unsigned length)
 
 WordString::WordString(const WordCharacter* word, unsigned length)
 {
-   initClear() ;
    if (word && length > 0)
       {
       m_chars.allocate(length) ;
@@ -99,8 +90,6 @@ WordString::WordString(const WordString *orig)
 	 m_length = 0 ;
 	 }
       }
-   else
-      initClear() ;
    return ;
 }
 
@@ -128,8 +117,6 @@ WordString::WordString(const WordString *first, WordCharacter separator, const W
 	 m_length = 0 ;
 	 }
       }
-   else
-      initClear() ;
    return ;
 }
 
@@ -158,8 +145,6 @@ WordString::WordString(const WordString *first, const WordString *second, const 
 	 m_length = 0 ;
 	 }
       }
-   else
-      initClear() ;
    return ;
 }
 
@@ -223,26 +208,6 @@ WordString::WordString(const WordString &orig, bool add_sentinels)
       {
       m_length = 0 ;
       }
-   return ;
-}
-
-//----------------------------------------------------------------------
-
-void WordString::initClear()
-{
-   m_chars = nullptr ;
-   m_frequency = 0 ;
-   m_length = 0 ;
-   m_wildcards = false ;
-   m_userflag = false ;
-   return ;
-}
-
-//----------------------------------------------------------------------
-
-WordString::~WordString()
-{
-   m_length = 0 ;
    return ;
 }
 
