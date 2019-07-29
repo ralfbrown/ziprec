@@ -755,8 +755,6 @@ bool SearchTrie::insert(HuffmanHypothesis *hyp)
    if (!m_trie)
       {
       m_trie = new SearchTrieNode ;
-      if (!m_trie)
-	 return false ;
       }
    uint32_t hashcode = hyp->hashCode() ;
    SearchTrieNode *node = m_trie ;
@@ -797,12 +795,9 @@ bool SearchTrie::remove(HuffmanHypothesis *hyp)
       unsigned index = (hashcode >> (i * BITS_PER_LEVEL)) & TRIE_MASK ;
       path[i] = node ;
       path_index[i] = index ;
-      SearchTrieNode *child = node->child(index) ;
+      auto child = node->child(index) ;
       if (!child)
-	 {
-	 child = new SearchTrieNode ;
-	 node->setChild(index,child) ;
-	 }
+	 return false ;			// key not in trie, so no hypotheses
       node = child ;
       }
    // try to find the hypothesis in the list hanging off the leaf node
