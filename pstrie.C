@@ -648,11 +648,6 @@ uint32_t LangIDPackedTrie::allocateChildNodes(unsigned numchildren)
 cerr<<"out of full nodes"<<endl;
       return NOCHILD_INDEX ;		// error!  should never happen!
       }
-   // initialize each of the new children
-   for (size_t i = 0 ; i < numchildren ; i++)
-      {
-      new (m_nodes.at(index + i)) PackedSimpleTrieNode ;
-      }
    return index ;
 }
 
@@ -668,7 +663,7 @@ uint32_t LangIDPackedTrie::allocateTerminalNodes(unsigned numchildren)
 cerr<<"out of terminal nodes"<<endl;
       return NOCHILD_INDEX ;		// error!  should never happen!
       }
-   // initialize each of the new children
+   // initialize each of the just-allocated children
    for (size_t i = 0 ; i < numchildren ; i++)
       {
       m_terminals.at(index + i)->reinit() ;
