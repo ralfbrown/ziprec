@@ -271,15 +271,12 @@ Owned<HuffSymbolTable> HuffSymbolTable::build(BitPointer& pos, const BitPointer&
       }
    // now convert the two sets of bit lengths into Huffman trees for literal
    //   and distance codes
-   auto symtab = new HuffSymbolTable(deflate64) ;
-   if (symtab)
-      {
-      symtab->setLengthTable(&lit_lengths) ;
-      symtab->buildHuffmanTree() ;
-      symtab->setLengthTable(&dist_lengths) ;
-      symtab->buildHuffmanTree(true) ;
-      symtab->setLengthTable(nullptr) ; // don't leave dangling pointer
-      }
+   Owned<HuffSymbolTable> symtab(deflate64) ;
+   symtab->setLengthTable(&lit_lengths) ;
+   symtab->buildHuffmanTree() ;
+   symtab->setLengthTable(&dist_lengths) ;
+   symtab->buildHuffmanTree(true) ;
+   symtab->setLengthTable(nullptr) ; // don't leave dangling pointer
    return symtab ;
 }
 
