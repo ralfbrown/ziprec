@@ -135,12 +135,14 @@ class PackedSimpleTrieNode
       void setPopCounts() ;
 
    private:
+      static constexpr unsigned M_CHILDREN_BITS = sizeof(Fr::UInt64) * 8 ;
+      static constexpr unsigned LENGTHOF_M_CHILDREN = (PTRIE_CHILDREN_PER_NODE / M_CHILDREN_BITS) ;
+
+   private:
+      Fr::UInt64 m_children[LENGTHOF_M_CHILDREN] ;
       Fr::UInt32 m_frequency ;
       Fr::UInt32 m_firstchild ;
-#define LENGTHOF_M_CHILDREN (PTRIE_CHILDREN_PER_NODE / sizeof(Fr::UInt32) / 8)
-      Fr::UInt32 m_children[LENGTHOF_M_CHILDREN] ;
       uint8_t	 m_popcounts[LENGTHOF_M_CHILDREN] ;
-#undef LENGTHOF_M_CHILDREN
    } ;
 
 //----------------------------------------------------------------------

@@ -106,8 +106,7 @@ class WildcardCollection
       void removeAll() ;
       void removeFromAll(uint8_t value) ;
       void allowAllIfEmpty() ;
-      void copy(const WildcardCollection *source,
-		bool allow_all_if_empty = false) ;
+      void copy(const WildcardCollection* source, bool allow_all_if_empty = false) ;
 
    private:
       Fr::NewPtr<WildcardSet> m_wildcards ;

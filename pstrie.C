@@ -5,7 +5,7 @@
 /*									*/
 /*  File: pstrie.C - packed simple Word-frequency trie			*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-26						*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
 /*  (c) Copyright 2012,2013,2015,2019 Ralf Brown/CMU			*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -142,8 +142,8 @@ bool PackedSimpleTrieNode::childPresent(unsigned int N) const
 {
    if (N >= PTRIE_CHILDREN_PER_NODE)
       return false ;
-   uint32_t children = m_children[N/32].load() ;
-   uint32_t mask = (1U << (N % 32)) ;
+   uint64_t children = m_children[N / M_CHILDREN_BITS].load() ;
+   uint64_t mask = (1U << (N % M_CHILDREN_BITS)) ;
    return (children & mask) != 0 ;
 }
 
@@ -153,9 +153,9 @@ uint32_t PackedSimpleTrieNode::childIndex(unsigned int N) const
 {
    if (N >= PTRIE_CHILDREN_PER_NODE)
       return LangIDPackedTrie::NULL_INDEX ;
-   uint32_t mask = (1U << (N % 32)) - 1 ;
-   uint32_t children = m_children[N/32].load() ;
-   return (firstChild() + m_popcounts[N/32] + popcount(children & mask)) ;
+   uint64_t mask = (1U << (N % M_CHILDREN_BITS)) - 1 ;
+   uint64_t children = m_children[N / M_CHILDREN_BITS].load() ;
+   return (firstChild() + m_popcounts[N / M_CHILDREN_BITS] + popcount(children & mask)) ;
 }
 
 //----------------------------------------------------------------------
@@ -164,12 +164,12 @@ uint32_t PackedSimpleTrieNode::childIndexIfPresent(unsigned int N) const
 {
    if (N >= PTRIE_CHILDREN_PER_NODE)
       return LangIDPackedTrie::NULL_INDEX ;
-   uint32_t mask = (1U << (N % 32)) ;
-   uint32_t children = m_children[N/32].load() ;
+   uint64_t mask = (1U << (N % M_CHILDREN_BITS)) ;
+   uint64_t children = m_children[N / M_CHILDREN_BITS].load() ;
    if ((children & mask) == 0)
       return LangIDPackedTrie::NULL_INDEX ;
    mask-- ;
-   return (firstChild() + m_popcounts[N/32] + popcount(children & mask)) ;
+   return (firstChild() + m_popcounts[N / M_CHILDREN_BITS] + popcount(children & mask)) ;
 }
 
 //----------------------------------------------------------------------
@@ -177,14 +177,8 @@ uint32_t PackedSimpleTrieNode::childIndexIfPresent(unsigned int N) const
 PackedSimpleTrieNode* PackedSimpleTrieNode::childNodeIfPresent(unsigned int N, const LangIDPackedTrie *trie)
    const
 {
-   if (N >= PTRIE_CHILDREN_PER_NODE)
-      return nullptr ;
-   uint32_t mask = (1U << (N % 32)) ;
-   uint32_t children = m_children[N/32].load() ;
-   if ((children & mask) == 0)
-      return nullptr ;
-   mask-- ;
-   return trie->node(firstChild() + m_popcounts[N/32] + popcount(children & mask)) ;
+   uint32_t index = childIndexIfPresent(N) ;
+   return index != LangIDPackedTrie::NULL_INDEX ? trie->node(index) : nullptr ;
 }
 
 //----------------------------------------------------------------------
@@ -193,8 +187,8 @@ void PackedSimpleTrieNode::setChild(unsigned N)
 {
    if (N < PTRIE_CHILDREN_PER_NODE)
       {
-      uint32_t mask = (1U << (N % 32)) ;
-      m_children[N/32] |= mask ;
+      uint64_t mask = (1U << (N % M_CHILDREN_BITS)) ;
+      m_children[N / M_CHILDREN_BITS] |= mask ;
       }
    return ;
 }
@@ -208,8 +202,7 @@ void PackedSimpleTrieNode::setPopCounts()
    for (size_t i = 0 ; i < lengthof(m_popcounts) ; i++)
       {
       m_popcounts[i] = (uint8_t)pcount ;
-      uint32_t children = m_children[i].load() ;
-      pcount += popcount(children) ;
+      pcount += popcount(m_children[i].load()) ;
       }
    return ;
 }
@@ -221,10 +214,10 @@ bool PackedSimpleTrieNode::nextFrequencies(const LangIDPackedTrie* trie, uint32_
    if (!frequencies || trie->terminalNode(this))
       return false ;
    uint32_t child = firstChild() ;
-   for (size_t N = 0 ; N < PTRIE_CHILDREN_PER_NODE / 32 ; N++)
+   for (size_t N = 0 ; N < lengthof(m_children) ; N++)
       {
-      uint32_t children = m_children[N].load() ;
-      unsigned i = 32 ;
+      uint64_t children = m_children[N].load() ;
+      unsigned i = 64 ;
       while (children)
 	 {
 	 *frequencies++ = (children&1) ? trie->node(child++)->frequency() : 0 ;
@@ -249,10 +242,10 @@ bool PackedSimpleTrieNode::addToScores(const LangIDPackedTrie* trie, float* scor
 //   if (trie->terminalNode(this))
 //      return false ;
    uint32_t child = firstChild() ;
-   for (size_t N = 0 ; N < PTRIE_CHILDREN_PER_NODE / 32 ; N++)
+   for (size_t N = 0 ; N < lengthof(m_children) ; N++)
       {
-      uint32_t children = m_children[N].load() ;
-      unsigned i = 32 ;
+      uint64_t children = m_children[N].load() ;
+      unsigned i = 64 ;
       while (children)
 	 {
 	 if ((children & 1) != 0)
@@ -280,10 +273,10 @@ bool PackedSimpleTrieNode::addToScores(const LangIDPackedTrie* trie, double* sco
 //   if (trie->terminalNode(this))
 //      return false ;
    uint32_t child = firstChild() ;
-   for (size_t N = 0 ; N < PTRIE_CHILDREN_PER_NODE / 32 ; N++)
+   for (size_t N = 0 ; N < lengthof(m_children) ; N++)
       {
-      uint32_t children = m_children[N].load() ;
-      unsigned i = 32 ;
+      uint64_t children = m_children[N].load() ;
+      unsigned i = 64 ;
       while (children)
 	 {
 	 if ((children & 1) != 0)
@@ -319,14 +312,14 @@ unsigned PackedSimpleTrieNode::countMatches(const LangIDPackedTrie *trie,
       // we have a wildcard, so scan all the possibilities
       unsigned matches = 0 ;
       uint32_t child = firstChild() ;
-      for (size_t N = 0 ; N < PTRIE_CHILDREN_PER_NODE ; N += 32)
+      for (size_t N = 0 ; N < lengthof(m_children) ; ++N)
 	 {
-	 uint32_t children = m_children[N/32].load() ;
+	 uint64_t children = m_children[N].load() ;
 	 for (size_t i = 0 ; children ; i++)
 	    {
 	    if ((children & 1) != 0)
 	       {
-	       if (alternatives[0]->contains(N+i))
+	       if (alternatives[0]->contains(N*M_CHILDREN_BITS+i))
 		  {
 		  PackedSimpleTrieNode *childnode = trie->node(child) ;
 		  if (!childnode)
@@ -371,19 +364,19 @@ bool PackedSimpleTrieNode::enumerateMatches(const LangIDPackedTrie* trie, uint8_
       {
       // we have a wildcard, so enumerate the possibilities
       uint32_t child = firstChild() ;
-      for (size_t N = 0 ; N < PTRIE_CHILDREN_PER_NODE ; N += 32)
+      for (size_t N = 0 ; N < lengthof(m_children) ; ++N)
 	 {
-	 uint32_t children = m_children[N/32].load() ;
+	 uint64_t children = m_children[N].load() ;
 	 for (size_t i = 0 ; children ; i++)
 	    {
 	    if ((children & 1) != 0)
 	       {
-	       if (alternatives[curr_keylength]->contains(N+i))
+	       unsigned index = N * M_CHILDREN_BITS + i ;
+	       if (alternatives[curr_keylength]->contains(index))
 		  {
 		  PackedSimpleTrieNode *childnode = trie->node(child) ;
-		  keybuf[curr_keylength] = (uint8_t)(N + i) ;
-		  if (!childnode->enumerateMatches(trie,keybuf,max_keylength,
-						   curr_keylength+1,alternatives,
+		  keybuf[curr_keylength] = (uint8_t)index ;
+		  if (!childnode->enumerateMatches(trie,keybuf,max_keylength,curr_keylength+1,alternatives,
 						   fn,user_data))
 		     return false ;
 		  }
@@ -423,9 +416,9 @@ bool PackedSimpleTrieNode::enumerateChildren(const LangIDPackedTrie* trie, uint8
       {
       unsigned curr_bits = curr_keylength_bits + PTRIE_BITS_PER_LEVEL ;
       uint32_t child = firstChild() ;
-      for (size_t N = 0 ; N < PTRIE_CHILDREN_PER_NODE ; N += 32)
+      for (size_t N = 0 ; N < lengthof(m_children) ; ++N)
 	 {
-	 uint32_t children = m_children[N/32].load() ;
+	 uint64_t children = m_children[N].load() ;
 	 for (size_t i = 0 ; children ; i++)
 	    {
 	    if ((children & 1) != 0)
@@ -434,7 +427,7 @@ bool PackedSimpleTrieNode::enumerateChildren(const LangIDPackedTrie* trie, uint8
 	       if (childnode)
 		  {
 		  unsigned byte = curr_keylength_bits / 8 ;
-		  keybuf[byte] = i ;
+		  keybuf[byte] = N * M_CHILDREN_BITS + i ;
 		  if (!childnode->enumerateChildren(trie,keybuf, max_keylength_bits, curr_bits,fn,user_data))
 		     return false ;
 		  }
@@ -471,17 +464,18 @@ unsigned PackedSimpleTrieNode::enumerateMatches(const EnumerationInfo *info,
       uint32_t child = firstChild() ;
       if (trie->isTerminalNode(child))
 	 {
-	 for (size_t N = 0 ; N < PTRIE_CHILDREN_PER_NODE ; N += 32)
+	 for (size_t N = 0 ; N < lengthof(m_children) ; ++N)
 	    {
-	    uint32_t children = m_children[N/32].load() ;
+	    uint64_t children = m_children[N].load() ;
 	    for (size_t i = 0 ; children ; i++)
 	       {
 	       if ((children & 1) != 0)
 		  {
-		  if (alternative->contains(N+i))
+		  unsigned index = N * M_CHILDREN_BITS + i ;
+		  if (alternative->contains(index))
 		     {
 		     PackedSimpleTrieNode *childnode = trie->getTerminalNode(child) ;
-		     info->key[keylen] = (uint8_t)(N+i) ;
+		     info->key[keylen] = (uint8_t)index ;
 		     count += childnode->enumerateMatches(info,keylen+1) ;
 		     if (count > info->max_matches)
 			return count ;
@@ -494,17 +488,18 @@ unsigned PackedSimpleTrieNode::enumerateMatches(const EnumerationInfo *info,
 	 }
       else
 	 {
-	 for (size_t N = 0 ; N < PTRIE_CHILDREN_PER_NODE ; N += 32)
+	 for (size_t N = 0 ; N < lengthof(m_children) ; ++N)
 	    {
-	    uint32_t children = m_children[N/32].load() ;
+	    uint64_t children = m_children[N].load() ;
 	    for (size_t i = 0 ; children ; i++)
 	       {
 	       if ((children & 1) != 0)
 		  {
-		  if (alternative->contains(N+i))
+		  unsigned index = N * M_CHILDREN_BITS + i ;
+		  if (alternative->contains(index))
 		     {
 		     PackedSimpleTrieNode *childnode = trie->getFullNode(child) ;
-		     info->key[keylen] = (uint8_t)(N+i) ;
+		     info->key[keylen] = (uint8_t)index ;
 		     count += childnode->enumerateMatches(info,keylen+1) ;
 		     if (count > info->max_matches)
 			return count ;
@@ -521,13 +516,12 @@ unsigned PackedSimpleTrieNode::enumerateMatches(const EnumerationInfo *info,
       {
       // the current key byte must match
       uint8_t N = info->key[keylen] ;
-      uint32_t mask = (1U << (N % 32)) ;
-      uint32_t children = m_children[N/32].load() ;
+      uint64_t mask = (1U << (N % M_CHILDREN_BITS)) ;
+      uint64_t children = m_children[N / M_CHILDREN_BITS].load() ;
       if ((children & mask) != 0)
 	 {
 	 children &= (mask-1) ;
-	 PackedSimpleTrieNode *childnode
-	    = trie->node(firstChild() + m_popcounts[N/32] + popcount(children)) ;
+	 auto childnode = trie->node(firstChild() + m_popcounts[N % M_CHILDREN_BITS] + popcount(children)) ;
 	 return childnode->enumerateMatches(info,keylen+1) ;
 	 }
       return 0 ;
