@@ -27,7 +27,6 @@
 #include <climits>
 #include <iomanip>
 #include "bits.h"
-#include "huffman.h"
 #include "inflate.h"
 #include "partial.h"
 #include "symtab.h"

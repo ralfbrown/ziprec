@@ -713,8 +713,7 @@ static bool is_last_packet(const BitPointer &header)
 
 //----------------------------------------------------------------------
 
-bool valid_packet_header(const char *buffer, bool deflate64,
-			 bool allow_fixedHuff)
+bool valid_packet_header(const char* buffer, bool deflate64, bool allow_fixedHuff)
 {
    BitPointer pos(buffer) ;
    uint32_t hdr = pos.getBits(PACKHDR_SIZE) ;
@@ -729,7 +728,7 @@ bool valid_packet_header(const char *buffer, bool deflate64,
       case PT_DYNAMIC:
          {
 	 pos.advance(PACKHDR_SIZE) ;	// skip the packet header
-	 return valid_symbol_table_header(pos,deflate64) ;
+	 return HuffSymbolTable::validHeader(pos,deflate64) ;
 	 }
       default:
 	 return false ;
@@ -738,11 +737,8 @@ bool valid_packet_header(const char *buffer, bool deflate64,
 
 //----------------------------------------------------------------------
 
-static bool valid_packet(const BitPointer &pos,
-			 const BitPointer &str_start,
-			 const BitPointer &str_end,
-			 bool final_packet, bool exact_bit,
-			 bool deflate64)
+static bool valid_packet(const BitPointer& pos, const BitPointer& str_start, const BitPointer& str_end,
+			 bool final_packet, bool exact_bit, bool deflate64)
 {
    uint32_t hdr = pos.getBits(PACKHDR_SIZE) ;
    uint32_t is_last = hdr & PACKHDR_LAST_MASK ;

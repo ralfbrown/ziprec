@@ -60,6 +60,9 @@ class HuffSymbolTable
       bool iterateCodeTree(HuffmanTreeIterFn *fn, void *user_data) const ;
       bool iterateDistTree(HuffmanTreeIterFn *fn, void *user_data) const ;
 
+      // validation
+      static bool validHeader(BitPointer& pos, bool deflate64) ;
+
       // debugging support
       void dump() const ;
 
@@ -74,11 +77,5 @@ class HuffSymbolTable
 
 /************************************************************************/
 /************************************************************************/
-
-bool valid_symbol_table_header(BitPointer &pos, bool deflate64) ;
-
-bool decode_bit_lengths(unsigned lit_count, HuffmanLengthTable& lit_lengths,
-			unsigned dist_count, HuffmanLengthTable& dist_lengths,
-			const HuffSymbolTable* bit_tab, BitPointer& pos, const BitPointer& str_end) ;
 
 // end of file symtab.h //

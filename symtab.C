@@ -5,7 +5,7 @@
 /*									*/
 /*  File: symtab.h - DEFLATE symbol tables				*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-26						*/
+/*  LastEdit: 2019-07-28						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -23,9 +23,9 @@
 /*                                                                      */
 /************************************************************************/
 
+#include "global.h"
 #include "inflate.h"
 #include "symtab.h"
-#include "global.h"
 
 using namespace Fr ;
 
@@ -83,6 +83,109 @@ static const unsigned length_index[] =
 /************************************************************************/
 
 Fr::SmallAlloc* HuffSymbolTable::allocator = Fr::SmallAlloc::create(sizeof(HuffSymbolTable)) ;
+
+/************************************************************************/
+/*	Helper functions						*/
+/************************************************************************/
+
+bool decode_bit_lengths(unsigned lit_count,
+			HuffmanLengthTable &lit_lengths,
+			unsigned dist_count,
+			HuffmanLengthTable &dist_lengths,
+			const HuffSymbolTable *bit_tab,
+			BitPointer &pos, const BitPointer &str_end)
+{
+   HuffmanLengthTable *lengths = &lit_lengths ;
+   HuffSymbol prev_length = 0 ;
+   unsigned count = lit_count + dist_count ;
+   unsigned adj = 0 ;
+   for (size_t i = 0 ; i < count ; )
+      {
+      //decode bit length
+      HuffSymbol bit_length ;
+      if (!bit_tab->nextSymbol(pos,str_end,bit_length))
+	 {
+	 return false ;  // ran out of data or invalid symbol
+	 }
+      if (bit_length > 18)
+	 {
+#if !defined(NDEBUG)
+	 if (verbosity > VERBOSITY_SEARCH)
+	    fprintf(stderr,"decode_bit_lengths: invalid length code %u\n",
+		    bit_length) ;
+#endif /* !NDEBUG */
+	 return false ; // invalid data!
+	 }
+      unsigned copy_count ;
+      unsigned len ;
+      if (bit_length < 16)
+	 {
+	 prev_length = len = bit_length ;
+	 copy_count = 1 ;
+	 }
+      else if (bit_length == 16)
+	 {
+	 if (i == 0)
+	    return false ;  // invalid data -- no previous length to copy!
+	 copy_count = 3 + pos.nextBits(2) ;
+	 len = prev_length ;
+	 }
+      else if (bit_length == 17)
+	 {
+	 copy_count = 3 + pos.nextBits(3) ;
+	 len = 0 ;
+	 }
+      else // bit_length == 18
+	 {
+	 copy_count = 11 + pos.nextBits(7) ;
+	 len = 0 ;
+	 }
+      for ( ; copy_count > 0 && i < count ; copy_count--)
+	 {
+	 if (i == END_OF_DATA && len == 0)
+	    {
+	    return false ;
+	    }
+#if !defined(NDEBUG) && defined(DEBUG)
+	 if (verbosity > VERBOSITY_SEARCH)
+	    {
+	    fprintf(stderr," %u:%u",(unsigned)(i-adj),len) ;
+	    if (i % 8 == 7) fprintf(stderr,"\n") ;
+	    }
+#endif /* !NDEBUG && DEBUG */
+	 lengths->addSymbol(i++ - adj,len) ;
+	 // the two sets of bit lengths are treated as contiguous, allowing
+	 //   copy instructions to span the boundary, so we need to switch
+	 //   from code to distance values once we've filled in all the
+	 //   code lengths
+	 if (i >= lit_count && adj == 0)
+	    {
+	    adj = lit_count ;
+	    lengths = &dist_lengths ;
+	    }
+	 }
+      if (copy_count > 0)
+	 {
+	 return false ; // invalid data -- too many bit lengths
+	 }
+      if (lit_lengths.count(0) == lit_count ||
+	  (dist_count > 1 && dist_lengths.count(0) == dist_count))
+	 {
+	 // table is all zeros, which is not allowed
+	 return false ;
+	 }
+      }
+#if !defined(NDEBUG)
+   if (verbosity > VERBOSITY_SEARCH)
+      {
+#if DEBUG
+      fprintf(stderr,"\n") ;
+#endif /* DEBUG */
+      fprintf(stderr,"successfully decoded bit lengths\n") ;
+      }
+#endif /* !NDEBUG */
+   return true ;
+}
 
 /************************************************************************/
 /*	Methods for class HuffSymbolTable				*/
@@ -408,140 +511,7 @@ bool HuffSymbolTable::buildHuffmanTree(bool build_distance_tree)
 
 //----------------------------------------------------------------------
 
-bool HuffSymbolTable::iterateCodeTree(HuffmanTreeIterFn *fn, void *udata) const
-{
-   return m_codetree ? m_codetree->iterate(fn,udata) : false ;
-}
-
-//----------------------------------------------------------------------
-
-bool HuffSymbolTable::iterateDistTree(HuffmanTreeIterFn *fn, void *udata) const
-{
-   return m_distancetree ? m_distancetree->iterate(fn,udata) : false ;
-}
-
-//----------------------------------------------------------------------
-
-void HuffSymbolTable::dump() const
-{
-   if (m_codetree)
-      {
-      cerr << "SymbolTable -- literal/length tree:" << endl ;
-      m_codetree->dump() ;
-      }
-   if (m_distancetree)
-      {
-      cerr << "SymbolTable -- distance tree:" << endl ;
-      m_distancetree->dump() ;
-      }
-   return ;
-}
-
-/************************************************************************/
-/************************************************************************/
-
-bool decode_bit_lengths(unsigned lit_count,
-			HuffmanLengthTable &lit_lengths,
-			unsigned dist_count,
-			HuffmanLengthTable &dist_lengths,
-			const HuffSymbolTable *bit_tab,
-			BitPointer &pos, const BitPointer &str_end)
-{
-   HuffmanLengthTable *lengths = &lit_lengths ;
-   HuffSymbol prev_length = 0 ;
-   unsigned count = lit_count + dist_count ;
-   unsigned adj = 0 ;
-   for (size_t i = 0 ; i < count ; )
-      {
-      //decode bit length
-      HuffSymbol bit_length ;
-      if (!bit_tab->nextSymbol(pos,str_end,bit_length))
-	 {
-	 return false ;  // ran out of data or invalid symbol
-	 }
-      if (bit_length > 18)
-	 {
-#if !defined(NDEBUG)
-	 if (verbosity > VERBOSITY_SEARCH)
-	    fprintf(stderr,"decode_bit_lengths: invalid length code %u\n",
-		    bit_length) ;
-#endif /* !NDEBUG */
-	 return false ; // invalid data!
-	 }
-      unsigned copy_count ;
-      unsigned len ;
-      if (bit_length < 16)
-	 {
-	 prev_length = len = bit_length ;
-	 copy_count = 1 ;
-	 }
-      else if (bit_length == 16)
-	 {
-	 if (i == 0)
-	    return false ;  // invalid data -- no previous length to copy!
-	 copy_count = 3 + pos.nextBits(2) ;
-	 len = prev_length ;
-	 }
-      else if (bit_length == 17)
-	 {
-	 copy_count = 3 + pos.nextBits(3) ;
-	 len = 0 ;
-	 }
-      else // bit_length == 18
-	 {
-	 copy_count = 11 + pos.nextBits(7) ;
-	 len = 0 ;
-	 }
-      for ( ; copy_count > 0 && i < count ; copy_count--)
-	 {
-	 if (i == END_OF_DATA && len == 0)
-	    {
-	    return false ;
-	    }
-#if !defined(NDEBUG) && defined(DEBUG)
-	 if (verbosity > VERBOSITY_SEARCH)
-	    {
-	    fprintf(stderr," %u:%u",(unsigned)(i-adj),len) ;
-	    if (i % 8 == 7) fprintf(stderr,"\n") ;
-	    }
-#endif /* !NDEBUG && DEBUG */
-	 lengths->addSymbol(i++ - adj,len) ;
-	 // the two sets of bit lengths are treated as contiguous, allowing
-	 //   copy instructions to span the boundary, so we need to switch
-	 //   from code to distance values once we've filled in all the
-	 //   code lengths
-	 if (i >= lit_count && adj == 0)
-	    {
-	    adj = lit_count ;
-	    lengths = &dist_lengths ;
-	    }
-	 }
-      if (copy_count > 0)
-	 {
-	 return false ; // invalid data -- too many bit lengths
-	 }
-      if (lit_lengths.count(0) == lit_count ||
-	  (dist_count > 1 && dist_lengths.count(0) == dist_count))
-	 {
-	 // table is all zeros, which is not allowed
-	 return false ;
-	 }
-      }
-#if !defined(NDEBUG)
-   if (verbosity > VERBOSITY_SEARCH)
-      {
-#if DEBUG
-      fprintf(stderr,"\n") ;
-#endif /* DEBUG */
-      fprintf(stderr,"successfully decoded bit lengths\n") ;
-      }
-#endif /* !NDEBUG */
-   return true ;
-}
-
-//----------------------------------------------------------------------
-
-bool valid_symbol_table_header(BitPointer &pos, bool deflate64)
+bool HuffSymbolTable::validHeader(BitPointer &pos, bool deflate64)
 {
    unsigned num_lit_codes = pos.nextBits(5) + 257 ;
    if (num_lit_codes > 286 && !deflate64)
@@ -581,6 +551,37 @@ bool valid_symbol_table_header(BitPointer &pos, bool deflate64)
    bool success = decode_bit_lengths(num_lit_codes, lit_lengths, num_dist_codes, dist_lengths, &bit_tab,
 				     pos, str_end) ;
    return success ;
+}
+
+//----------------------------------------------------------------------
+
+bool HuffSymbolTable::iterateCodeTree(HuffmanTreeIterFn *fn, void *udata) const
+{
+   return m_codetree ? m_codetree->iterate(fn,udata) : false ;
+}
+
+//----------------------------------------------------------------------
+
+bool HuffSymbolTable::iterateDistTree(HuffmanTreeIterFn *fn, void *udata) const
+{
+   return m_distancetree ? m_distancetree->iterate(fn,udata) : false ;
+}
+
+//----------------------------------------------------------------------
+
+void HuffSymbolTable::dump() const
+{
+   if (m_codetree)
+      {
+      cerr << "SymbolTable -- literal/length tree:" << endl ;
+      m_codetree->dump() ;
+      }
+   if (m_distancetree)
+      {
+      cerr << "SymbolTable -- distance tree:" << endl ;
+      m_distancetree->dump() ;
+      }
+   return ;
 }
 
 // end of file symtab.C //

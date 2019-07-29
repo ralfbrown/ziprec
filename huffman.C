@@ -23,7 +23,6 @@
 /*                                                                      */
 /************************************************************************/
 
-#include "global.h"
 #include <ctype.h>
 #include <cstdlib>
 #include <cstdio>
@@ -31,6 +30,7 @@
 
 using namespace std ;
 
+#include "global.h"
 #include "huffman.h"
 
 /************************************************************************/

@@ -216,10 +216,13 @@ dbuffer.h: 	dbyte.h
 global.h: 	dbyte.h
 	touch $@
 
+huffman.h:	bits.h framepac/framepac/smartptr.h
+	touch $@
+
 index.h: 	dbyte.h
 	touch $@
 
-inflate.h: 	huffman.h
+inflate.h: 	huffman.h framepac/framepac/file.h
 	touch $@
 
 models.h: 	dbyte.h dbuffer.h pstrie.h whatlang2/langid.h
@@ -229,6 +232,9 @@ pstrie.h:	wildcard.h whatlang2/ptrie.h whatlang2/trie.h framepac/framepac/byteor
 	touch $@
 
 recover.h: 	lenmodel.h ziprec.h
+	touch $@
+
+symtab.h:	huffman.h framepac/framepac/memory.h framepac/framepac/smartptr.h
 	touch $@
 
 words.h:	wildcard.h

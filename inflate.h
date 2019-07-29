@@ -28,7 +28,6 @@
 
 #include "huffman.h"
 #include "framepac/file.h"
-#include "framepac/smartptr.h"
 
 /************************************************************************/
 /*	Manifest Constants						*/
