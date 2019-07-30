@@ -26,6 +26,7 @@
 #ifndef __PARTIAL_H_INCLUDED
 #define __PARTIAL_H_INCLUDED
 
+#include "huffman.h"
 #include "framepac/byteorder.h"
 #include "framepac/memory.h"
 #include "framepac/object.h"
@@ -62,7 +63,7 @@
 
 // definitions for HuffmanTreeHypothesis
 #define HYP_NOT_FOUND UINT_MAX
-#define CODE_HYP_BUCKET_SIZE 8
+#define CODE_HYP_BUCKET_SIZE 4
 #define CODE_HYP_BUCKETS ((LIT_SYMBOLS / CODE_HYP_BUCKET_SIZE) + 1)
 
 /************************************************************************/
@@ -136,7 +137,8 @@ class CodeHypothesis
       unsigned extraBits() const { return m_extra ; }
          // note that to support DEFLATE64, the above result needs to be
          //   passed through a lookup that converts 15 to 16
-      uint32_t hashValue() const { return (m_value.load() | 0x01000000U) ^ (m_length << 24) ^ (m_extra << 28) ; }
+      uint32_t hashValue() const { return m_value.load() ^ (m_length << 15) ^ (m_extra << 18) ; }
+         // (the above generates a 22-bit hash code)
 
       // modifiers
       void set(HuffmanCode code, unsigned length, unsigned extra)

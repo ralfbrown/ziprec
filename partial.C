@@ -96,12 +96,6 @@ using namespace Fr ;
 // how big is our index for finding duplicate HuffmanHypothesis instances?
 #define HYPOTHESIS_DIR_SIZE (1<<21)
 
-// definitions for SearchTrie and SearchTrieNode
-#define TRIE_BITS     24		// how many bits of hashcode to use
-#define BITS_PER_LEVEL 3		// trade off mem vs time
-#define TRIE_DEPTH ((TRIE_BITS + BITS_PER_LEVEL - 1) / BITS_PER_LEVEL)
-#define TRIE_MASK ((1 << BITS_PER_LEVEL) - 1)
-
 /************************************************************************/
 /*	Forward declarations						*/
 /************************************************************************/
@@ -156,37 +150,8 @@ class HuffmanTreeNode
 
 class PartialHuffmanTreeBase
    {
-   private:
-      const unsigned   *m_extrabit_successors ;
-      const unsigned   *m_extrabit_predecessors ;
-      unsigned short	m_mindepth ;
-      unsigned short	m_maxdepth ;
-      unsigned short    m_max_length_used ;
-      unsigned short    m_nodes_used ;
-      unsigned short	m_total_nodes ;
-      unsigned short    m_min_extra ;
-
-   protected:
-      HuffmanCode	m_leftmost[MAX_BITLENGTH+2] ;
-      HuffmanCode	m_rightmost[MAX_BITLENGTH+1] ;
-      uint8_t		m_extra_counts[MAX_EXTRABITS+1] ;
-   private:
-      void initLeftmost() ;
-      void initRightmost() ;
    public:
-      PartialHuffmanTreeBase(const PartialHuffmanTreeBase &orig)
-	 { m_extrabit_successors = orig.m_extrabit_successors ;
-	   m_extrabit_predecessors = orig.m_extrabit_predecessors ;
-	   m_mindepth = orig.m_mindepth ;
-	   m_maxdepth = orig.m_maxdepth ;
-	   m_max_length_used = orig.m_max_length_used ;
-	   m_nodes_used = orig.m_nodes_used ;
-	   m_total_nodes = orig.m_total_nodes ;
-	   m_min_extra = orig.m_min_extra ;
-	   memcpy(m_leftmost,orig.m_leftmost,sizeof(m_leftmost)) ;
-	   memcpy(m_rightmost,orig.m_rightmost,sizeof(m_rightmost)) ;
-	   memcpy(m_extra_counts,orig.m_extra_counts,sizeof(m_extra_counts)) ;
-	 }
+      PartialHuffmanTreeBase(const PartialHuffmanTreeBase &orig) = default ;
       PartialHuffmanTreeBase(unsigned size) ;
       ~PartialHuffmanTreeBase() { m_nodes_used = 0 ; }
 
@@ -220,6 +185,25 @@ class PartialHuffmanTreeBase
 
       // debugging support
       void dump(const HuffmanTreeNode* nodes) const ;
+
+   private:
+      void initLeftmost() ;
+      void initRightmost() ;
+
+   private:
+      const unsigned   *m_extrabit_successors ;
+      const unsigned   *m_extrabit_predecessors ;
+      unsigned short	m_mindepth ;
+      unsigned short	m_maxdepth ;
+      unsigned short    m_max_length_used ;
+      unsigned short    m_nodes_used ;
+      unsigned short	m_total_nodes ;
+      unsigned short    m_min_extra ;
+
+   protected:
+      HuffmanCode	m_leftmost[MAX_BITLENGTH+2] ;
+      HuffmanCode	m_rightmost[MAX_BITLENGTH+1] ;
+      uint8_t		m_extra_counts[MAX_EXTRABITS+1] ;
    } ;
 
 //----------------------------------------------------------------------
@@ -227,9 +211,6 @@ class PartialHuffmanTreeBase
 template <unsigned SZ>
 class PartialHuffmanTree : public PartialHuffmanTreeBase
    {
-   private:
-      HuffmanTreeNode  m_nodes[SZ] ;
-      static const uint8_t s_extrabit_limits[MAX_EXTRABITS+1] ;
    public:
       PartialHuffmanTree() : PartialHuffmanTreeBase(SZ) {}
       PartialHuffmanTree(const PartialHuffmanTree &orig) : PartialHuffmanTreeBase(orig)
@@ -249,6 +230,10 @@ class PartialHuffmanTree : public PartialHuffmanTreeBase
 
       // debugging support
       void dump() const { PartialHuffmanTreeBase::dump(m_nodes) ; }
+
+   private:
+      static const uint8_t s_extrabit_limits[MAX_EXTRABITS+1] ;
+      HuffmanTreeNode  m_nodes[SZ] ;
    } ;
 
 //----------------------------------------------------------------------
@@ -277,8 +262,6 @@ class TreeDirectory
 
 class HypothesisDirectory
    {
-   private:
-      HuffmanHypothesis *m_entries[HYPOTHESIS_DIR_SIZE] ;
    public:
       HypothesisDirectory() { memset(m_entries,'\0',sizeof(m_entries)) ; }
       ~HypothesisDirectory() {}
@@ -291,6 +274,9 @@ class HypothesisDirectory
       // modifiers
       bool insert(HuffmanHypothesis *hyp) ;
       bool remove(HuffmanHypothesis *hyp) ;
+
+   private:
+      HuffmanHypothesis *m_entries[HYPOTHESIS_DIR_SIZE] ;
    } ;
 
 //----------------------------------------------------------------------
@@ -378,58 +364,29 @@ enum HuffmanSearchMode
 
 //----------------------------------------------------------------------
 
-class SearchTrieNode
-   {
-   public:
-      void *operator new(size_t) { return allocator->allocate() ; }
-      void operator delete(void *blk) { allocator->release(blk) ; }
-      SearchTrieNode() { memset(m_children,'\0',sizeof(m_children)) ; }
-      ~SearchTrieNode() {}
-
-      // accessors
-      bool hasDescendants() const ;
-      SearchTrieNode *child(unsigned N) const { return m_children[N] ; }
-      HuffmanHypothesis *leaf(unsigned N) const { return m_leaves[N] ; }
-
-      // modifiers
-      void setChild(unsigned N, SearchTrieNode *ch) { m_children[N] = ch ; }
-      void setLeaf(unsigned N, HuffmanHypothesis *h) { m_leaves[N] = h ; }
-
-   private:
-      static SmallAlloc* allocator ;
-      union {
-	    SearchTrieNode *m_children[1 << BITS_PER_LEVEL] ;
-  	    HuffmanHypothesis *m_leaves[1 << BITS_PER_LEVEL] ;
-            } ;
-   } ;
-
-//----------------------------------------------------------------------
-
 class SearchTrie
    {
    public:
-      void *operator new(size_t) { return allocator->allocate() ; }
-      void operator delete(void *blk) { allocator->release(blk) ; }
+      static constexpr unsigned HASH_BITS = 22 ;
+   public:
       SearchTrie() = default ;
-      ~SearchTrie() ;
+      ~SearchTrie() { clear() ; }
 
       // accessors
-      bool nonEmpty() const { return m_trie != nullptr ; }
       size_t size() const { return m_size ; }
-      HuffmanHypothesis *find(uint32_t hashcode) const ;
-      bool isDuplicate(const HuffmanHypothesis *) const ;
+      HuffmanHypothesis* find(uint32_t hashcode) const { return m_hypotheses[foldHashCode(hashcode)] ; }
+      bool isDuplicate(const HuffmanHypothesis*) const ;
 
       // modifiers
       void clear() ;
       bool insert(HuffmanHypothesis *) ;
       bool remove(HuffmanHypothesis *) ;
 
-      // conversion
-      HuffmanHypothesis *convertToList() ;
-
    private:
-      static SmallAlloc* allocator ;
-      SearchTrieNode* m_trie { nullptr } ;
+      // limit the hash code to 22 bits by folding down the high bits
+      static uint32_t foldHashCode(uint32_t hash) { return (hash ^ (hash>>HASH_BITS)) & ((1<<HASH_BITS) - 1) ; }
+   private:
+      HuffmanHypothesis* m_hypotheses[1<<HASH_BITS] ;
       size_t	      m_size { 0 } ;
    } ;
 
@@ -489,13 +446,9 @@ SmallAlloc* HuffmanTreeHypothesis::allocator = SmallAlloc::create(sizeof(Huffman
 SmallAlloc* HuffmanTreeHypothesis::code_allocators[] = { nullptr } ;
 size_t HuffmanTreeHypothesis::code_alloc_used[] = { 0 } ;
 
-//Fr::Allocator HuffmanHypothesis::allocator("HuffmanHyp",
-//					 sizeof(HuffmanHypothesis)) ;
+//Fr::Allocator HuffmanHypothesis::allocator("HuffmanHyp", sizeof(HuffmanHypothesis)) ;
 
 //Fr::Allocator HuffmanInfo::allocator("HuffmanInfo",sizeof(HuffmanInfo)) ;
-
-SmallAlloc* SearchTrieNode::allocator = SmallAlloc::create(sizeof(SearchTrieNode)) ;
-SmallAlloc* SearchTrie::allocator = SmallAlloc::create(sizeof(SearchTrie)) ;
 
 Owned<TreeDirectory> lit_tree_directory { nullptr } ;
 Owned<TreeDirectory> dist_tree_directory { nullptr } ;
@@ -590,7 +543,8 @@ static const HuffmanCode code_mask[] =
 //   probably uninteresting, symbol set, so we'll skip them entirely
 static const unsigned eod_lengths[] =
    {
-      15, 0/*!!!*/, 14, 15, 13, 12, 11, 10, 9, 8, 7, 0 
+   //15, 0/*!!!*/
+      14, 15, 13, 12, 11, 10, 9, 8, 7, 0 
    } ;
 
 /************************************************************************/
@@ -622,43 +576,8 @@ const char *binary(HuffmanCode code, unsigned length)
 }
 
 /************************************************************************/
-/*	Methods for class SearchTrieNode				*/
-/************************************************************************/
-
-bool SearchTrieNode::hasDescendants() const
-{
-   for (unsigned i = 0 ; i < lengthof(m_children) ; i++)
-      {
-      if (child(i))
-	 return true ;
-      }
-   return false ;
-}
-
-/************************************************************************/
 /*	Methods for class SearchTrie					*/
 /************************************************************************/
-
-SearchTrie::~SearchTrie()
-{
-   clear() ;
-   return ;
-}
-
-//----------------------------------------------------------------------
-
-HuffmanHypothesis *SearchTrie::find(uint32_t hashcode) const
-{
-   SearchTrieNode *node = m_trie ;
-   for (size_t i = TRIE_DEPTH-1 ; i > 0 && node ; i--)
-      {
-      unsigned index = (hashcode >> (i * BITS_PER_LEVEL)) & TRIE_MASK ;
-      node = node->child(index) ;
-      }
-   return node ? node->leaf(hashcode & TRIE_MASK) : nullptr ;
-}
-
-//----------------------------------------------------------------------
 
 static bool is_duplicate(const HuffmanHypothesis *hyp, const HuffmanHypothesis *cand_dup)
 {
@@ -682,35 +601,12 @@ bool SearchTrie::isDuplicate(const HuffmanHypothesis *hyp) const
 
 //----------------------------------------------------------------------
 
-static void erase(SearchTrieNode* trie, unsigned depth = 0)
-{
-   if (!trie)
-      return ;
-   if (depth < TRIE_DEPTH-1)
-      {
-      for (unsigned i = 0 ; i < (1 << BITS_PER_LEVEL) ; i++)
-	 {
-	 erase(trie->child(i),depth+1) ;
-	 }
-      }
-   else
-      {
-      for (unsigned i = 0 ; i < (1 << BITS_PER_LEVEL) ; i++)
-	 {
-	 HuffmanHypothesis *hyp = trie->leaf(i) ;
-	 free_hypotheses(hyp) ;
-	 }
-      }
-   delete trie ;
-   return ;
-}
-
-//----------------------------------------------------------------------
-
 void SearchTrie::clear()
 {
-   if (m_trie)
-      erase(m_trie) ;
+   for (size_t i = 0 ; i < lengthof(m_hypotheses) ; ++i)
+      {
+      free_hypotheses(m_hypotheses[i]) ;
+      }
    return ;
 }
 
@@ -720,29 +616,11 @@ bool SearchTrie::insert(HuffmanHypothesis *hyp)
 {
    if (!hyp)
       return false ;
-   if (!m_trie)
-      {
-      m_trie = new SearchTrieNode ;
-      }
-   uint32_t hashcode = hyp->hashCode() ;
-   SearchTrieNode *node = m_trie ;
-   for (size_t i = TRIE_DEPTH - 1 ; i > 0 ; i--)
-      {
-      unsigned index = (hashcode >> (i * BITS_PER_LEVEL)) & TRIE_MASK ;
-      SearchTrieNode *child = node->child(index) ;
-      if (!child)
-	 {
-	 child = new SearchTrieNode ;
-	 node->setChild(index,child) ;
-	 }
-      node = child ;
-      }
-   unsigned index = hashcode & TRIE_MASK ;
-   HuffmanHypothesis *cand_dup = node->leaf(index) ;
-   if (is_duplicate(hyp,cand_dup))
+   uint32_t hashcode = foldHashCode(hyp->hashCode()) ;
+   if (is_duplicate(hyp,m_hypotheses[hashcode]))
       return false ;
-   hyp->setNext(node->leaf(index)) ;
-   node->setLeaf(index,hyp) ;
+   hyp->setNext(m_hypotheses[hashcode]) ;
+   m_hypotheses[hashcode] = hyp ;
    m_size++ ;
    return true ;
 }
@@ -753,27 +631,9 @@ bool SearchTrie::remove(HuffmanHypothesis *hyp)
 {
    if (!hyp)
       return false ;
-   SearchTrieNode *path[TRIE_DEPTH] ;
-   unsigned path_index[TRIE_DEPTH] ;
-   // descend down the tree to find the node pointing at the hypothesis
-   uint32_t hashcode = hyp->hashCode() ;
-   SearchTrieNode *node = m_trie ;
-   for (size_t i = TRIE_DEPTH - 1 ; i > 0 ; i--)
-      {
-      unsigned index = (hashcode >> (i * BITS_PER_LEVEL)) & TRIE_MASK ;
-      path[i] = node ;
-      path_index[i] = index ;
-      auto child = node->child(index) ;
-      if (!child)
-	 return false ;			// key not in trie, so no hypotheses
-      node = child ;
-      }
-   // try to find the hypothesis in the list hanging off the leaf node
-   unsigned index = hashcode & TRIE_MASK ;
-   path[0] = node ;
-   path_index[0] = index ;
+   uint32_t hashcode = foldHashCode(hyp->hashCode()) ;
    HuffmanHypothesis *prev = nullptr ;
-   for (auto cand = node->leaf(index) ; cand ; cand = cand->next())
+   for (auto cand = m_hypotheses[hashcode] ; cand ; cand = cand->next())
       {
       if (hyp->bitCount() == cand->bitCount() && hyp->sameTrees(cand))
 	 {
@@ -781,77 +641,15 @@ bool SearchTrie::remove(HuffmanHypothesis *hyp)
 	 if (prev)
 	    prev->setNext(cand->next()) ;
 	 else
-	    node->setLeaf(index,cand->next()) ;
+	    m_hypotheses[hashcode] = cand->next() ;
 	 cand->setNext(nullptr) ;
 	 delete cand ;
 	 m_size-- ;
-	 if (!node->leaf(index) && !node->hasDescendants())
-	    {
-	    // we removed the last hypothesis at this leaf, so check whether the node has any descendants.  If no
-	    //   descendants, we can delete the node, which may allow us to remove its parent, etc.
-	    for (size_t i = 1 ; i < TRIE_DEPTH ; i++)
-	       {
-	       if (!path[i]->hasDescendants())
-		  {
-		  if (i == TRIE_DEPTH - 1)
-		     {
-		     delete m_trie ;
-		     m_trie = nullptr ;
-		     }
-		  else
-		     {
-		     path[i+1]->setChild(path_index[i+1],nullptr) ;
-		     delete path[i] ;
-		     }
-		  }
-	       }
-	    }
 	 return true ;
 	 }
       prev = cand ;
       }
    return false ;
-}
-
-//----------------------------------------------------------------------
-
-static void traverse(SearchTrieNode* trie, HuffmanHypothesis*& hyps, unsigned depth)
-{
-   if (depth < TRIE_DEPTH-1)
-      {
-      for (unsigned i = 0 ; i < (1 << BITS_PER_LEVEL) ; i++)
-	 {
-	 SearchTrieNode *t = trie->child(i) ;
-	 if (t)
-	    traverse(t,hyps,depth+1) ;
-	 }
-      }
-   else
-      {
-      for (unsigned i = 0 ; i < (1 << BITS_PER_LEVEL) ; i++)
-	 {
-	 HuffmanHypothesis *hyp = trie->leaf(i) ;
-	 if (hyp)
-	    {
-	    hyp->setNext(hyps) ;
-	    hyps = hyp ;
-	    }
-	 }
-      }
-   delete trie ;
-   return ;
-}
-
-//----------------------------------------------------------------------
-
-HuffmanHypothesis* SearchTrie::convertToList()
-{
-   HuffmanHypothesis *hyps = nullptr ;
-   if (m_trie)
-      traverse(m_trie,hyps,0) ;
-   m_size = 0 ;
-   m_trie = nullptr ;
-   return hyps ;
 }
 
 /************************************************************************/
@@ -1251,7 +1049,7 @@ void HuffmanTreeHypothesis::initializeCodeAllocators()
    unsigned increment = CODE_HYP_BUCKET_SIZE * sizeof(CodeHypothesis) ;
    for (unsigned i = 1 ; i <= CODE_HYP_BUCKETS ; i++)
       {
-      code_allocators[i] = SmallAlloc::create(i*increment) ;
+      code_allocators[i] = SmallAlloc::create(i*increment,2) ;
       code_alloc_used[i] = 0 ;
       }
    return ;
@@ -1521,7 +1319,7 @@ unsigned HuffmanTreeHypothesis::extrabitSuccessors(unsigned extra) const
 //----------------------------------------------------------------------
 
 unsigned HuffmanTreeHypothesis::augmentTree(HuffmanCode code, unsigned length, unsigned extra,
-   					    CodeHypothesis *&augmented)
+   					    CodeHypothesis*& augmented)
 const
 {
    LocalAlloc<CodeHypothesis> new_tree(maxCodes()+1) ;
@@ -1604,24 +1402,21 @@ const
       // build the portion of the tree to the right of the new code
       if (inspoint < symbolCount())
 	 {
-	 // add in any codes that we now know for certain given the
-	 //   new code and the next code to be copied
+	 // add in any codes that we now know for certain given the new code and the next code to be copied
 	 if (m_codes[inspoint].length() == length)
 	    {
-	    // if the successor code has the same number of extra bits
-	    //   (or both are literals), we can fill in the missing
-	    //   codes between the two
+	    // if the successor code has the same number of extra bits (or both are literals), we can fill in the
+	    //   missing codes between the two
 	    if ((m_codes[inspoint].extraBits() == extra) ||
 		(m_codes[inspoint].isLiteral() && HuffmanChildInfo::isLiteral(extra)))
 	       {
 	       HuffmanCode succ = m_codes[inspoint].codeValue() ;
 	       unsigned additional = succ - code - 1 ;
-	       if ((!HuffmanChildInfo::isLiteral(extra) &&
-		   additional >= m_extra_counts[extra]) ||
-		   num_codes + num_inserted + additional > maxCodes())
+	       if ((!HuffmanChildInfo::isLiteral(extra) && additional >= m_extra_counts[extra])
+		  || num_codes + num_inserted + additional > maxCodes())
 		  {
-		  // the augmented tree will have either too many leaves
-		  //   total, or too many with the given # of extra bits
+		  // the augmented tree will have either too many leaves total, or too many with the given # of extra
+		  //   bits
 		  num_codes = num_inserted = 0 ;
 		  }
 	       else
@@ -2225,8 +2020,7 @@ void HuffmanHypothesis::addLitCode(HuffmanCode code, unsigned length, unsigned e
    if (!m_litcodes)
       return ;
    bool is_EOD = (symbol == END_OF_DATA) ;
-   HuffmanTreeHypothesis *new_lit
-      = m_litcodes->insert(code,length,extra,is_EOD) ;
+   auto new_lit = m_litcodes->insert(code,length,extra,is_EOD) ;
    if (new_lit != m_litcodes)
       {
       m_litcodes->removeReference() ;
