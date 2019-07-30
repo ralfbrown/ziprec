@@ -100,8 +100,6 @@ using namespace Fr ;
 /*	Forward declarations						*/
 /************************************************************************/
 
-void print_partial_packet_statistics() ;
-
 /************************************************************************/
 /*	Types local to this module					*/
 /************************************************************************/
@@ -268,7 +266,9 @@ class HypothesisDirectory
 
       // accessors
       unsigned itemIndex(const HuffmanHypothesis *hyp) const
-	 { return hyp->hashCode() % HYPOTHESIS_DIR_SIZE ; }
+	 { auto hash = hyp->hashCode() ;
+           // fold the high bits down into the low bits that will actually be used
+           return (hash ^ (hash / HYPOTHESIS_DIR_SIZE)) % HYPOTHESIS_DIR_SIZE ; }
       HuffmanHypothesis *findDuplicate(const HuffmanHypothesis *) const ;
 
       // modifiers
@@ -545,6 +545,53 @@ const char *binary(HuffmanCode code, unsigned length)
       }
    string[length] = '\0' ;
    return string ;
+}
+
+//----------------------------------------------------------------------
+
+void print_partial_packet_statistics()
+{
+   if (show_stats && STAT_COUNT(total_expansions) > 0)
+      {
+      fprintf(stdout,"Partial-Packet Recovery:\n") ;
+      fprintf(stdout,"  %lu search-node expansions\n",
+	      (unsigned long)STAT_COUNT(total_expansions)) ;
+      fprintf(stdout,"  %lu search-queue insertions\n",
+	      (unsigned long)STAT_COUNT(search_additions)) ;
+      fprintf(stdout,"  %lu search-queue duplicates skipped\n",
+	      (unsigned long)STAT_COUNT(search_dups)) ;
+      fprintf(stdout,"  %lu search-queue full occurrences\n",
+	      (unsigned long)STAT_COUNT(queue_full)) ;
+      fprintf(stdout,"  %lu result-queue insertions\n",
+	      (unsigned long)STAT_COUNT(longest_additions)) ;
+      fprintf(stdout,"  %lu Huffman-tree insertions\n",
+	      (unsigned long)STAT_COUNT(tree_insertions)) ;
+      fprintf(stdout,"     %lu codes already present\n",
+	      (unsigned long)STAT_COUNT(tree_present)) ;
+      fprintf(stdout,"     %lu codes would generate invalid tree\n",
+	      (unsigned long)STAT_COUNT(tree_conflict)) ;
+      fprintf(stdout,"     %lu codes generated duplicate tree\n",
+	      (unsigned long)STAT_COUNT(tree_duplicates)) ;
+      }
+   return ;
+}
+
+//----------------------------------------------------------------------
+
+static void print_packets(const HuffmanHypothesis* packets)
+{
+   if (verbosity >= VERBOSITY_PACKETS)
+      {
+      for (auto hyp = packets ; packets ; packets = packets->next())
+	 {
+	 cerr << "hyp, len=" << hyp->bitCount() << endl ;
+	 hyp->dumpLitCodes();
+	 cerr << "--dist--" << endl ;
+	 hyp->dumpDistCodes();
+	 cerr << "----------" << endl ;
+	 }
+      }
+   return ;
 }
 
 /************************************************************************/
@@ -1059,18 +1106,16 @@ CodeHypothesis *HuffmanTreeHypothesis::newCodeBuffer(unsigned num_codes)
 {
    // figure out which allocator to use
    unsigned bucket = (num_codes + CODE_HYP_BUCKET_SIZE - 1) / CODE_HYP_BUCKET_SIZE ;
-   CodeHypothesis *codes ;
    if (code_allocators[bucket])
       {
-      codes = (CodeHypothesis*)code_allocators[bucket]->allocate() ;
       code_alloc_used[bucket]++ ;
+      return (CodeHypothesis*)code_allocators[bucket]->allocate() ;
       }
    else
       {
       // just in case we get a weird size, we'll fall back to regular malloc()
-      codes = new CodeHypothesis[num_codes] ;
+      return new CodeHypothesis[num_codes] ;
       }
-   return codes ;
 }
 
 //----------------------------------------------------------------------
@@ -1176,8 +1221,7 @@ unsigned HuffmanTreeHypothesis::requiredLeaves() const
 
 //----------------------------------------------------------------------
 
-bool HuffmanTreeHypothesis::sameTree(const HuffmanTreeHypothesis *other)
-const
+bool HuffmanTreeHypothesis::sameTree(const HuffmanTreeHypothesis* other) const
 {
    // are we the same instance?
    if (this == other)
@@ -2740,8 +2784,7 @@ static bool extend_bitstream(HuffmanHypothesis* hyp, HuffmanSearchQueue& search_
 		 << " bits" << endl << flush ;
 	 }
       else if (verbosity >= 3 && added && hyp->bitCount() >= KEEP_ALL_THRESHOLD)
-	 cerr << "found consistent stream of " << hyp->bitCount()
-	      << " bits" << endl << flush ;
+	 cerr << "found consistent stream of " << hyp->bitCount() << " bits" << endl << flush ;
       }
    return extended ;
 }
@@ -2812,12 +2855,9 @@ static HuffmanHypothesis* find_longest_streams(const BitPointer* str_start, cons
 	 }
       else
 	 {
-	 // for length=7, we may be dealing with a fixed-Huffman packet,
-	 //   for which the maximum bit length is 9; in all other cases,
-	 //   the fact that EOD occurs exactly once ensures that it is in
-	 //   the equivalence class of least-frequent symbols, which means
-	 //   that it will have either the longest or next-to-longest code
-	 //   length
+	 // for length=7, we may be dealing with a fixed-Huffman packet, for which the maximum bit length is 9; in all
+	 //   other cases, the fact that EOD occurs exactly once ensures that it is in the equivalence class of
+	 //   least-frequent symbols, which means that it will have either the longest or next-to-longest code length
 	 hyp->setMaxBitLength(eod_length == 7 ? 9 : eod_length+1) ;
 	 }
       if (verbosity > VERBOSITY_SCAN)
@@ -2862,15 +2902,32 @@ static HuffmanHypothesis* find_longest_streams(const BitPointer* str_start, cons
 
 //----------------------------------------------------------------------
 
-bool search(const BitPointer* str_start, const BitPointer* str_end, BitPointer* packet_header, bool deflate64)
+HuffmanHypothesis* search(const BitPointer* str_start, const BitPointer* str_end, const HuffSymbolTable* symtab)
 {
-cerr<<"stream length = "<<(8*(*str_end - *str_start))<<" bits (approx)"<<endl;
-   if (!packet_header &&
-       (*str_end - *str_start) < KEEP_NONE_THRESHOLD / 8)
-      return false ;
+   if (!symtab)
+      return nullptr ;
    HuffmanTreeHypothesis::initializeCodeAllocators() ;
    lit_tree_directory.reinit(LIT_TREE_DIR_SIZE) ;
    dist_tree_directory.reinit(DIST_TREE_DIR_SIZE) ;
+   HuffmanHypothesis *longest = find_longest_streams(str_start,str_end,symtab) ;
+   //TODO?
+   
+   // output results if requested
+   print_partial_packet_statistics();
+   print_packets(longest) ;
+   HuffmanTreeHypothesis::releaseCodeAllocators() ;
+   lit_tree_directory = nullptr ;
+   dist_tree_directory = nullptr ;
+   return longest ;
+}
+
+//----------------------------------------------------------------------
+
+bool search(const BitPointer* str_start, const BitPointer* str_end, BitPointer* packet_header, bool deflate64)
+{
+cerr<<"stream length = "<<(8*(*str_end - *str_start))<<" bits (approx)"<<endl;
+   if (!packet_header && (*str_end - *str_start) < KEEP_NONE_THRESHOLD / 8)
+      return false ;
    Owned<HuffSymbolTable> symtab { nullptr } ;
    if (packet_header)
       {
@@ -2890,87 +2947,10 @@ cerr<<"stream length = "<<(8*(*str_end - *str_start))<<" bits (approx)"<<endl;
 	    return false ; // can't happen
 	 }
       }
-   HuffmanHypothesis *longest = find_longest_streams(str_start,str_end,symtab) ;
-//FIXME
-
-   // output results if requested
-   print_partial_packet_statistics();
-   if (verbosity >= VERBOSITY_PACKETS)
-      {
-      for (auto hyp = longest ; longest ; longest = longest->next())
-	 {
-	 cerr << "hyp, len=" << hyp->bitCount() << endl ;
-	 hyp->dumpLitCodes();
-	 cerr << "--dist--" << endl ;
-	 hyp->dumpDistCodes();
-	 cerr << "----------" << endl ;
-	 }
-      }
+   auto longest = search(str_start,str_end,symtab) ;
+   bool success = longest != nullptr ;
    free_hypotheses(longest) ;
-   HuffmanTreeHypothesis::releaseCodeAllocators() ;
-   lit_tree_directory = nullptr ;
-   dist_tree_directory = nullptr ;
-   return true ;
-}
-
-//----------------------------------------------------------------------
-
-HuffmanHypothesis* search(const BitPointer* str_start, const BitPointer* str_end, const HuffSymbolTable* symtab)
-{
-   if (!symtab)
-      return nullptr ;
-   HuffmanTreeHypothesis::initializeCodeAllocators() ;
-   lit_tree_directory.reinit(LIT_TREE_DIR_SIZE) ;
-   dist_tree_directory.reinit(DIST_TREE_DIR_SIZE) ;
-   HuffmanHypothesis *longest = find_longest_streams(str_start,str_end,symtab) ;
-   // output results if requested
-   print_partial_packet_statistics();
-   if (verbosity >= VERBOSITY_PACKETS)
-      {
-      while (longest)
-	 {
-	 HuffmanHypothesis *hyp = longest ; 
-	 longest = longest->next() ; 
-	 cerr << "hyp, len=" << hyp->bitCount() << endl ;
-	 hyp->dumpLitCodes();
-	 cerr << "--dist--" << endl ;
-	 hyp->dumpDistCodes();
-	 cerr << "----------" << endl ;
-	 }
-      }
-   HuffmanTreeHypothesis::releaseCodeAllocators() ;
-   lit_tree_directory = nullptr ;
-   dist_tree_directory = nullptr ;
-   return longest ;
-}
-
-//----------------------------------------------------------------------
-
-void print_partial_packet_statistics()
-{
-   if (show_stats && STAT_COUNT(total_expansions) > 0)
-      {
-      fprintf(stdout,"Partial-Packet Recovery:\n") ;
-      fprintf(stdout,"  %lu search-node expansions\n",
-	      (unsigned long)STAT_COUNT(total_expansions)) ;
-      fprintf(stdout,"  %lu search-queue insertions\n",
-	      (unsigned long)STAT_COUNT(search_additions)) ;
-      fprintf(stdout,"  %lu search-queue duplicates skipped\n",
-	      (unsigned long)STAT_COUNT(search_dups)) ;
-      fprintf(stdout,"  %lu search-queue full occurrences\n",
-	      (unsigned long)STAT_COUNT(queue_full)) ;
-      fprintf(stdout,"  %lu result-queue insertions\n",
-	      (unsigned long)STAT_COUNT(longest_additions)) ;
-      fprintf(stdout,"  %lu Huffman-tree insertions\n",
-	      (unsigned long)STAT_COUNT(tree_insertions)) ;
-      fprintf(stdout,"     %lu codes already present\n",
-	      (unsigned long)STAT_COUNT(tree_present)) ;
-      fprintf(stdout,"     %lu codes would generate invalid tree\n",
-	      (unsigned long)STAT_COUNT(tree_conflict)) ;
-      fprintf(stdout,"     %lu codes generated duplicate tree\n",
-	      (unsigned long)STAT_COUNT(tree_duplicates)) ;
-      }
-   return ;
+   return success ;
 }
 
 // end of file partial.C //

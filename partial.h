@@ -360,8 +360,8 @@ class HuffmanHypothesis : public Fr::Object
 		      unsigned symbol) ;
       void addDistCode(HuffmanCode code, unsigned length, unsigned extra,
 		       unsigned symbol) ;
-      void dumpLitCodes() { if (m_litcodes) m_litcodes->dump() ; }
-      void dumpDistCodes() { if (m_distcodes) m_distcodes->dump() ; }
+      void dumpLitCodes() const { if (m_litcodes) m_litcodes->dump() ; }
+      void dumpDistCodes() const { if (m_distcodes) m_distcodes->dump() ; }
       unsigned generation() const
 #ifdef TRACE_GENERATIONS
 	 { return m_generation ; }
