@@ -30,7 +30,6 @@
 #include "global.h"
 #include "pstrie.h"
 #include "wildcard.h"
-#include "wordhash.h"
 #include "words.h"
 #include "ziprec.h"
 #include "framepac/hashtable.h"

@@ -19,7 +19,6 @@ OBJS = build/bits.o \
 	build/reconstruct.o \
 	build/symtab.o \
 	build/ui_curses.o \
-	build/wordhash.o \
 	build/words.o \
 	build/global.o \
 	build/scan_ziprec.o \
@@ -198,13 +197,11 @@ build/ui_curses.o:	ui_curses.C ui_curses.h
 
 build/wildcard.o:	wildcard.C wildcard.h
 
-build/wordhash.o: 	wordhash.C wordhash.h
-
 build/words.o: 		words.C words.h chartype.h
 
 build/ziprec.o: 	ziprec.C inflate.h models.h recover.h reconstruct.h global.h
 
-build/mklang.o: 	mklang.C global.h pstrie.h wildcard.h wordhash.h words.h ziprec.h whatlang2/langid.h
+build/mklang.o: 	mklang.C global.h pstrie.h wildcard.h words.h ziprec.h whatlang2/langid.h
 
 dbuffer.h: 		dbyte.h
 	touch $@
