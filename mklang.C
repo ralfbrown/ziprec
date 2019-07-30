@@ -81,7 +81,8 @@ static void usage(const char *argv0)
 	   "  -d   display the word frequency list to standard output\n"
 	   "  -f   build ngram model in forward direction only\n"
 	   "  -mN  filter out ngrams occurring fewer than N times\n"
-	   "  -nN  count ngrams up to length N (default %u)\n",
+	   "  -nN  count ngrams up to length N (default %u)\n"
+           "  -u   store unfiltered word counts\n",
 	   argv0,DEFAULT_MAX_NGRAM) ;
    exit(1) ;
 }
