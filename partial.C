@@ -5,7 +5,7 @@
 /*									*/
 /*  File: partial.C - reconstruction of partial DEFLATE packet		*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-26						*/
+/*  LastEdit: 2019-07-29						*/
 /*									*/
 /*  (c) Copyright 2012,2013,2019 Carnegie Mellon University		*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -1567,10 +1567,8 @@ unsigned HuffmanTreeHypothesis::extrabitSuccessors(unsigned extra) const
 
 //----------------------------------------------------------------------
 
-unsigned HuffmanTreeHypothesis::augmentTree(HuffmanCode code,
-					    unsigned length,
-					    unsigned extra,
-					    CodeHypothesis *&augmented)
+unsigned HuffmanTreeHypothesis::augmentTree(HuffmanCode code, unsigned length, unsigned extra,
+   					    CodeHypothesis *&augmented)
 const
 {
    LocalAlloc<CodeHypothesis> new_tree(maxCodes()+1) ;
@@ -1586,19 +1584,15 @@ const
       }
    else
       {
-      // since we maintained the tree as complete as possible with each
-      //   prior insertion, the only point where we may need to augment
-      //   the new tree is just before and just after the code being
-      //   inserted
+      // since we maintained the tree as complete as possible with each prior insertion, the only point where we may
+      //   need to augment the new tree is just before and just after the code being inserted
       unsigned num_inserted = 0 ;
       // start by building the portion of the tree to the left of the new
       //   code
       if (inspoint == 0)
 	 {
-	 //  if we're at the left edge and there can't be any shorter
-	 //   codes, and there isn't any ambiguity about
-	 //   literal/nonliteral codes, we can flesh out all codes
-	 //   from 0 up to the new one
+	 //  if we're at the left edge and there can't be any shorter codes, and there isn't any ambiguity about
+	 //   literal/nonliteral codes, we can flesh out all codes from 0 up to the new one
 	 if (length == minimumBitLength() && HuffmanChildInfo::isLiteral(extra))
 	    {
 	    for (size_t i = 0 ; i < code ; i++)
@@ -1612,14 +1606,12 @@ const
 	 {
 	 // copy the tree up to the insertion point
 	 std::copy_n(m_codes,inspoint,new_tree.begin()) ;
-	 // add in any codes that we now know for certain given the last
-	 //   code copied and the new one being inserted
+	 // add in any codes that we now know for certain given the last code copied and the new one being inserted
 	 if (new_tree[inspoint-1].length() < length)
 	    {
-	    // when the previous known code is shorter, the only thing
-	    //   we can infer is that the xxx0 sibling of an xxx1 code
-	    //   is of the same length; if xxx1 is a literal code, we
-	    //   thus know that xxx0 must also be a literal
+	    // when the previous known code is shorter, the only thing we can infer is that the xxx0 sibling of an
+	    //   xxx1 code is of the same length; if xxx1 is a literal code, we thus know that xxx0 must also be a
+	    //   literal
 	    if ((code & 1) != 0 && HuffmanChildInfo::isLiteral(extra))
 	       {
 	       new_tree[inspoint+num_inserted].set(code & ~1,length,extra) ;
@@ -1628,21 +1620,18 @@ const
 	    }
 	 else
 	    {
-	    // if the previous code of the same length has the same
-	    //   number of extra bits (or both are literals), we can
-	    //   fill in any missing codes between the prior code and
-	    //   the new code
+	    // if the previous code of the same length has the same number of extra bits (or both are literals), we
+	    //   can fill in any missing codes between the prior code and the new code
 	    if ((new_tree[inspoint-1].extraBits() == extra) ||
 		(new_tree[inspoint-1].isLiteral() && HuffmanChildInfo::isLiteral(extra)))
 	       {
 	       HuffmanCode pred = new_tree[inspoint-1].codeValue() + 1 ;
 	       unsigned additional = code - pred ;
-	       if ((!HuffmanChildInfo::isLiteral(extra) &&
-		   additional >= m_extra_counts[extra]) ||
-		   num_codes + num_inserted + additional > maxCodes())
+	       if ((!HuffmanChildInfo::isLiteral(extra) && additional >= m_extra_counts[extra])
+		  || num_codes + num_inserted + additional > maxCodes())
 		  {
-		  // the augmented tree will have either too many leaves
-		  //   total, or too many with the given # of extra bits
+		  // the augmented tree will have either too many leaves total, or too many with the given # of extra
+		  //   bits
 		  num_codes = num_inserted = 0 ;
 		  }
 	       else
@@ -1694,12 +1683,10 @@ const
 	    }
 	 else
 	    {
-	    //TODO: if the length of the successor is one greater, we
-	    //  can try to scan for the point between new and
-	    //  successor code at which switching to the greater
-	    //  length would force the tree to be too large, but that
-	    //  will be helpful in a sufficiently small percentage of
-	    //  the time to not make it worth the effort right now
+	    //TODO: if the length of the successor is one greater, we can try to scan for the point between new and
+	    //  successor code at which switching to the greater length would force the tree to be too large, but that
+	    //  will be helpful in a sufficiently small percentage of the time to not make it worth the effort right
+	    //  now
 	    }
 	 // and finally copy the remainder of the original tree
 	 for (size_t i = inspoint ; i < symbolCount() ; i++)
@@ -1709,11 +1696,9 @@ const
 	 }
       else
 	 {
-	 // TODO: the only thing we could infer at the right edge is
-	 //   if the code is of the maximum length, is a non-literal,
-	 //   and the number of possible successors exactly equals the
-	 //   number of remaining non-literal codes with the same or
-	 //   more extra bits; a rare occurrence not worth checking for
+	 // TODO: the only thing we could infer at the right edge is if the code is of the maximum length, is a
+	 //   non-literal, and the number of possible successors exactly equals the number of remaining non-literal
+	 //   codes with the same or more extra bits; a rare occurrence not worth checking for
 	 }
       num_codes += num_inserted ;
       }
@@ -1758,8 +1743,7 @@ unsigned HuffmanTreeHypothesis::findCode(HuffmanCode code,
       else
 	 return mid ;			// we found the value
       }
-   // if we get to this point, the item is not yet in the table, and
-   //   'lo' points at its successor
+   // if we get to this point, the item is not yet in the table, and 'lo' points at its successor
    return lo ;
 }
 
@@ -1785,8 +1769,7 @@ unsigned HuffmanTreeHypothesis::findInsertionPoint(HuffmanCode code, unsigned le
 	 return HYP_NOT_FOUND ;  // already present, don't insert
 	 }
       }
-   // if we get to this point, the item is not yet in the table, and
-   //  'lo' is the position at which to insert
+   // if we get to this point, the item is not yet in the table, and 'lo' is the position at which to insert
    return lo ;
 }
 
@@ -1808,8 +1791,7 @@ bool HuffmanTreeHypothesis::extraBitsAtLimit(unsigned extra) const
 
 //----------------------------------------------------------------------
 
-bool HuffmanTreeHypothesis::tooManyLeaves(HuffmanCode code, unsigned length)
-const
+bool HuffmanTreeHypothesis::tooManyLeaves(HuffmanCode code, unsigned length) const
 {
    if (code >= m_leftmost[length])
       return m_leftmost[0] > maxCodes() ;
@@ -1854,26 +1836,20 @@ bool HuffmanTreeHypothesis::consistentWithTree(HuffmanCode code,
    HuffmanCode canon = canonicalized(code,length) ;
    if (canon == m_EOD)
       return false ;		// EOD may only occur at end of stream
-   // Ensure that we don't violate the proper shape of the tree.  The
-   //   given code must follow the right-most known leaf of the
-   //   next-shorter length and precede the left-most required node of
-   //   the next-greater length.
+   // Ensure that we don't violate the proper shape of the tree.  The given code must follow the right-most known leaf
+   //   of the next-shorter length and precede the left-most required node of the next-greater length.
    if ((code << 1) >= m_leftmost[length+1])
       return false ;
    if (length > minimumBitLength() && (code >> 1) <= m_rightmost[length-1])
       return false ;
-   // a quick check of ordering: the minimum number of lower symbols of
-   //   the same length is the difference between the current code and the
-   //   left-most known code of the given length; if that would require
-   //   too many predecessor symbols according to the number of extra
-   //   bits, the code is not consistent with the tree
+   // a quick check of ordering: the minimum number of lower symbols of the same length is the difference between the
+   //   current code and the left-most known code of the given length; if that would require too many predecessor
+   //   symbols according to the number of extra bits, the code is not consistent with the tree
    if (code > m_leftmost[length] &&
        (unsigned)(code - m_leftmost[length]) > extrabitPredecessors(extra))
       return false ;
-   // the required number of right siblings with the same
-   //   length can't be greater than the number of
-   //   possible length symbols greater than the current
-   //   one
+   // the required number of right siblings with the same length can't be greater than the number of possible length
+   //   symbols greater than the current one
    if (length == maximumBitLength())
       {
       if (((unsigned)((1 << length) - code)) > extrabitSuccessors(extra))
@@ -1883,8 +1859,7 @@ bool HuffmanTreeHypothesis::consistentWithTree(HuffmanCode code,
 	    (unsigned)(m_rightmost[length] - code)
 	    > extrabitSuccessors(extra))
       return false ;
-   // ensure that adding the code won't require the tree
-   //   to grow too large
+   // ensure that adding the code won't require the tree to grow too large
    if (tooManyLeaves(code,length))
       return false ;
    unsigned index = findCode(code,length) ;
@@ -1910,22 +1885,18 @@ bool HuffmanTreeHypothesis::consistentWithTree(HuffmanCode code,
 	       if (extraBits(index) != extra)
 		  return false ;
 	       }
-	    // the code is present and matches on extra bits, so it is
-	    //   consistent with the tree
+	    // the code is present and matches on extra bits, so it is consistent with the tree
 	    present = true ;
 	    return true ;
 	    }
 	 }
-      // the code is not yet present, so check for consistency; the index
-      //   returned by findCode() is what will become its right sibling
-      // verify ordering with respect to right sibling
-      // we must be no longer than the sibling
+      // the code is not yet present, so check for consistency; the index returned by findCode() is what will become
+      //   its right sibling verify ordering with respect to right sibling we must be no longer than the sibling
       unsigned siblen = codeLength(index) ;
       if (length > siblen)
 	 return false ;
-      // if we're the same length, check that literals precede length/dist
-      //   codes; if both are length/dist codes, ensure proper ordering
-      //   of extra bits
+      // if we're the same length, check that literals precede length/dist codes; if both are length/dist codes,
+      //   ensure proper ordering of extra bits
       if (siblen == length)
 	 {
 	 bool siblit = isLiteral(index) ;
@@ -1946,9 +1917,8 @@ bool HuffmanTreeHypothesis::consistentWithTree(HuffmanCode code,
       unsigned siblen = codeLength(index-1) ;
       if (siblen > length)
 	 return false ;
-      // if we're the same length, check that literals precede length/dist
-      //   codes; if both are length/dist codes, ensure proper ordering
-      //   of extra bits
+      // if we're the same length, check that literals precede length/dist codes; if both are length/dist codes,
+      //   ensure proper ordering of extra bits
       if (siblen == length)
 	 {
 	 bool siblit = isLiteral(index-1) ;

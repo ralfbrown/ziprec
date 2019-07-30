@@ -60,14 +60,6 @@
 #  define MAX_EXTENSION (MAX_BITLENGTH + MAX_DISTANCE_EXTRABITS)
 #endif /* SUPPORT_DEFLATE64 */
 
-// define the bit fields used by CodeHypothesis
-#define SH_CODE_MASK       0x7FFF
-#define SH_ISLITERAL_MASK  0x8000
-#define SH_LENGTH_MASK     0x0F0000
-#define SH_LENGTH_SHIFT    16
-#define SH_EXTRA_MASK      0xF00000
-#define SH_EXTRA_SHIFT     20
-
 // definitions for HuffmanTreeHypothesis
 #define HYP_NOT_FOUND UINT_MAX
 #define CODE_HYP_BUCKET_SIZE 8
@@ -76,11 +68,7 @@
 /************************************************************************/
 /************************************************************************/
 
-#if MAX_BITLENGTH <= 16
 typedef uint16_t HuffmanCode ;
-#else
-typedef uint32_t HuffmanCode ;
-#endif
 
 //----------------------------------------------------------------------
 
@@ -135,65 +123,60 @@ class HuffmanChildInfo
 
 class CodeHypothesis
    {
-   private:
-      Fr::UInt24 m_value ;
    public:
-      CodeHypothesis() {}
-      ~CodeHypothesis() {}
+      CodeHypothesis() = default ;
+      ~CodeHypothesis() = default ;
 
       // accessors
-      unsigned code() const
-	 { return m_value.load() & SH_CODE_MASK ; }
-      unsigned codeValue() const
-	 { return code() >> (MAX_BITLENGTH - length()) ; }
+      unsigned code() const { return m_value.load() & CODE_MASK ; }
+      unsigned codeValue() const { return code() >> (MAX_BITLENGTH - length()) ; }
       bool isLiteral() const
-	 { return (m_value.load() & SH_ISLITERAL_MASK) != 0 ; }
-      unsigned length() const
-	 { return (m_value.load() & SH_LENGTH_MASK) >> SH_LENGTH_SHIFT ; }
-      unsigned extraBits() const
-	 { return (m_value.load() & SH_EXTRA_MASK) >> SH_EXTRA_SHIFT ; }
+	 { return (m_value.load() & LITERAL_MASK) != 0 ; }
+      unsigned length() const { return m_length ; }
+      unsigned extraBits() const { return m_extra ; }
          // note that to support DEFLATE64, the above result needs to be
          //   passed through a lookup that converts 15 to 16
-      uint32_t hashValue() const
-	 { return m_value.load() | 0x01000000 ; }
+      uint32_t hashValue() const { return (m_value.load() | 0x01000000U) ^ (m_length << 24) ^ (m_extra << 28) ; }
 
       // modifiers
       void set(HuffmanCode code, unsigned length, unsigned extra)
 	 {
+	    m_length = length ;
 	    code <<= (MAX_BITLENGTH - length) ;
-	    code |= ((length << SH_LENGTH_SHIFT) & SH_LENGTH_MASK) ;
 	    if (HuffmanChildInfo::isLiteral(extra))
 	       {
-	       code |= SH_ISLITERAL_MASK ;
+	       code |= LITERAL_MASK ;
 	       }
 	    else
-	       code |= ((extra << SH_EXTRA_SHIFT) & SH_EXTRA_MASK) ;
+	       m_extra = extra ;  // note: for DEFLATE64, 16 must be mapped to 15!
 	    m_value.store(code) ;
 	 }
       void setCode(unsigned code)
 	 {
-	    code &= SH_CODE_MASK ;
-	    code |= (m_value.load() & (SH_EXTRA_MASK | SH_LENGTH_MASK)) ;
+	    code &= CODE_MASK ;
 	    if (isLiteral())
-	       code |= SH_ISLITERAL_MASK ;
+	       code |= LITERAL_MASK ;
 	    m_value.store(code) ;
 	 }
       void setLiteral(bool is_lit)
 	 { if (is_lit)
-	       m_value |= SH_ISLITERAL_MASK ;
+	       m_value |= LITERAL_MASK ;
 	    else
-	       m_value &= ~SH_ISLITERAL_MASK ;
+	       m_value.store(m_value.load() & ~LITERAL_MASK) ;
 	 }
-      void setLength(unsigned len)
-	 {
-	    m_value.store((m_value.load() & ~SH_LENGTH_MASK) | ((len << SH_LENGTH_SHIFT) & SH_LENGTH_MASK)) ;
-	 }
+      void setLength(unsigned len) { m_length = len ; }
       void setExtraBits(unsigned extra)
 	 {
-	    m_value.store((m_value.load() & ~SH_EXTRA_MASK) | ((extra << SH_EXTRA_SHIFT) & SH_EXTRA_MASK)) ;
-         // note that to support DEFLATE64, 'extra' above must first
-         //   be passed through a lookup which maps 16 to 15
+	    m_extra = extra ; 
+         // note that to support DEFLATE64, 'extra' above must first  be passed through a lookup which maps 16 to 15
 	 }
+   private:
+      static constexpr unsigned CODE_MASK = 0x7FFF ;
+      static constexpr unsigned LITERAL_MASK = 0x8000 ;
+   private:
+      Fr::UInt16 m_value ;
+      uint8_t    m_length:4 ;
+      uint8_t    m_extra:4 ;
    } ;
 
 //----------------------------------------------------------------------
