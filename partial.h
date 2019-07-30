@@ -44,7 +44,7 @@
 #define MAX_LENGTH_EXTRABITS64 16	// DEFLATE64
 
 // how many extra bits can we have on the distance code?
-#define MAX_DISTANCE_EXTRABITS   13	// 32-window standard DEFLATE
+#define MAX_DISTANCE_EXTRABITS   13	// 32K-window standard DEFLATE
 #define MAX_DISTANCE_EXTRABITS64 14	// DEFLATE64
 
 #define LIT_SYMBOLS MAX_LITERAL_CODES	// number of literal/length symbols
@@ -390,10 +390,8 @@ class HuffmanHypothesis : public Fr::Object
 /************************************************************************/
 /************************************************************************/
 
-extern bool search(const BitPointer *s, const BitPointer *e,
-		   BitPointer *p_hdr, bool deflate64) ;
-extern HuffmanHypothesis *search(const BitPointer *s, const BitPointer *e,
-				 const class HuffSymbolTable *) ;
+extern bool search(const BitPointer* s, const BitPointer* e, BitPointer* p_hdr, bool deflate64) ;
+extern HuffmanHypothesis *search(const BitPointer* s, const BitPointer* e, const class HuffSymbolTable*) ;
 extern void free_hypotheses(class HuffmanHypothesis*) ;
 
 #endif /* !__PARTIAL_H_INCLUDED */
