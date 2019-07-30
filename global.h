@@ -5,7 +5,7 @@
 /*									*/
 /*  File: global.h - global constants and variables			*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-28						*/
+/*  LastEdit: 2019-07-29						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -50,7 +50,7 @@
 #define USE_PRE_TAG
 
 // maximum length of a word, in bytes
-#define MAX_WORD 500
+#define MAX_WORD 250
 
 #include <assert.h>
 

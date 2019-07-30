@@ -43,7 +43,7 @@ using namespace Fr ;
 /************************************************************************/
 
 #define BUFFER_SIZE (1024*1024)
-#define BUFFER_HIGHWATER (15*BUFFER_SIZE/16)
+#define BUFFER_HIGHWATER (BUFFER_SIZE-1024)
 
 // how many words to collect before sorting and merging a batch
 #define SORT_INTERVAL 250000
@@ -196,8 +196,8 @@ static bool count_trigrams(const char *filename)
 
 //----------------------------------------------------------------------
 
-static bool process_file(CFile& fp, NybbleTrie *forward, unsigned max_ngram,
-			 uint64_t &total_bytes, unsigned filter_thresh)
+static bool process_file(CFile& fp, NybbleTrie* forward, unsigned max_ngram,
+			 uint64_t& total_bytes, unsigned filter_thresh)
 {
    uint8_t file_buffer[BUFFER_SIZE] ;
    // read the first block of the file
@@ -215,7 +215,7 @@ static bool process_file(CFile& fp, NybbleTrie *forward, unsigned max_ngram,
 	 bufpos -= BUFFER_HIGHWATER ;
 	 bufsize -= BUFFER_HIGHWATER ;
 	 prev_word -= BUFFER_HIGHWATER ;
-	 auto count = fp.read(file_buffer+bufsize,sizeof(uint8_t),BUFFER_SIZE-bufsize) ;
+	 auto count = fp.read(file_buffer+bufsize,BUFFER_SIZE-bufsize) ;
 	 bufsize += count ;
 	 total_bytes += count ;
 	 }
@@ -223,7 +223,7 @@ static bool process_file(CFile& fp, NybbleTrie *forward, unsigned max_ngram,
       unsigned len = max_ngram ;
       if (bufpos + max_ngram > bufsize)
 	 len = bufsize - bufpos ;	// handle tail end of data
-      if (len >= 3)
+      if (len >= 3 && filter_thresh > 1)
 	 {
 	 // by definition, any n-gram containing a trigram which occurs
 	 //   fewer than the minimum number of times in the entire training
@@ -238,17 +238,17 @@ static bool process_file(CFile& fp, NybbleTrie *forward, unsigned max_ngram,
 	       }
 	    }
 	 }
-      if (forward && len > 0)
+      if (forward && len >= 3)
 	 {
 	 forward->incrementExtensions(file_buffer+bufpos,0,len,1) ;
 	 forward->addTokenCount(); 
 	 }
-      // ensure that words don't get excessively long
-      if (bufpos - prev_word > MAX_WORD)
-	 prev_word++ ;
       // do we have a new word?
       if (is_word_boundary(file_buffer,bufpos))
 	 {
+	 // ensure that words don't get excessively long
+	 if (bufpos - prev_word > MAX_WORD)
+	    prev_word = bufpos - MAX_WORD ;
 	 if (!is_whitespace(file_buffer,prev_word,bufpos))
 	    {
 	    unsigned wordlen = bufpos - prev_word ;
