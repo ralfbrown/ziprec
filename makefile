@@ -38,7 +38,7 @@ DISTFILES =  COPYING CHANGELOG ziprec-doc.txt mklang-doc.txt makefile *.h *.C \
 		whatlang2/makefile whatlang2/*.h whatlang2/*.C whatlang2/*.txt \
 		Europarl-eval/README Europarl-eval/*.sh
 
-LIBRARY = ziprec$(LIBEXT)
+LIBRARY = build/ziprec$(LIBEXT)
 
 #########################################################################
 ## define the compiler
@@ -99,6 +99,7 @@ clean:
 
 .PHONY: allclean
 allclean: clean
+	-$(RM) bin/* build/*
 	-( cd framepac ; $(MAKE) clean )
 	-( cd whatlang2 ; $(MAKE) clean )
 
@@ -176,7 +177,7 @@ build/lenmodel.o: 	lenmodel.C lenmodel.h
 
 build/loclist.o: 	loclist.C loclist.h
 
-build/models.o: 	models.C models.h dbuffer.o global.h wildcard.h
+build/models.o: 	models.C models.h dbuffer.h global.h wildcard.h
 
 build/packet.o: 	packet.C inflate.h
 
