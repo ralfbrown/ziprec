@@ -418,7 +418,9 @@ SmallAlloc* HuffmanTreeHypothesis::allocator = SmallAlloc::create(sizeof(Huffman
 SmallAlloc* HuffmanTreeHypothesis::code_allocators[] = { nullptr } ;
 size_t HuffmanTreeHypothesis::code_alloc_used[] = { 0 } ;
 
-//Fr::Allocator HuffmanHypothesis::allocator("HuffmanHyp", sizeof(HuffmanHypothesis)) ;
+Allocator HuffmanHypothesis::allocator(FramepaC::Object_VMT<HuffmanHypothesis>::instance(),
+   				       sizeof(HuffmanHypothesis)) ;
+const char HuffmanHypothesis::s_typename[] = "HuffmanHypothesis" ;
 
 //Fr::Allocator HuffmanInfo::allocator("HuffmanInfo",sizeof(HuffmanInfo)) ;
 

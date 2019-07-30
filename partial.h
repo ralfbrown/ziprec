@@ -300,8 +300,8 @@ class HuffmanTreeHypothesis
 class HuffmanHypothesis : public Fr::Object
    {
    public:
-//      void *operator new(size_t) { return allocator.allocate() ; }
-//      void operator delete(void *blk) { allocator.release(blk) ; }
+      void *operator new(size_t) { return allocator.allocate() ; }
+      void operator delete(void *blk) { allocator.release(blk) ; }
       HuffmanHypothesis(const BitPointer &pos) ;
       HuffmanHypothesis(const HuffmanHypothesis*, const BitPointer& pos, size_t extension_len) ;
       ~HuffmanHypothesis() ;
@@ -369,8 +369,22 @@ class HuffmanHypothesis : public Fr::Object
 	 { return 0 ; }
 #endif /* TRACE_GENERATIONS */
 
+   protected: // implementation functions for virtual methods
+      friend class FramepaC::Object_VMT<HuffmanHypothesis> ;
+
+      // type determination predicates
+      // *** copying ***
+      // *** destroying ***
+      static void free_(Object* obj) { delete static_cast<HuffmanHypothesis*>(obj) ; }
+      // *** I/O ***
+      // *** standard info functions ***
+      // *** standard access functions ***
+      // *** comparison functions ***
+
    private:
-//      static Fr::Allocator   allocator ;
+      static Fr::Allocator   allocator ;
+      static const char s_typename[] ;
+
       HuffmanTreeHypothesis* m_litcodes ;
       HuffmanTreeHypothesis* m_distcodes ;
 
