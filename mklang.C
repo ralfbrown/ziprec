@@ -5,7 +5,7 @@
 /*									*/
 /*  File: mklang.C - generate language data for reconstruction		*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-28						*/
+/*  LastEdit: 2019-07-29						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Ralf Brown/CMU			*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -29,7 +29,6 @@
 #include <cstring>
 #include "global.h"
 #include "pstrie.h"
-#include "sort.h"
 #include "wildcard.h"
 #include "wordhash.h"
 #include "words.h"
