@@ -38,12 +38,6 @@ typedef int (*WordCompareFnPtr)(const WordString*,const WordString*) ;
 /*	Function prototypes						*/
 /************************************************************************/
 
-WordList *sort_words(WordList *words, WordCompareFnPtr cmp) ;
-WordList *merge_lists(WordList *list1, WordList *list2, WordCompareFnPtr cmp) ;
-WordList *merge_duplicates(WordList *words) ;
-
-int compare_frequencies(const WordString *w1, const WordString *w2) ;
-
 #endif /* !__SORT_H_INCLUDED */
 
 // end of file sort.h //
