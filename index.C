@@ -52,9 +52,11 @@ WildcardIndex::WildcardIndex(const DecodedByte *bytes, size_t num_bytes, unsigne
 	 m_counts[wild]++ ;
 	 }
       }
+   // allocate storage for the location informatin
    for (size_t i = 0 ; i < indexSize() ; i++)
       {
-      m_locations[i] = m_counts[i] ? new uint32_t[m_counts[i]] : nullptr ;
+      if (m_counts[i])
+	 m_locations[i].allocate(m_counts[i]) ;
       }
    LocalAlloc<uint32_t,50000> in_use(indexSize()+1,true) ;
    for (size_t i = 0 ; i < num_bytes ; i++)
@@ -68,18 +70,6 @@ WildcardIndex::WildcardIndex(const DecodedByte *bytes, size_t num_bytes, unsigne
 	    }
 	 }
       }
-   return ;
-}
-
-//----------------------------------------------------------------------
-
-WildcardIndex::~WildcardIndex()
-{
-   for (size_t i = 0 ; i < indexSize() ; i++)
-      {
-      delete[] m_locations[i] ;
-      }
-   m_indexsize = 0 ;
    return ;
 }
 

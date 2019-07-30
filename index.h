@@ -26,7 +26,7 @@
 #ifndef __INDEX_H_INCLUDED
 #define __INDEX_H_INCLUDED
 
-#include <stdint.h>
+#include <cstdint>
 #include "dbyte.h"
 #include "framepac/smartptr.h"
 
@@ -34,27 +34,25 @@
 /*	Types								*/
 /************************************************************************/
 
-#ifndef UINT32_MAX
-#define UINT32_MAX (0xFFFFFFFFU)
-#endif
-
 class WildcardIndex
    {
    public:
+      typedef Fr::NewPtr<uint32_t> LocPtr ;
+   public:
       WildcardIndex(const DecodedByte *bytes, size_t num_bytes, unsigned max_ref) ;
-      ~WildcardIndex() ;
+      ~WildcardIndex() = default ;
 
       // accessors
       unsigned indexSize() const { return  m_indexsize ; }
       uint32_t location(unsigned wildcard, unsigned index) const
          { return (wildcard < indexSize() && index < m_counts[wildcard]) 
 	       ? m_locations[wildcard][index] : UINT32_MAX ; }
-      const uint32_t *locations(unsigned wildcard) const { return m_locations[wildcard] ; }
+      const uint32_t *locations(unsigned wildcard) const { return m_locations[wildcard].get() ; }
       unsigned numLocations(unsigned wildcard) const { return m_counts[wildcard] ; }
 
    private:
       Fr::NewPtr<uint32_t>  m_counts ;
-      Fr::NewPtr<uint32_t*> m_locations ;
+      Fr::NewPtr<LocPtr>    m_locations ;
       unsigned              m_indexsize ;
    } ;
 
