@@ -364,34 +364,6 @@ enum HuffmanSearchMode
 
 //----------------------------------------------------------------------
 
-class SearchTrie
-   {
-   public:
-      static constexpr unsigned HASH_BITS = 22 ;
-   public:
-      SearchTrie() = default ;
-      ~SearchTrie() { clear() ; }
-
-      // accessors
-      size_t size() const { return m_size ; }
-      HuffmanHypothesis* find(uint32_t hashcode) const { return m_hypotheses[foldHashCode(hashcode)] ; }
-      bool isDuplicate(const HuffmanHypothesis*) const ;
-
-      // modifiers
-      void clear() ;
-      bool insert(HuffmanHypothesis *) ;
-      bool remove(HuffmanHypothesis *) ;
-
-   private:
-      // limit the hash code to 22 bits by folding down the high bits
-      static uint32_t foldHashCode(uint32_t hash) { return (hash ^ (hash>>HASH_BITS)) & ((1<<HASH_BITS) - 1) ; }
-   private:
-      HuffmanHypothesis* m_hypotheses[1<<HASH_BITS] ;
-      size_t	      m_size { 0 } ;
-   } ;
-
-//----------------------------------------------------------------------
-
 class HuffmanSearchQueue
    {
    public:
@@ -573,83 +545,6 @@ const char *binary(HuffmanCode code, unsigned length)
       }
    string[length] = '\0' ;
    return string ;
-}
-
-/************************************************************************/
-/*	Methods for class SearchTrie					*/
-/************************************************************************/
-
-static bool is_duplicate(const HuffmanHypothesis *hyp, const HuffmanHypothesis *cand_dup)
-{
-   for ( ; cand_dup ; cand_dup = cand_dup->next())
-      {
-      if (hyp->bitCount() == cand_dup->bitCount() && hyp->sameTrees(cand_dup))
-	 return true ;
-      }
-   return false ;
-}
-
-//----------------------------------------------------------------------
-
-bool SearchTrie::isDuplicate(const HuffmanHypothesis *hyp) const
-{
-   if (!hyp)
-      return false ;
-   HuffmanHypothesis *cand_dup = find(hyp->hashCode()) ;
-   return is_duplicate(hyp,cand_dup) ;
-}
-
-//----------------------------------------------------------------------
-
-void SearchTrie::clear()
-{
-   for (size_t i = 0 ; i < lengthof(m_hypotheses) ; ++i)
-      {
-      free_hypotheses(m_hypotheses[i]) ;
-      }
-   return ;
-}
-
-//----------------------------------------------------------------------
-
-bool SearchTrie::insert(HuffmanHypothesis *hyp)
-{
-   if (!hyp)
-      return false ;
-   uint32_t hashcode = foldHashCode(hyp->hashCode()) ;
-   if (is_duplicate(hyp,m_hypotheses[hashcode]))
-      return false ;
-   hyp->setNext(m_hypotheses[hashcode]) ;
-   m_hypotheses[hashcode] = hyp ;
-   m_size++ ;
-   return true ;
-}
-
-//----------------------------------------------------------------------
-
-bool SearchTrie::remove(HuffmanHypothesis *hyp)
-{
-   if (!hyp)
-      return false ;
-   uint32_t hashcode = foldHashCode(hyp->hashCode()) ;
-   HuffmanHypothesis *prev = nullptr ;
-   for (auto cand = m_hypotheses[hashcode] ; cand ; cand = cand->next())
-      {
-      if (hyp->bitCount() == cand->bitCount() && hyp->sameTrees(cand))
-	 {
-	 // we've found a match, so unlink it from the list
-	 if (prev)
-	    prev->setNext(cand->next()) ;
-	 else
-	    m_hypotheses[hashcode] = cand->next() ;
-	 cand->setNext(nullptr) ;
-	 delete cand ;
-	 m_size-- ;
-	 return true ;
-	 }
-      prev = cand ;
-      }
-   return false ;
 }
 
 /************************************************************************/
