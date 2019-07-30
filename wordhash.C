@@ -258,9 +258,7 @@ bool WordString::trim(unsigned start_pos, unsigned end_pos)
 
 int WordString::compareText(const WordString *other) const
 {
-   unsigned minlength = length() ;
-   if (other->length() < minlength)
-      minlength = other->length() ;
+   unsigned minlength = std::min(length(),other->length()) ;
    for (size_t i = 0 ; i < minlength ; i++)
       {
       const WordCharacter c1 = character(i) ;

@@ -126,7 +126,7 @@ bin/ziprec: build/ziprec.o $(LIBRARY) $(LIBS)
 
 bin/mklang: build/mklang.o $(LIBRARY) $(LIBS)
 	@mkdir -p bin
-	$(CC) -o $@ $(CFLAGS) $(CLINK) $^ $(LIBRARY)
+	$(CC) -o $@ $(CFLAGS) $(CLINK) $^ -pthread -lrt
 
 whatlang2/bin/mklangid:
 	( cd whatlang2 ; $(MAKE) all )

@@ -34,6 +34,7 @@
 #include "wordhash.h"
 #include "words.h"
 #include "ziprec.h"
+#include "framepac/hashtable.h"
 #include "whatlang2/langid.h"
 
 using namespace Fr ;
@@ -67,9 +68,8 @@ static NewPtr<size_t> ngram_counts ;
 static NewPtr<uint16_t> trigram_counts ;
 static bool store_unfiltered_counts = false ;
 
-static WordList *frequencies = nullptr ;
-static WordList *words = nullptr ;  // intermediate, gets merged into 'frequencies'
 static size_t wordcount = 0 ;
+static Ptr<ObjCountHashTable> wordfreqs { nullptr } ;
 
 /************************************************************************/
 /************************************************************************/
@@ -90,44 +90,39 @@ static void usage(const char *argv0)
 
 //----------------------------------------------------------------------
 
-static size_t count_words(const WordList *words)
+static bool collect_words(Object* key, size_t val, va_list args)
 {
-   return words ? words->listlength() : 0 ;
+   auto frequencies = va_arg(args,List**) ;
+   pushlist(List::create(key->clone().move(),Integer::create(val)),*frequencies) ;
+   return true ;
 }
 
 //----------------------------------------------------------------------
 
-static int compare_words(const WordString *w1, const WordString *w2)
+static int compare_frequencies(const Object* o1, const Object* o2)
 {
-   return w1->compareText(w2) ;
-}
- 
-//----------------------------------------------------------------------
- 
-static void merge_word_lists(WordList *&words1, WordList *&words2)
-{
-   //cout << '.' << flush ;
-   words2 = sort_words(words2,compare_words) ;
-   words2 = merge_duplicates(words2) ;
-   words1 = merge_lists(words1,words2,compare_words) ;
-   words1 = merge_duplicates(words1) ;
-   words2 = nullptr ;
-   return ;
+   auto freq1 = o1->nthInt(1) ;
+   auto freq2 = o2->nthInt(1) ;
+   if (freq1 > freq2)
+      return -1 ;
+   else if (freq1 < freq2)
+      return +1 ;
+   else
+      return 0 ;
 }
 
 //----------------------------------------------------------------------
 
-static void make_word(uint8_t *word, unsigned wordlen, bool &had_text)
+static void make_word(uint8_t* word, unsigned wordlen, bool &had_text)
 {
    if (wordlen && wordlen < MAX_WORD)
       {
-      words = WordList::push(word,wordlen,words) ;
-      wordcount++ ;
-      if (wordcount >= SORT_INTERVAL)
+      auto s = String::create(reinterpret_cast<char*>(word),wordlen) ;
+      if (wordfreqs->addCount(s,1) == 1)
 	 {
-	 merge_word_lists(frequencies,words) ;
-	 wordcount = 0 ;
+	 s.release() ;
 	 }
+      wordcount++ ;
       had_text = true ;
       }
    return ;
@@ -345,35 +340,32 @@ static bool write_ngram_counts(CFile& fp, const LangIDPackedTrie *ngrams,
 
 //----------------------------------------------------------------------
 
-static bool write_words(CFile& fp, const WordList *frequencies, bool display_words)
+static bool write_words(CFile& fp, const List* frequencies, bool display_words)
 {
-   if (!fp || !frequencies)
+   if (!fp || !frequencies || frequencies == List::emptyList())
       return false ;
    // store the count of words as a 32-bit big-endian number
-   uint32_t count = count_words(frequencies) ;
+   uint32_t count = frequencies->size() ;
    if (!fp.write32LE(count))
       return false ;
-   for (const auto word : *frequencies)
+   for (const auto wordinfo : *frequencies)
       {
-      size_t freq = word->frequency() ;
+      Object* word = wordinfo->front() ;
+      auto freq = wordinfo->nthInt(1) ;
       if (display_words)
 	 {
-	 cout << freq << '\t' << *word << endl ;
+	 cout << freq << '\t' << word->stringValue() << endl ;
 	 }
       // write frequency as 64-bit big-endian number
       if (!fp.write64LE(freq))
 	 return false ;
-      unsigned len = word->length() ;
-      // write string length as 16-bit big-endian number
-      if (!fp.putc((len >> 8) & 0xFF) || !fp.putc(len & 0xFF))
+      unsigned len = word->size() ;
+      // write string length as 16-bit little-endian number
+      if (!fp.write16LE(len))
 	 return false ;
       // write the string itself
-      for (size_t i = 0 ; i < len ; i++)
-	 {
-	 const WordCharacter &c = word->character(i) ;
-	 if (!fp.putc(c.byteValue()))
-	    return false ;
-	 }
+      if (!fp.write(word->stringValue(),len))
+	 return false ;
       }
    return true ;
 }
@@ -382,7 +374,7 @@ static bool write_words(CFile& fp, const WordList *frequencies, bool display_wor
 
 static bool write_frequencies(CFile& fp, const LangIDPackedTrie* forward_ngrams,
 			      const LangIDPackedTrie* reverse_ngrams, const size_t* counts_by_len,
-			      const WordList* word_model, uint64_t total_bytes, bool display_words)
+			      const List* word_model, uint64_t total_bytes, bool display_words)
 {
    // write format signature and version number
    if (!fp.writeSignature(LANGMODEL_SIGNATURE,LANGMODEL_FORMAT_VERSION))
@@ -431,21 +423,17 @@ static bool write_frequencies(CFile& fp, const LangIDPackedTrie* forward_ngrams,
 
 //----------------------------------------------------------------------
 
-static bool write_frequencies(const char *outfile,
-			      const LangIDPackedTrie *forward_ngrams,
-			      const LangIDPackedTrie *reverse_ngrams,
-			      const size_t *counts_by_len,
-			      const WordList *word_model,
-			      uint64_t total_bytes,
-			      bool display_words)
+static bool write_frequencies(const char* outfile, const LangIDPackedTrie* forward_ngrams,
+			      const LangIDPackedTrie* reverse_ngrams, const size_t* counts_by_len,
+			      const List* word_model, uint64_t total_bytes, bool display_words)
 {
    if (forward_ngrams || reverse_ngrams)
       {
       COutputFile fp(outfile,CFile::binary) ;
       if (fp)
 	 {
-	 return write_frequencies(fp,forward_ngrams,reverse_ngrams,counts_by_len,
-	                          word_model,total_bytes,display_words) ;
+	 return write_frequencies(fp,forward_ngrams,reverse_ngrams,counts_by_len,word_model,total_bytes,
+	    display_words) ;
 	 }
       }
    return false ;
@@ -455,6 +443,7 @@ static bool write_frequencies(const char *outfile,
 
 int main(int argc, char **argv)
 {
+   Fr::Initialize() ;
    const char *argv0 = argv[0] ;
    int filter_thresh = DEFAULT_FILTER_THRESHOLD ;
    int filter_factor = 1 ;
@@ -489,6 +478,7 @@ int main(int argc, char **argv)
    argc -= 2 ;
    argv += 2 ;
    uint64_t total_bytes = 0 ;
+   wordfreqs = ObjCountHashTable::create(20000) ;
    Owned<NybbleTrie> forward ;
    for (int arg = 0 ; arg < argc ; arg++)
       {
@@ -509,9 +499,10 @@ int main(int argc, char **argv)
       argc-- ;
       argv++ ;
       }
-   if (words)
-      merge_word_lists(frequencies,words) ;
-   frequencies = sort_words(frequencies,compare_frequencies) ;
+   List* frequencies = List::emptyList() ;
+   wordfreqs->iterate(collect_words,&frequencies) ;
+   frequencies = frequencies->sort(compare_frequencies) ;
+
    if (filter_thresh < 1)
       filter_thresh = DEFAULT_FILTER_THRESHOLD ;
    ngram_counts.allocate(max_ngram+1) ;
@@ -549,14 +540,12 @@ int main(int argc, char **argv)
       return 1 ;
       }
    fprintf(stdout,"Built language model from %ld bytes of text\n", total_bytes) ;
-   uint32_t count = count_words(frequencies) ;
-   fprintf(stdout,"Processed %lu unique words\n",(unsigned long)count) ;
-   delete frequencies ;
-   frequencies = nullptr ;
-   delete words ;
-   words = nullptr ;
+   auto count = frequencies->size() ;
+   fprintf(stdout,"Processed %lu words (%lu unique)\n",(unsigned long)wordcount,(unsigned long)count) ;
+   frequencies->free() ;
    ngram_counts = nullptr ;
    trigram_counts = nullptr ;
+   Fr::Shutdown() ;
    return 0 ;
 }
 
