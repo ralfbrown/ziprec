@@ -112,6 +112,7 @@ void print_partial_packet_statistics() ;
 /*	Types local to this module					*/
 /************************************************************************/
 
+#if 0
 class HuffmanChildInfo
    {
    public:
@@ -153,14 +154,12 @@ class HuffmanChildInfo
    private:
       uint16_t m_info ;
    } ;
+#endif 
 
 //----------------------------------------------------------------------
 
 class HuffmanTreeNode
    {
-   private:
-      HuffmanChildInfo m_left ;
-      HuffmanChildInfo m_right ;
    public:
       HuffmanTreeNode() {}
       ~HuffmanTreeNode() {}
@@ -187,14 +186,16 @@ class HuffmanTreeNode
       // modifiers
       void setLeftChild(uint16_t l) { m_left.setChild(l) ; }
       void setRightChild(uint16_t r) { m_right.setChild(r) ; }
-      void makeLeftLeaf(unsigned symbol = NODEINFO_SYMBOL_UNKNOWN)
-	 { m_left.markAsLeaf(symbol) ; }
-      void makeRightLeaf(unsigned symbol = NODEINFO_SYMBOL_UNKNOWN)
-	 { m_right.markAsLeaf(symbol) ; }
+      void makeLeftLeaf(unsigned symbol = HuffmanChildInfo::UNKNOWN) { m_left.markAsLeaf(symbol) ; }
+      void makeRightLeaf(unsigned symbol = HuffmanChildInfo::UNKNOWN) { m_right.markAsLeaf(symbol) ; }
       void setLeftExtraBits(unsigned extra) { m_left.setExtraBits(extra) ; }
       void setRightExtraBits(unsigned extra) { m_right.setExtraBits(extra) ; }
       void setLeftSymbol(unsigned sym) { m_left.setSymbol(sym) ; }
       void setRightSymbol(unsigned sym) { m_right.setSymbol(sym) ; }
+
+   private:
+      HuffmanChildInfo m_left ;
+      HuffmanChildInfo m_right ;
    } ;
 
 //----------------------------------------------------------------------
@@ -278,28 +279,20 @@ class PartialHuffmanTree : public PartialHuffmanTreeBase
       static const uint8_t s_extrabit_limits[MAX_EXTRABITS+1] ;
    public:
       PartialHuffmanTree() : PartialHuffmanTreeBase(SZ) {}
-      PartialHuffmanTree(const PartialHuffmanTree &orig)
-	 : PartialHuffmanTreeBase(orig)
+      PartialHuffmanTree(const PartialHuffmanTree &orig) : PartialHuffmanTreeBase(orig)
 	 { memcpy(m_nodes,orig.m_nodes,sizeof(m_nodes)) ; }
       ~PartialHuffmanTree() {}
 
       // accessors
       HuffmanTreeNode *node(unsigned index) const { return &m_nodes[index] ; }
-      unsigned indexOf(const HuffmanTreeNode *node)
-	 { return node - m_nodes ; }
-      bool extraBitsAtLimit(unsigned extra) const
-	 { return m_extra_counts[extra] >= s_extrabit_limits[extra] ; }
-      bool consistentWithTree(HuffmanCode code, size_t length,
-			      size_t extra, bool &present) const
-	 { return PartialHuffmanTreeBase::consistentWithTree(m_nodes,code,
-							     length,extra,
-							     present) ; }
+      unsigned indexOf(const HuffmanTreeNode *node) { return node - m_nodes ; }
+      bool extraBitsAtLimit(unsigned extra) const { return m_extra_counts[extra] >= s_extrabit_limits[extra] ; }
+      bool consistentWithTree(HuffmanCode code, size_t length, size_t extra, bool &present) const
+	 { return PartialHuffmanTreeBase::consistentWithTree(m_nodes,code,length,extra,present) ; }
 
       // modifiers
-      bool add(HuffmanCode code, unsigned length, unsigned extra_bits,
-	       unsigned symbol = NODEINFO_SYMBOL_UNKNOWN)
-	 { return PartialHuffmanTreeBase::add(m_nodes,ROOT_NODE,code,length,
-					      extra_bits,symbol) ; }
+      bool add(HuffmanCode code, unsigned length, unsigned extra_bits, unsigned symbol = HuffmanChildInfo::UNKNOWN)
+	 { return PartialHuffmanTreeBase::add(m_nodes,ROOT_NODE,code,length,extra_bits,symbol) ; }
 
       // debugging support
       void dump() const { PartialHuffmanTreeBase::dump(m_nodes) ; }
@@ -400,13 +393,10 @@ class HuffmanInfo : public Object
       void clearLastLiteral() { m_lastliteral = 0 ; m_lastlitlength = 0 ; m_lastlitcount = 0 ; }
 
       // factories
-      HuffmanInfo *extend(const BitPointer &position, HuffmanCode code,
-			  unsigned len,
-			  unsigned symbol = NODEINFO_SYMBOL_UNKNOWN) const ;
-      HuffmanInfo *extend(const BitPointer &position, HuffmanCode code,
-			  unsigned matchlen, unsigned matchextra,
-			  HuffmanCode distcode, unsigned distlen,
-			  unsigned distextra) const ;
+      HuffmanInfo* extend(const BitPointer& position, HuffmanCode code, unsigned len,
+			  unsigned symbol = HuffmanChildInfo::UNKNOWN) const ;
+      HuffmanInfo* extend(const BitPointer& position, HuffmanCode code,  unsigned matchlen, unsigned matchextra,
+			  HuffmanCode distcode, unsigned distlen, unsigned distextra) const ;
 
    private:
 //      static Allocator allocator ;
@@ -1609,7 +1599,7 @@ const
 	 //   codes, and there isn't any ambiguity about
 	 //   literal/nonliteral codes, we can flesh out all codes
 	 //   from 0 up to the new one
-	 if (length == minimumBitLength() && extra == EXTRA_ISLITERAL)
+	 if (length == minimumBitLength() && HuffmanChildInfo::isLiteral(extra))
 	    {
 	    for (size_t i = 0 ; i < code ; i++)
 	       {
@@ -1630,7 +1620,7 @@ const
 	    //   we can infer is that the xxx0 sibling of an xxx1 code
 	    //   is of the same length; if xxx1 is a literal code, we
 	    //   thus know that xxx0 must also be a literal
-	    if ((code & 1) != 0 && extra == EXTRA_ISLITERAL)
+	    if ((code & 1) != 0 && HuffmanChildInfo::isLiteral(extra))
 	       {
 	       new_tree[inspoint+num_inserted].set(code & ~1,length,extra) ;
 	       num_inserted++ ;
@@ -1643,12 +1633,11 @@ const
 	    //   fill in any missing codes between the prior code and
 	    //   the new code
 	    if ((new_tree[inspoint-1].extraBits() == extra) ||
-		(new_tree[inspoint-1].isLiteral()
-		 && extra == EXTRA_ISLITERAL))
+		(new_tree[inspoint-1].isLiteral() && HuffmanChildInfo::isLiteral(extra)))
 	       {
 	       HuffmanCode pred = new_tree[inspoint-1].codeValue() + 1 ;
 	       unsigned additional = code - pred ;
-	       if ((extra != EXTRA_ISLITERAL &&
+	       if ((!HuffmanChildInfo::isLiteral(extra) &&
 		   additional >= m_extra_counts[extra]) ||
 		   num_codes + num_inserted + additional > maxCodes())
 		  {
@@ -1681,12 +1670,11 @@ const
 	    //   (or both are literals), we can fill in the missing
 	    //   codes between the two
 	    if ((m_codes[inspoint].extraBits() == extra) ||
-		(m_codes[inspoint].isLiteral()
-		 && extra == EXTRA_ISLITERAL))
+		(m_codes[inspoint].isLiteral() && HuffmanChildInfo::isLiteral(extra)))
 	       {
 	       HuffmanCode succ = m_codes[inspoint].codeValue() ;
 	       unsigned additional = succ - code - 1 ;
-	       if ((extra != EXTRA_ISLITERAL &&
+	       if ((!HuffmanChildInfo::isLiteral(extra) &&
 		   additional >= m_extra_counts[extra]) ||
 		   num_codes + num_inserted + additional > maxCodes())
 		  {
@@ -1777,9 +1765,7 @@ unsigned HuffmanTreeHypothesis::findCode(HuffmanCode code,
 
 //----------------------------------------------------------------------
 
-unsigned HuffmanTreeHypothesis::findInsertionPoint(HuffmanCode code,
-						   unsigned length,
-						   unsigned &extra) const
+unsigned HuffmanTreeHypothesis::findInsertionPoint(HuffmanCode code, unsigned length, unsigned &extra) const
 {
    extra = 0 ;
    unsigned hi = symbolCount() ;
@@ -1795,7 +1781,7 @@ unsigned HuffmanTreeHypothesis::findInsertionPoint(HuffmanCode code,
 	 lo = mid + 1 ;
       else
 	 {
-	 extra = isLiteral(mid) ? EXTRA_ISLITERAL : extraBits(mid) ;
+	 extra = isLiteral(mid) ? HuffmanChildInfo::LITERAL : extraBits(mid) ;
 	 return HYP_NOT_FOUND ;  // already present, don't insert
 	 }
       }
@@ -1808,7 +1794,7 @@ unsigned HuffmanTreeHypothesis::findInsertionPoint(HuffmanCode code,
 
 bool HuffmanTreeHypothesis::extraBitsAtLimit(unsigned extra) const
 {
-   if (extra == EXTRA_ISLITERAL)
+   if (HuffmanChildInfo::isLiteral(extra))
       return false ;
    if (maxCodes() == DIST_SYMBOLS)
       {
@@ -1916,7 +1902,7 @@ bool HuffmanTreeHypothesis::consistentWithTree(HuffmanCode code,
 //	       return false ;		// we're an already-seen singleton
 	    if (isLiteral(index))
 	       {
-	       if (extra != EXTRA_ISLITERAL)
+	       if (!HuffmanChildInfo::isLiteral(extra))
 		  return false ;
 	       }
 	    else // if (!isLiteral(index))
@@ -1943,9 +1929,9 @@ bool HuffmanTreeHypothesis::consistentWithTree(HuffmanCode code,
       if (siblen == length)
 	 {
 	 bool siblit = isLiteral(index) ;
-	 if (siblit && extra != EXTRA_ISLITERAL)
+	 if (siblit && !HuffmanChildInfo::isLiteral(extra))
 	    return false ;
-	 if (!siblit && extra != EXTRA_ISLITERAL && extra >= m_min_extra)
+	 if (!siblit && !HuffmanChildInfo::isLiteral(extra) && extra >= m_min_extra)
 	    {
 	    unsigned sibextra = extraBits(index) ;
 	    if (sibextra >= m_min_extra && sibextra < extra)
@@ -1966,9 +1952,9 @@ bool HuffmanTreeHypothesis::consistentWithTree(HuffmanCode code,
       if (siblen == length)
 	 {
 	 bool siblit = isLiteral(index-1) ;
-	 if (!siblit && extra == EXTRA_ISLITERAL)
+	 if (!siblit && HuffmanChildInfo::isLiteral(extra))
 	    return false ;
-	 if (!siblit && extra != EXTRA_ISLITERAL && extra >= m_min_extra)
+	 if (!siblit && !HuffmanChildInfo::isLiteral(extra) && extra >= m_min_extra)
 	    {
 	    unsigned sibextra = extraBits(index-1) ;
 	    if (sibextra >= m_min_extra && sibextra > extra)
@@ -2161,7 +2147,7 @@ HuffmanHypothesis::~HuffmanHypothesis()
 bool HuffmanHypothesis::consistentLiteral(HuffmanCode code, unsigned length) const
 {
    bool present ;
-   return m_litcodes->consistentWithTree(code,length,EXTRA_ISLITERAL, present) ;
+   return m_litcodes->consistentWithTree(code,length,HuffmanChildInfo::LITERAL, present) ;
 }
 
 //----------------------------------------------------------------------
@@ -2242,7 +2228,7 @@ HuffmanHypothesis *HuffmanHypothesis::extend(const BitPointer& position, Huffman
    if (new_hyp)
       {
       new_hyp->updateLastLiteral(code,len) ;
-      new_hyp->m_litcodes = m_litcodes->insert(code,len,EXTRA_ISLITERAL, symbol == END_OF_DATA) ;
+      new_hyp->m_litcodes = m_litcodes->insert(code,len,HuffmanChildInfo::LITERAL, symbol == END_OF_DATA) ;
       if (new_hyp->m_litcodes != m_litcodes)
 	 m_litcodes->removeReference() ;
       if (!new_hyp->m_litcodes)
@@ -2690,8 +2676,7 @@ bool PartialHuffmanTreeBase::consistentWithTree(const HuffmanTreeNode *nodes,
 	 if (pred_index != (unsigned)~0)
 	    {
 	    HuffmanChildInfo pred ;
-	    unsigned pred_len = predecessor_length(nodes,pred_index,
-						   pred_depth,pred) ;
+	    unsigned pred_len = predecessor_length(nodes,pred_index,pred_depth,pred) ;
 	    if (pred_len > length)
 	       return false ;
 	    if (pred_len == length && pred.isValid())
@@ -2699,13 +2684,12 @@ bool PartialHuffmanTreeBase::consistentWithTree(const HuffmanTreeNode *nodes,
 	       // ensure appropriate ordering of literal and length symbols:
 	       unsigned pred_extra = pred.extraBits() ;
 	       // if we are a literal symbol, our predecessor must be as well
-	       if (extra == EXTRA_ISLITERAL && pred_extra != EXTRA_ISLITERAL)
+	       if (HuffmanChildInfo::isLiteral(extra) && !HuffmanChildInfo::isLiteral(pred_extra))
 		  return false ;
 	       // a higher number of extra bits implies a higher symbol,
 	       //   which must lexically follow the lower symbol
-	       if (extra >= m_min_extra && extra != EXTRA_ISLITERAL &&
-		   pred_extra >= m_min_extra &&
-		   pred_extra != EXTRA_ISLITERAL &&
+	       if (extra >= m_min_extra && !HuffmanChildInfo::isLiteral(extra) &&
+		  pred_extra >= m_min_extra && !HuffmanChildInfo::isLiteral(pred_extra) &&
 		   extra < pred_extra)
 		  return false ;
 	       }
@@ -2713,8 +2697,7 @@ bool PartialHuffmanTreeBase::consistentWithTree(const HuffmanTreeNode *nodes,
 	 if (succ_index != (unsigned)~0)
 	    {
 	    HuffmanChildInfo succ ;
-	    unsigned succ_len = successor_length(nodes,succ_index,succ_depth,
-						 maximumBitLength(),succ) ;
+	    unsigned succ_len = successor_length(nodes,succ_index,succ_depth, maximumBitLength(),succ) ;
 	    if (succ_len < length)
 	       return false ;
 	    if (succ_len == length && succ.isValid())
@@ -2722,13 +2705,12 @@ bool PartialHuffmanTreeBase::consistentWithTree(const HuffmanTreeNode *nodes,
 	       // ensure appropriate ordering of literal and length symbols:
 	       unsigned succ_extra = succ.extraBits() ;
 	       // if our successor is a literal symbol, we must be as well
-	       if (succ_extra == EXTRA_ISLITERAL && extra != EXTRA_ISLITERAL)
+	       if (HuffmanChildInfo::isLiteral(succ_extra) && !HuffmanChildInfo::isLiteral(extra))
 		  return false ;
 	       // a higher number of extra bits implies a higher symbol,
 	       //   which must lexically follow the lower symbol
-	       if (extra >= m_min_extra && extra != EXTRA_ISLITERAL &&
-		   succ_extra >= m_min_extra &&
-		   succ_extra != EXTRA_ISLITERAL &&
+	       if (extra >= m_min_extra && !HuffmanChildInfo::isLiteral(extra) &&
+		   succ_extra >= m_min_extra && !HuffmanChildInfo::isLiteral(succ_extra) &&
 		   extra > succ_extra)
 		  return false ;
 	       }
@@ -2802,8 +2784,7 @@ bool PartialHuffmanTreeBase::add(HuffmanTreeNode *nodes, unsigned index,
 
 //----------------------------------------------------------------------
 
-static void dump_tree(const HuffmanTreeNode *nodes, unsigned index,
-		      unsigned depth, char *digits)
+static void dump_tree(const HuffmanTreeNode* nodes, unsigned index, unsigned depth, char* digits)
 {
    HuffmanChildInfo leftchild = nodes[index].leftChild() ;
    digits[depth] = '0' ;
@@ -2813,9 +2794,9 @@ static void dump_tree(const HuffmanTreeNode *nodes, unsigned index,
       if (leftchild.isLeaf())
 	 {
 	 cerr << digits ;
-	 if (leftchild.extraBits() != EXTRA_ISLITERAL)
+	 if (!leftchild.isLiteral())
 	    cerr << "+" << leftchild.extraBits() ;
-	 if (leftchild.symbol() != NODEINFO_SYMBOL_UNKNOWN)
+	 if (!leftchild.isUnknown())
 	    cerr << " = " << leftchild.symbol() ;
 	 cerr << endl ;
 	 }
@@ -2838,9 +2819,9 @@ static void dump_tree(const HuffmanTreeNode *nodes, unsigned index,
       if (rightchild.isLeaf())
 	 {
 	 cerr << digits ;
-	 if (rightchild.extraBits() != EXTRA_ISLITERAL)
+	 if (!rightchild.isLiteral())
 	    cerr << "+" << rightchild.extraBits() ;
-	 if (rightchild.symbol() != NODEINFO_SYMBOL_UNKNOWN)
+	 if (!rightchild.isUnknown())
 	    cerr << " = " << rightchild.symbol() ;
 	 cerr << endl ;
 	 }
@@ -2891,8 +2872,7 @@ HuffmanInfo::HuffmanInfo(const HuffmanInfo *orig, const BitPointer &pos,
 bool HuffmanInfo::consistentLiteral(HuffmanCode code, unsigned length) const
 {
    bool present ;
-   return m_litcodes.consistentWithTree(code,length,EXTRA_ISLITERAL,
-					present) ;
+   return m_litcodes.consistentWithTree(code,length,HuffmanChildInfo::LITERAL,present) ;
 }
 
 //----------------------------------------------------------------------
@@ -2949,8 +2929,7 @@ bool HuffmanInfo::excessiveRepeats(HuffmanCode code, unsigned length) const
 
 //----------------------------------------------------------------------
 
-HuffmanInfo *HuffmanInfo::extend(const BitPointer& position, HuffmanCode code,
-				 unsigned len, unsigned symbol) const
+HuffmanInfo* HuffmanInfo::extend(const BitPointer& position, HuffmanCode code, unsigned len, unsigned symbol) const
 {
    if (code == all_ones[len] &&
        (len < m_litcodes.maxCodeLength() || len < NEEDED_LIT_BITS))
@@ -2959,7 +2938,7 @@ HuffmanInfo *HuffmanInfo::extend(const BitPointer& position, HuffmanCode code,
    if (new_info)
       {
       new_info->updateLastLiteral(code,len) ;
-      new_info->m_litcodes.add(code,len,EXTRA_ISLITERAL,symbol) ;
+      new_info->m_litcodes.add(code,len,HuffmanChildInfo::LITERAL,symbol) ;
       }
    return new_info.move() ; //FIXME
 }

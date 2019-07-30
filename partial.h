@@ -39,24 +39,6 @@
 //   in the compressed encoding of the Huffman tree
 #define MAX_BITLENGTH 15
 
-// define the bitmasks and shifts to pack the data items for a
-//   HuffmanChildInfo into 16 bits
-// is the info valid?
-#define NODEINFO_VALID	        0x8000
-// is the child node a leaf?
-#define NODEINFO_LEAF 		0x4000
-// if not a leaf, the info contains the index of the child node
-#define NODEINFO_CHILD_MASK     0x01FF
-
-// maximum symbol value is 285, so we need nine bits
-#define NODEINFO_SYMBOL_MASK 	0x01FF
-#define NODEINFO_SYMBOL_SHIFT 	0
-// maximum extra length bits = 5 (16 for DEFLATE64), distance = 13 (14),
-//   so we need five bits to support DEFLATE64
-#define NODEINFO_EXTRA_MASK 	0x3E00
-#define NODEINFO_EXTRA_SHIFT 	9
-#define EXTRA_ISLITERAL (NODEINFO_EXTRA_MASK >> NODEINFO_EXTRA_SHIFT)
-
 // how many extra bits can we have on the length code?
 #define MAX_LENGTH_EXTRABITS    5	// 32K-window standard DEFLATE
 #define MAX_LENGTH_EXTRABITS64 16	// DEFLATE64
@@ -77,9 +59,6 @@
 #  define MAX_EXTRABITS 13		// maximum possible extra bits
 #  define MAX_EXTENSION (MAX_BITLENGTH + MAX_DISTANCE_EXTRABITS)
 #endif /* SUPPORT_DEFLATE64 */
-
-// special wildcard value for the symbol
-#define NODEINFO_SYMBOL_UNKNOWN (NODEINFO_SYMBOL_MASK)
 
 // define the bit fields used by CodeHypothesis
 #define SH_CODE_MASK       0x7FFF
@@ -102,6 +81,55 @@ typedef uint16_t HuffmanCode ;
 #else
 typedef uint32_t HuffmanCode ;
 #endif
+
+//----------------------------------------------------------------------
+
+class HuffmanChildInfo
+   {
+   public:
+      static constexpr unsigned LITERAL = 0x1F ;	// all bits set in m_extra
+      static constexpr unsigned UNKNOWN = 0x1FF ;	// all bits set in m_symbol
+
+   public:
+      HuffmanChildInfo() : m_valid(0), m_leaf(0), m_extra(0), m_symbol(0) {}
+      ~HuffmanChildInfo() = default ;
+
+      // accessors
+      bool isValid() const { return m_valid != 0 ; }
+      bool isLeaf() const { return m_leaf != 0 ; }
+      bool isLiteral() const { return m_extra == LITERAL ; }
+      bool isUnknown() const { return m_symbol == UNKNOWN ; }
+      unsigned childIndex() const { return m_symbol ; }
+      unsigned symbol() const { return m_symbol ; }
+      unsigned extraBits() const { return m_extra ; }
+      
+      static bool isLiteral(unsigned extra) { return extra == LITERAL ; }
+      static bool isUnknown(unsigned lit) { return lit == UNKNOWN ; }
+
+      // modifiers
+      void markValid() { m_valid = 1 ; }
+      void markNonLeaf() { m_leaf = 0 ; }
+      void markAsLeaf() { m_leaf = 1 ; }
+      void markAsLeaf(unsigned sym) { setSymbol(sym) ; markValid() ; markAsLeaf() ; }
+      void setSymbol(unsigned sym)  { m_symbol = sym  ; }
+      void setExtraBits(unsigned extra) { m_extra = extra ; }
+      void makeLiteral(unsigned sym = UNKNOWN) { m_extra = LITERAL ; markAsLeaf(sym) ; }
+      void setChild(uint16_t index) { markNonLeaf() ; setSymbol(index) ; markValid() ; }
+
+   private: // total size = 16 bits
+      // is this information valid?
+      unsigned short m_valid:1 ;
+      // is this a leaf or an internal node in the search tree?
+      unsigned short m_leaf:1 ;
+      // how many extra bits do we need to consume from the stream
+      //   length: up to 5 extra for regular deflate, 16 for DEFLATE64 (this requires 5 bits to store)
+      //   distance: up to 13 extra bits for regular deflate, 14 for DEFLATE64
+      unsigned short m_extra:5 ;
+      // the huffman symbol (0-285) or a literal byte value
+      //   store a literal if m_extra has all bits set, which could not be a valid number of extra bits
+      unsigned short m_symbol:9 ;
+   } ;
+
 
 //----------------------------------------------------------------------
 
@@ -134,7 +162,7 @@ class CodeHypothesis
 	 {
 	    code <<= (MAX_BITLENGTH - length) ;
 	    code |= ((length << SH_LENGTH_SHIFT) & SH_LENGTH_MASK) ;
-	    if (extra == EXTRA_ISLITERAL)
+	    if (HuffmanChildInfo::isLiteral(extra))
 	       {
 	       code |= SH_ISLITERAL_MASK ;
 	       }
@@ -337,11 +365,9 @@ class HuffmanHypothesis : public Fr::Object
 	 { m_lastliteral = 0 ; m_lastlitlength = 0 ; m_lastlitcount = 0 ; }
 
       // factories
-      HuffmanHypothesis *extend(const BitPointer &position, HuffmanCode code,
-				unsigned len,
-				unsigned symbol = NODEINFO_SYMBOL_UNKNOWN) const ;
-      HuffmanHypothesis *extend(const BitPointer &position, HuffmanCode code,
-				unsigned length, unsigned extra,
+      HuffmanHypothesis* extend(const BitPointer& position, HuffmanCode code, unsigned len,
+	 			unsigned symbol = HuffmanChildInfo::UNKNOWN) const ;
+      HuffmanHypothesis* extend(const BitPointer& position, HuffmanCode code, unsigned length, unsigned extra,
 				bool is_distance) const ;
 
       // debugging support
