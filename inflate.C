@@ -5,7 +5,7 @@
 /*									*/
 /*  File: inflate.C - DEFLATE decompression				*/
 /*  Version:  1.10beta				       			*/
-/*  LastEdit: 2019-07-29						*/
+/*  LastEdit: 2019-08-21						*/
 /*									*/
 /*  (c) Copyright 2011,2012,2013,2019 Carnegie Mellon University	*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -149,7 +149,7 @@ static CFile open_output_file(CharPtr& filename, char *default_filename, const c
       filename = default_filename ;
       return COutputFile(filename, opts, using_stdin ? nullptr : CFile::askOverwrite) ;
       }
-   return outfp ;
+   return std::move(outfp) ;
 }
 
 //----------------------------------------------------------------------
