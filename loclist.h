@@ -77,7 +77,9 @@ enum SignatureType
       ST_SZDDSignature,
       ST_SZDDAltSignature,
       ST_KWAJSignature,
-      ST_LZXHeader
+      ST_LZXHeader,
+      ST_ZStandardFrame,
+      ST_ZChunkSignature,
    } ;
 
 //----------------------------------------------------------------------

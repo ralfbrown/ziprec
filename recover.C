@@ -473,6 +473,11 @@ off_t LocationList::headerEndOffset(const char *buffer,
 	 end_offset += 4 ;
 	 break ;
 	 }
+      case ST_ZChunkSignature:
+         {
+	 //TODO
+	 break ;
+	 }
       default:
 	 // do nothing
 	 break ;
@@ -1112,6 +1117,14 @@ static LocationList* scan_for_ZIP_signatures(const char* buffer_start, const cha
 	       locations = LocationList::push(ST_BZIP2EndOfStream,offset, locations);
 	       }
 	    break ;
+	 case 0x28:
+	    // check for Zstandard frame's magic number
+	    if (bufpos[1] == '\xB5' && bufpos[2] == 0x2F && bufpos[3] == '\xFD')
+	       {
+	       // Zstandard frame header
+	       locations = LocationList::push(ST_ZStandardFrame,offset, locations) ;
+	       }
+	    break ;
 	 case 'F':
 	    // check for PDF FlateDecode headers
 	    if (!params.exclude_PDFs && bufpos + 23 < buffer_end &&
@@ -1286,6 +1299,17 @@ static LocationList* scan_for_ZIP_signatures(const char* buffer_start, const cha
 	       //   the CRC-32 at offset -10 from the signature matches
 	       //   the six bytes between the CRC-32 and the signature
 //FIXME: verify CRC-32
+	       }
+	    }
+	    break ;
+	 case '\0':
+	    {
+	    // potential Zchunk file header
+	    if (bufpos[1] == 'Z' && bufpos[2] == 'C' && bufpos[3] == 'K' && bufpos[4] == '1')
+	       {
+	       // Zchunk header signature found, validate the header
+	       //TODO
+	       locations = LocationList::push(ST_ZChunkSignature,offset,locations) ;
 	       }
 	    }
 	    break ;
