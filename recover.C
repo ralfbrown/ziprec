@@ -1399,6 +1399,113 @@ static LocationList *sort_signatures(LocationList *locations)
 
 //----------------------------------------------------------------------
 
+static uint64_t extract_zchunk_integer(const char*& buffer)
+{
+   unsigned shift = 0 ;
+   uint64_t integer = 0 ;
+   do {
+      integer |= ((*buffer & 0x7F) << shift) ;
+      shift += 7 ;
+      } while ((*buffer++ & 0x80) == 0) ;
+   return integer ;
+}
+
+//----------------------------------------------------------------------
+
+static uint64_t extract_zchunk_checksum(const char*& buffer, unsigned type)
+{
+   switch (type)
+      {
+      case 0:   // SHA-1
+	 buffer += 32 ;
+	 break ;
+      case 1:   // SHA-256
+	 buffer += 32 ;
+	 break ;
+      case 2:   // SHA-512
+	 buffer += 64 ;
+	 break ;
+      case 3:   // SHA-512/128
+	 buffer += 16 ;
+	 break ;
+      }
+   return 0 ; //TODO
+}
+
+//----------------------------------------------------------------------
+
+static bool valid_zchunk_header(LocationList* loc, const char* buffer_start, const char* buffer_end)
+{
+   if (!loc || buffer_start + loc->offset() > buffer_end)
+      return false ;
+   const char* buffer = buffer_start + loc->offset() + 5 ; // skip past signature string
+   uint64_t checksum_type = extract_zchunk_integer(buffer) ;
+   /*uint64_t header_size =*/ extract_zchunk_integer(buffer) ;
+   /*uint64_t header_checksum =*/ extract_zchunk_checksum(buffer,checksum_type) ;
+   /*uint64_t data_checksum =*/ extract_zchunk_checksum(buffer,checksum_type) ;
+   uint64_t flags = extract_zchunk_integer(buffer) ;
+   /*uint64_t comp_type =*/ extract_zchunk_integer(buffer) ;   // 0 = none, 2 = Zstd
+   if (buffer >= buffer_end)
+      return false ;
+   if (flags & 2) // do we have optional elements?
+      {
+      uint64_t opt_count = extract_zchunk_integer(buffer) ;
+      for (size_t i = 0 ; i < opt_count ; ++i)
+	 {
+	 (void)extract_zchunk_integer(buffer) ;  // element ID
+	 uint64_t size = extract_zchunk_integer(buffer) ;
+	 buffer += size ;
+	 if (buffer >= buffer_end)
+	    return false ;
+	 }
+      }
+   // now we've reached the index
+   /*uint64_t index_size =*/ extract_zchunk_integer(buffer) ;
+   uint64_t chunk_check_type = extract_zchunk_integer(buffer) ;
+   uint64_t chunk_count = extract_zchunk_integer(buffer) ;
+   // iterate through the chunks;  chunk #0 is always the dictionary, whether or not one exists
+   for (size_t i = 0 ; i < chunk_count ; ++i)
+      {
+      if ((flags & 1) != 0)
+	 {
+	 uint64_t id = extract_zchunk_integer(buffer) ;
+	 if (i == 0 && id != 0) // dict stream ID must be zero or omitted
+	    return false ;
+	 }
+      (void)extract_zchunk_checksum(buffer,chunk_check_type) ; // (0 if i==0 and there is no dict)
+      (void)extract_zchunk_integer(buffer) ; // chunk compressed length (0 if i==0 and there is no dict)
+      (void)extract_zchunk_integer(buffer) ; // chunk uncompressed length (0 if i==0 and there is no dict)
+      if (buffer >= buffer_end)
+	 return false ;
+      }
+   // iterate through the signatures
+   uint64_t sigcount = extract_zchunk_integer(buffer) ;
+   for (size_t i = 0 ; i < sigcount ; ++i)
+      {
+      (void)extract_zchunk_integer(buffer) ; // signature type
+      uint64_t size = extract_zchunk_integer(buffer) ;
+      if (buffer + size >= buffer_end)
+	 return false ;
+      buffer += size ;
+      }
+   // now we are at the start of the first chunk in the file (the dictionary, if it is present)
+//TODO
+   return true ;
+}
+
+//----------------------------------------------------------------------
+
+static bool valid_zstandard_frame(LocationList* loc, const char* buffer_start, const char* buffer_end)
+{
+   if (!loc || buffer_start + loc->offset() > buffer_end)
+      return false ;
+   //TODO
+
+   return false ;
+}
+
+//----------------------------------------------------------------------
+
 static LocationList *filter_signatures(LocationList* locations, const char* buffer_start,
 				       const char* buffer_end)
 {
@@ -1508,6 +1615,16 @@ static LocationList *filter_signatures(LocationList* locations, const char* buff
 	    {
 	    remove_location(locations,locs) ;
 	    }
+	 }
+      else if (sig == ST_ZChunkSignature && !valid_zchunk_header(locs,buffer_start,buffer_end))
+	 {
+	 // the ZChunk signature does not start a valid ZChunk file header, so ignore the signature
+	 remove_location(locations,locs) ;
+	 }
+      else if (sig == ST_ZStandardFrame && !valid_zstandard_frame(locs,buffer_start,buffer_end))
+	 {
+	 // the ZStandard signature is not followed by a valid frame header, so ignore the signature
+	 remove_location(locations,locs) ;
 	 }
       prev = locs ;
       }
