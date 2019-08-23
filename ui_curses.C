@@ -4,7 +4,7 @@
 /*	by Ralf Brown / Carnegie Mellon University			*/
 /*									*/
 /*  Version:  1.10beta		User Interface - Curses			*/
-/*  LastEdit: 2019-07-29						*/
+/*  LastEdit: 2019-08-22						*/
 /*									*/
 /*  (c) Copyright 2012,2013,2019 Carnegie Mellon University		*/
 /*      This program is free software; you can redistribute it and/or   */
@@ -99,16 +99,14 @@ bool ZiprecUICurses::setCursor(unsigned row, unsigned col)
 
 bool ZiprecUICurses::displayChar(char c)
 {
-   ::write(1,&c,1) ;
-   return true ;
+   return ::write(1,&c,1) == 1 ;
 }
 
 //----------------------------------------------------------------------
 
 bool ZiprecUICurses::displayText(const char *buf, unsigned len)
 {
-   write(1,buf,len) ;
-   return true ;
+   return ::write(1,buf,len) == 1 ;
 }
 
 //----------------------------------------------------------------------
