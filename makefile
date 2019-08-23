@@ -248,15 +248,15 @@ ziprec.h: dbyte.h
 ## submodule initialization
 
 framepac:
-	@[[ -e ../framepac-ng/framepac ]] && echo "Linking to local install of FramepaC-ng" && ln -s ../framepac-ng framepac ; true
-	@[[ -e ../framepac/framepac ]] && echo "Linking to local install of FramepaC-ng" && ln -s ../framepac framepac ; true
-	@[[ ! -e framepac ]] && [[ -e .git ]] && echo "Fetching FramepaC-ng" && git submodule add ../framepac-ng.git framepac && git submodule update --init
-	@[[ -e framepac ]] || (echo "Please install FramepaC-ng in subdir 'framepac'" ;exit 1)
+	@[ -e ../framepac-ng/framepac ] && echo "Linking to local install of FramepaC-ng" && ln -s ../framepac-ng framepac ; true
+	@[ -e ../framepac/framepac ] && echo "Linking to local install of FramepaC-ng" && ln -s ../framepac framepac ; true
+	@[ ! -e framepac ] && [ -e .git ] && echo "Fetching FramepaC-ng" && git submodule add -f ../framepac-ng.git framepac && git submodule update --init
+	@[ -e framepac ] || (echo "Please install FramepaC-ng in subdir 'framepac'" ;exit 1)
 
 whatlang2:
-	@[[ -e ../whatlang2/langid.h ]] && echo "Linking to local install of Whatlang2" && ln -s ../whatlang2 . ; true
-	@[[ ! -e whatlang2 ]] && [[ -e .git ]] && echo "Fetching Whatlang2" && git submodule add ../whatlang2.git whatlang2 && git submodule update --init
-	@[[ -e .git ]] || [[ -e whatlang2 ]] || (echo "Please install Whatlang2 in subdir 'whatlang2'" ;exit 1)
+	@[ -e ../whatlang2/langid.h ] && echo "Linking to local install of Whatlang2" && ln -s ../whatlang2 . ; true
+	@[ ! -e whatlang2 ] && [ -e .git ] && echo "Fetching Whatlang2" && git submodule add -f ../whatlang2.git whatlang2 && git submodule update --init
+	@[ -e .git ] || [ -e whatlang2 ] || (echo "Please install Whatlang2 in subdir 'whatlang2'" ;exit 1)
 
 #########################################################################
 ## default compilation rule
